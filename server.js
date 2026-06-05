@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const ExcelJS = require('exceljs');
 
@@ -41,10 +42,15 @@ const db = {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
+    store: new PgSession({
+        pool: pool,
+        tableName: 'user_sessions',
+        createTableIfMissing: true
+    }),
     secret: process.env.SESSION_SECRET || 'ugel_monitoreo_2026',
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 8 * 60 * 60 * 1000 }
+    cookie: { maxAge: 8 * 60 * 60 * 1000, secure: false }
 }));
 
 let dbInitialized = false;
