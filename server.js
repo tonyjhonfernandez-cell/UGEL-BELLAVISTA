@@ -171,15 +171,6 @@ app.post('/api/login', async (req, res) => {
 
         const cod = normalizar(codigo);
 
-        const supervisor = await db.prepare(
-            "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true AND normalizar(nombre_completo) = ?"
-        ).get(cod);
-
-        if (supervisor) {
-            req.session.user = { id: supervisor.id, nombre: supervisor.nombre_completo, rol: 'supervisor' };
-            return res.json({ ok: true, user: req.session.user });
-        }
-
         const allSupervisors = await db.prepare(
             "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true"
         ).all();
@@ -191,28 +182,34 @@ app.post('/api/login', async (req, res) => {
             }
         }
 
-        const ie = await db.prepare(
+        let ie = await db.prepare(
             "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
         ).get(codigo);
+
+        if (!ie) {
+            ie = await db.prepare(
+                "SELECT * FROM instituciones_educativas WHERE activa = true AND (codigo LIKE ? OR normalizar(nombre) LIKE ?) LIMIT 1"
+            ).get(`%${codigo}%`, `%${cod}%`);
+        }
 
         if (!ie) return res.status(401).json({ error: 'Institución o nombre no encontrado' });
 
         let director = await db.prepare(
             "SELECT * FROM usuarios WHERE ie_codigo = ? AND rol = 'director' AND activo = true LIMIT 1"
-        ).get(codigo);
+        ).get(ie.codigo);
 
         if (!director) {
             const result = await db.prepare(
                 "INSERT INTO usuarios (nombre_completo, ie_codigo, rol) VALUES (?, ?, 'director') RETURNING id"
-            ).run(ie.nombre, codigo);
-            director = { id: result.lastInsertRowid, nombre_completo: ie.nombre, rol: 'director', ie_codigo: codigo };
+            ).run(ie.nombre, ie.codigo);
+            director = { id: result.lastInsertRowid, nombre_completo: ie.nombre, rol: 'director', ie_codigo: ie.codigo };
         }
 
         req.session.user = {
             id: director.id,
             nombre: director.nombre_completo,
             rol: 'director',
-            ie_codigo: codigo,
+            ie_codigo: ie.codigo,
             ie_nombre: ie.nombre,
             ie_id: ie.id
         };
