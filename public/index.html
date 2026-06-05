@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Monitoreo - UGEL Bellavista</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --granate: #7A1E2C;
+            --dorado: #D4A017;
+            --verde: #2E7D32;
+            --sidebar-bg: #1a1a2e;
+            --sidebar-width: 260px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; overflow-x: hidden; }
+
+        /* LOGIN */
+        #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--granate), #5a1520, var(--sidebar-bg)); }
+        .login-card { background: #fff; border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .login-icon { width: 80px; height: 80px; background: var(--granate); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+        .login-icon i { font-size: 36px; color: var(--dorado); }
+        .login-card h2 { text-align: center; color: var(--granate); margin-bottom: 5px; font-size: 1.4rem; }
+        .login-card p { text-align: center; color: #666; margin-bottom: 25px; font-size: 0.9rem; }
+        .login-card .form-control { border-radius: 10px; padding: 12px 15px; border: 2px solid #e0e0e0; font-size: 1rem; }
+        .login-card .form-control:focus { border-color: var(--granate); box-shadow: 0 0 0 3px rgba(122,30,44,0.15); }
+        .btn-login { background: var(--granate); border: none; border-radius: 10px; padding: 12px; font-size: 1.1rem; font-weight: 600; width: 100%; color: #fff; transition: all 0.3s; }
+        .btn-login:hover { background: #5a1520; transform: translateY(-1px); }
+        #login-error { display: none; }
+
+        /* SIDEBAR */
+        #sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: var(--sidebar-width); background: var(--sidebar-bg); z-index: 1000; transition: transform 0.3s; overflow-y: auto; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-header h5 { color: var(--dorado); margin: 0; font-size: 1rem; }
+        .sidebar-header small { color: #aaa; font-size: 0.75rem; }
+        .sidebar-nav { flex: 1; padding: 10px 0; }
+        .sidebar-nav a { display: flex; align-items: center; padding: 12px 20px; color: #ccc; text-decoration: none; transition: all 0.2s; font-size: 0.9rem; }
+        .sidebar-nav a:hover { background: rgba(255,255,255,0.08); color: #fff; }
+        .sidebar-nav a.active { background: var(--granate); color: #fff; border-left: 4px solid var(--dorado); }
+        .sidebar-nav a i { width: 30px; text-align: center; margin-right: 10px; font-size: 1rem; }
+        .sidebar-footer { padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-footer a { color: #e74c3c; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; }
+        .sidebar-footer a i { margin-right: 10px; }
+
+        /* MAIN CONTENT */
+        #main-content { margin-left: var(--sidebar-width); transition: margin-left 0.3s; min-height: 100vh; }
+        .top-header { background: #fff; padding: 15px 25px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: space-between; }
+        .top-header h4 { margin: 0; font-size: 1.2rem; color: #333; }
+        .header-right { display: flex; align-items: center; gap: 20px; }
+        .notif-btn { position: relative; background: none; border: none; font-size: 1.2rem; color: #555; cursor: pointer; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: #e74c3c; color: #fff; font-size: 0.65rem; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+        .user-info { display: flex; align-items: center; gap: 8px; }
+        .user-avatar { width: 36px; height: 36px; background: var(--granate); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 600; font-size: 0.9rem; }
+        .content-area { padding: 25px; }
+
+        /* STAT CARDS */
+        .stat-card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border-left: 5px solid; }
+        .stat-card.granate { border-left-color: var(--granate); }
+        .stat-card.dorado { border-left-color: var(--dorado); }
+        .stat-card.verde { border-left-color: var(--verde); }
+        .stat-card.rojo { border-left-color: #e74c3c; }
+        .stat-card .icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #fff; margin-bottom: 12px; }
+        .stat-card.granate .icon { background: var(--granate); }
+        .stat-card.dorado .icon { background: var(--dorado); }
+        .stat-card.verde .icon { background: var(--verde); }
+        .stat-card.rojo .icon { background: #e74c3c; }
+        .stat-card .value { font-size: 1.8rem; font-weight: 700; color: #333; }
+        .stat-card .label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* TABLES */
+        .table-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden; }
+        .table-card .card-header { background: var(--granate); color: #fff; padding: 15px 20px; font-weight: 600; }
+        .table-card table { margin: 0; }
+        .table-card th { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; background: #f8f9fa; color: #555; border-bottom: 2px solid #dee2e6; }
+        .table-card td { vertical-align: middle; font-size: 0.88rem; }
+        .badge-pendiente { background: #f39c12; color: #fff; }
+        .badge-completada { background: var(--verde); color: #fff; }
+        .badge-no_cumplida { background: #e74c3c; color: #fff; }
+
+        /* MODAL */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-box { background: #fff; border-radius: 16px; width: 95%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-box .modal-header-custom { padding: 20px 25px; border-bottom: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; }
+        .modal-box .modal-header-custom h5 { margin: 0; color: var(--granate); }
+        .modal-box .modal-body-custom { padding: 25px; }
+        .modal-box .modal-footer-custom { padding: 15px 25px; border-top: 1px solid #eee; text-align: right; }
+
+        /* TOAST */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; }
+        .toast-item { background: #fff; border-radius: 10px; padding: 15px 20px; margin-bottom: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 12px; min-width: 300px; transform: translateX(120%); transition: transform 0.3s ease; border-left: 4px solid; }
+        .toast-item.show { transform: translateX(0); }
+        .toast-item.success { border-left-color: var(--verde); }
+        .toast-item.error { border-left-color: #e74c3c; }
+        .toast-item.info { border-left-color: #3498db; }
+        .toast-item i { font-size: 1.3rem; }
+        .toast-item.success i { color: var(--verde); }
+        .toast-item.error i { color: #e74c3c; }
+        .toast-item.info i { color: #3498db; }
+
+        /* IE CHECKBOX LIST */
+        .ie-list { max-height: 350px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; }
+        .ie-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 6px; transition: background 0.2s; }
+        .ie-item:hover { background: #f8f9fa; }
+        .ie-item input { margin-right: 10px; }
+        .ie-item .ie-info { flex: 1; }
+        .ie-item .ie-codigo { font-weight: 600; color: var(--granate); margin-right: 8px; }
+        .ie-item .ie-nombre { color: #333; }
+        .ie-item .ie-ruralidad { font-size: 0.75rem; color: #888; }
+
+        /* NOTIF DROPDOWN */
+        .notif-dropdown { position: absolute; top: 50px; right: 0; width: 350px; background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); display: none; z-index: 500; }
+        .notif-dropdown.show { display: block; }
+        .notif-dropdown-header { padding: 15px; border-bottom: 1px solid #eee; font-weight: 600; color: var(--granate); display: flex; justify-content: space-between; }
+        .notif-dropdown-body { max-height: 400px; overflow-y: auto; }
+        .notif-item { padding: 12px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s; }
+        .notif-item:hover { background: #f8f9fa; }
+        .notif-item .notif-title { font-weight: 600; font-size: 0.88rem; }
+        .notif-item .notif-msg { font-size: 0.8rem; color: #666; }
+        .notif-item .notif-time { font-size: 0.7rem; color: #aaa; }
+
+        /* FILTERS */
+        .filter-bar { background: #fff; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+        .filter-bar label { font-size: 0.8rem; color: #555; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
+        .filter-bar .form-control, .filter-bar .form-select { border-radius: 8px; font-size: 0.9rem; }
+
+        /* COMPLIANCE BAR */
+        .compliance-bar-wrapper { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px; }
+        .compliance-bar-wrapper h6 { margin-bottom: 10px; color: #555; }
+        .compliance-bar { height: 28px; border-radius: 14px; background: #e9ecef; overflow: hidden; }
+        .compliance-fill { height: 100%; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 0.85rem; transition: width 0.5s; }
+        .compliance-fill.alto { background: var(--verde); }
+        .compliance-fill.medio { background: var(--dorado); }
+        .compliance-fill.bajo { background: #e74c3c; }
+
+        /* MOBILE TOGGLE */
+        .mobile-toggle { display: none; background: var(--granate); color: #fff; border: none; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+
+        @media (max-width: 992px) {
+            #sidebar { transform: translateX(-100%); }
+            #sidebar.show { transform: translateX(0); }
+            .sidebar-overlay.show { display: block; }
+            #main-content { margin-left: 0; }
+            .mobile-toggle { display: block; }
+        }
+
+        /* CHART CONTAINER */
+        .chart-container { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+        .chart-container h6 { color: #555; margin-bottom: 15px; font-weight: 600; }
+
+        /* VIEW SECTIONS */
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* PERFIL */
+        .perfil-card { background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); max-width: 600px; }
+        .perfil-card h5 { color: var(--granate); margin-bottom: 20px; }
+
+        /* REPORTS */
+        .export-btn { background: var(--verde); color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; transition: background 0.3s; }
+        .export-btn:hover { background: #1b5e20; color: #fff; }
+
+        /* NOTIF FORM */
+        .notif-form-card { background: #fff; border-radius: 12px; padding: 25px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+    <div class="login-card">
+        <div class="login-icon">
+            <i class="fas fa-school"></i>
+        </div>
+        <h2>UGEL Bellavista</h2>
+        <p>Sistema de Monitoreo de Actividades</p>
+        <div id="login-error" class="alert alert-danger text-center"></div>
+        <form onsubmit="event.preventDefault(); login();">
+            <div class="mb-3">
+                <input type="text" id="login-codigo" class="form-control" placeholder="Número o Nombre de Institución" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-login">Ingresar</button>
+        </form>
+    </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app-shell" style="display:none;">
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <h5><i class="fas fa-school"></i> UGEL Bellavista</h5>
+            <small>Monitoreo de Actividades</small>
+        </div>
+        <div class="sidebar-nav" id="sidebar-nav"></div>
+        <div class="sidebar-footer" id="sidebar-footer"></div>
+    </nav>
+
+    <!-- Main Content -->
+    <div id="main-content">
+        <div class="top-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <h4 id="view-title">Dashboard</h4>
+            </div>
+            <div class="header-right">
+                <div style="position:relative;">
+                    <button class="notif-btn" onclick="toggleNotifDropdown()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+                    </button>
+                    <div class="notif-dropdown" id="notif-dropdown">
+                        <div class="notif-dropdown-header">
+                            <span>Notificaciones</span>
+                            <button class="btn btn-sm btn-link" onclick="marcarLeidas()">Marcar leídas</button>
+                        </div>
+                        <div class="notif-dropdown-body" id="notif-dropdown-body">
+                            <p class="text-center text-muted py-3">No hay notificaciones</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-info">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div>
+                        <div style="font-weight:600;font-size:0.85rem;" id="user-name">Usuario</div>
+                        <div style="font-size:0.75rem;color:#888;" id="user-role">Rol</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area">
+
+            <!-- ========== DIRECTOR: DASHBOARD ========== -->
+            <div class="view-section" id="view-dashboard-director">
+                <div class="row g-3 mb-4" id="director-stats"></div>
+                <div id="director-compliance-bar"></div>
+                <div class="table-card mb-4">
+                    <div class="card-header"><i class="fas fa-clock"></i> Actividades Recientes</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Actividad</th><th>Tipo</th><th>Fecha Límite</th><th>Estado</th></tr></thead>
+                            <tbody id="director-recent-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== DIRECTOR: MIS ACTIVIDADES ========== -->
+            <div class="view-section" id="view-mis-actividades">
+                <div class="table-card">
+                    <div class="card-header"><i class="fas fa-list-check"></i> Mis Actividades Asignadas</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Actividad</th><th>Tipo</th><th>Fecha Límite</th><th>Hora</th><th>Estado</th></tr></thead>
+                            <tbody id="mis-actividades-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: DASHBOARD GENERAL ========== -->
+            <div class="view-section" id="view-dashboard-supervisor">
+                <div class="row g-3 mb-4" id="supervisor-stats"></div>
+                <div id="supervisor-compliance-bar"></div>
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h6><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</h6>
+                            <canvas id="chart-ruralidad" height="250"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="chart-container">
+                            <h6><i class="fas fa-chart-doughnut"></i> Cumplimiento General</h6>
+                            <canvas id="chart-cumplimiento" height="250"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-lg-6">
+                        <div class="table-card">
+                            <div class="card-header"><i class="fas fa-exclamation-triangle"></i> Top 10 IEs con Más Vencidas</div>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead><tr><th>IE</th><th>Vencidas</th></tr></thead>
+                                    <tbody id="top-vencidas-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="table-card">
+                            <div class="card-header"><i class="fas fa-clock"></i> Actividades Recientes</div>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead><tr><th>IE</th><th>Actividad</th><th>Estado</th></tr></thead>
+                                    <tbody id="supervisor-recent-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: ASIGNAR ACTIVIDAD ========== -->
+            <div class="view-section" id="view-asignar-actividad">
+                <div class="card" style="border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+                    <div class="card-header" style="background:var(--granate);color:#fff;"><i class="fas fa-plus-circle"></i> Asignar Nueva Actividad</div>
+                    <div class="card-body">
+                        <form id="asignar-form" onsubmit="event.preventDefault(); submitAsignar();">
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Título *</label>
+                                    <input type="text" class="form-control" id="as-titulo" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Tipo *</label>
+                                    <select class="form-select" id="as-tipo" required>
+                                        <option value="">Seleccionar...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold">Descripción</label>
+                                    <textarea class="form-control" id="as-descripcion" rows="3"></textarea>
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Fecha Límite *</label>
+                                    <input type="date" class="form-control" id="as-fecha" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Hora Límite *</label>
+                                    <input type="time" class="form-control" id="as-hora" required>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold mb-0">Instituciones Educativas *</label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleAllIEs(true)">Seleccionar todas</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllIEs(false)">Deseleccionar</button>
+                                </div>
+                            </div>
+                            <input type="text" class="form-control mb-2" id="ie-search" placeholder="Buscar por código o nombre..." oninput="filterIEList()">
+                            <div class="ie-list" id="ie-checkbox-list"></div>
+                            <div class="mt-4 text-end">
+                                <button type="submit" class="btn px-4 py-2" style="background:var(--granate);color:#fff;font-weight:600;">Asignar Actividad</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: MONITOREO ========== -->
+            <div class="view-section" id="view-monitoreo">
+                <div class="filter-bar">
+                    <div>
+                        <label>Ruralidad</label>
+                        <select class="form-select" id="mon-ruralidad" onchange="loadMonitoreo()">
+                            <option value="">Todas</option>
+                            <option value="URBANO">Urbano</option>
+                            <option value="RURAL 1">Rural 1</option>
+                            <option value="RURAL 2">Rural 2</option>
+                            <option value="RURAL 3">Rural 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Estado</label>
+                        <select class="form-select" id="mon-estado" onchange="loadMonitoreo()">
+                            <option value="">Todos</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="completada">Completada</option>
+                            <option value="no_cumplida">No Cumplida</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Buscar IE</label>
+                        <input type="text" class="form-control" id="mon-buscar" placeholder="Nombre de IE..." oninput="loadMonitoreo()">
+                    </div>
+                </div>
+                <div class="table-card">
+                    <div class="card-header"><i class="fas fa-desktop"></i> Monitoreo de Asignaciones</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Código IE</th><th>IE</th><th>Ruralidad</th><th>Director</th>
+                                    <th>Actividad</th><th>Tipo</th><th>Fecha Límite</th><th>Estado</th><th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monitoreo-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: DIRECTORES ========== -->
+            <div class="view-section" id="view-directores">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 style="color:var(--granate);"><i class="fas fa-users"></i> Gestión de Directores</h5>
+                    <button class="btn" style="background:var(--granate);color:#fff;" onclick="openDirectorModal()"><i class="fas fa-plus"></i> Nuevo Director</button>
+                </div>
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Nombre</th><th>DNI</th><th>Código IE</th><th>IE</th><th>Ruralidad</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead>
+                            <tbody id="directores-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: IEs ========== -->
+            <div class="view-section" id="view-ies">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 style="color:var(--granate);"><i class="fas fa-school"></i> Gestión de Instituciones Educativas</h5>
+                    <button class="btn" style="background:var(--granate);color:#fff;" onclick="openIEModal()"><i class="fas fa-plus"></i> Nueva IE</button>
+                </div>
+                <div class="filter-bar" style="margin-bottom:15px;">
+                    <div>
+                        <label>Filtrar por Ruralidad</label>
+                        <select class="form-select" id="ie-ruralidad-filter" onchange="loadIEs()">
+                            <option value="">Todas</option>
+                            <option value="URBANO">Urbano</option>
+                            <option value="RURAL 1">Rural 1</option>
+                            <option value="RURAL 2">Rural 2</option>
+                            <option value="RURAL 3">Rural 3</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Código</th><th>Nombre</th><th>Ruralidad</th><th>Niveles</th><th>Acciones</th></tr></thead>
+                            <tbody id="ies-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: REPORTES ========== -->
+            <div class="view-section" id="view-reportes">
+                <div class="filter-bar">
+                    <div>
+                        <label>Ruralidad</label>
+                        <select class="form-select" id="rep-ruralidad">
+                            <option value="">Todas</option>
+                            <option value="URBANO">Urbano</option>
+                            <option value="RURAL 1">Rural 1</option>
+                            <option value="RURAL 2">Rural 2</option>
+                            <option value="RURAL 3">Rural 3</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Estado</label>
+                        <select class="form-select" id="rep-estado">
+                            <option value="">Todos</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="completada">Completada</option>
+                            <option value="no_cumplida">No Cumplida</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Fecha Desde</label>
+                        <input type="date" class="form-control" id="rep-fecha-desde">
+                    </div>
+                    <div>
+                        <label>Fecha Hasta</label>
+                        <input type="date" class="form-control" id="rep-fecha-hasta">
+                    </div>
+                    <div>
+                        <label>&nbsp;</label>
+                        <div>
+                            <button class="btn export-btn me-2" onclick="previewReporte()"><i class="fas fa-eye"></i> Vista Previa</button>
+                            <button class="btn export-btn" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Exportar a Excel</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <div class="card-header"><i class="fas fa-table"></i> Vista Previa del Reporte</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>IE</th><th>Ruralidad</th><th>Director</th><th>Actividad</th><th>Tipo</th><th>Fecha Límite</th><th>Estado</th></tr></thead>
+                            <tbody id="reporte-table"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== SUPERVISOR: NOTIFICACIONES ========== -->
+            <div class="view-section" id="view-notificaciones">
+                <div class="row g-4">
+                    <div class="col-lg-5">
+                        <div class="notif-form-card">
+                            <h5 style="color:var(--granate);margin-bottom:15px;"><i class="fas fa-paper-plane"></i> Enviar Notificación</h5>
+                            <form onsubmit="event.preventDefault(); sendNotificacion();">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Director *</label>
+                                    <select class="form-select" id="notif-director" required>
+                                        <option value="">Seleccionar director...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Título *</label>
+                                    <input type="text" class="form-control" id="notif-titulo" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Mensaje *</label>
+                                    <textarea class="form-control" id="notif-mensaje" rows="4" required></textarea>
+                                </div>
+                                <button type="submit" class="btn w-100" style="background:var(--granate);color:#fff;font-weight:600;">Enviar</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="table-card">
+                            <div class="card-header"><i class="fas fa-bell"></i> Notificaciones Enviadas</div>
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead><tr><th>Director</th><th>Título</th><th>Mensaje</th><th>Fecha</th><th>Leída</th></tr></thead>
+                                    <tbody id="notificaciones-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== PERFIL (BOTH ROLES) ========== -->
+            <div class="view-section" id="view-perfil">
+                <div class="perfil-card">
+                    <h5><i class="fas fa-user"></i> Mi Perfil</h5>
+                    <form onsubmit="event.preventDefault(); savePerfil();">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nombre</label>
+                            <input type="text" class="form-control" id="perfil-nombre" readonly style="background:#f8f9fa;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">DNI</label>
+                            <input type="text" class="form-control" id="perfil-dni" readonly style="background:#f8f9fa;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Institución</label>
+                            <input type="text" class="form-control" id="perfil-ie" readonly style="background:#f8f9fa;">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Rol</label>
+                            <input type="text" class="form-control" id="perfil-rol" readonly style="background:#f8f9fa;">
+                        </div>
+                        <hr>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" id="perfil-email">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Teléfono</label>
+                            <input type="text" class="form-control" id="perfil-telefono">
+                        </div>
+                        <button type="submit" class="btn px-4" style="background:var(--granate);color:#fff;font-weight:600;">Guardar Cambios</button>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal();">
+    <div class="modal-box">
+        <div class="modal-header-custom">
+            <h5 id="modal-title">Modal</h5>
+            <button class="btn btn-sm btn-close" onclick="closeModal()"></button>
+        </div>
+        <div class="modal-body-custom" id="modal-body"></div>
+        <div class="modal-footer-custom" id="modal-footer"></div>
+    </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ===================== GLOBALS =====================
+let currentUser = null;
+let allIEs = [];
+let allDirectores = [];
+let chartRuralidad = null;
+let chartCumplimiento = null;
+
+// ===================== API WRAPPER =====================
+async function api(url, opts = {}) {
+    try {
+        const defaults = { headers: {} };
+        if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+            defaults.headers['Content-Type'] = 'application/json';
+            opts.body = JSON.stringify(opts.body);
+        }
+        const res = await fetch(url, { ...defaults, ...opts });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error del servidor');
+        return data;
+    } catch (err) {
+        throw err;
+    }
+}
+
+// ===================== TOAST =====================
+function showToast(msg, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
+    const toast = document.createElement('div');
+    toast.className = `toast-item ${type}`;
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${msg}</span>`;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// ===================== MODAL =====================
+function showModal(title, bodyHtml, footerHtml = '') {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHtml;
+    document.getElementById('modal-footer').innerHTML = footerHtml;
+    document.getElementById('modal-overlay').classList.add('show');
+}
+function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('show');
+}
+
+// ===================== AUTH =====================
+async function login() {
+    const codigo = document.getElementById('login-codigo').value.trim();
+    const errDiv = document.getElementById('login-error');
+    if (!codigo) { errDiv.textContent = 'Ingrese un código o nombre de institución.'; errDiv.style.display = 'block'; return; }
+    try {
+        errDiv.style.display = 'none';
+        const data = await api('/api/login', { method: 'POST', body: { codigo } });
+        currentUser = data.usuario;
+        initApp();
+        showToast('Bienvenido, ' + currentUser.nombre, 'success');
+    } catch (err) {
+        errDiv.textContent = err.message || 'Credenciales incorrectas';
+        errDiv.style.display = 'block';
+    }
+}
+
+async function logout() {
+    try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+    currentUser = null;
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-codigo').value = '';
+}
+
+async function checkSession() {
+    try {
+        const data = await api('/api/check-session');
+        if (data.usuario) { currentUser = data.usuario; initApp(); }
+    } catch (e) {}
+}
+
+// ===================== INIT APP =====================
+function initApp() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'block';
+    const initial = currentUser.rol === 'director' ? 'dashboard-director' : 'dashboard-supervisor';
+    buildSidebar();
+    updateUserHeader();
+    cargarTiposActividad();
+    loadNotifBadge();
+    cambiarVista(initial);
+    initSocket();
+}
+
+// ===================== SIDEBAR =====================
+function buildSidebar() {
+    const nav = document.getElementById('sidebar-nav');
+    const footer = document.getElementById('sidebar-footer');
+    let items = '';
+    if (currentUser.rol === 'director') {
+        items = `
+            <a href="#" data-view="dashboard-director" class="active" onclick="cambiarVista('dashboard-director',this)"><i class="fas fa-chart-pie"></i> Dashboard</a>
+            <a href="#" data-view="mis-actividades" onclick="cambiarVista('mis-actividades',this)"><i class="fas fa-list-check"></i> Mis Actividades</a>
+            <a href="#" data-view="perfil" onclick="cambiarVista('perfil',this)"><i class="fas fa-user"></i> Mi Perfil</a>
+        `;
+        footer.innerHTML = `<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>`;
+    } else {
+        items = `
+            <a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista('dashboard-supervisor',this)"><i class="fas fa-chart-pie"></i> Dashboard General</a>
+            <a href="#" data-view="asignar-actividad" onclick="cambiarVista('asignar-actividad',this)"><i class="fas fa-plus-circle"></i> Asignar Actividad</a>
+            <a href="#" data-view="monitoreo" onclick="cambiarVista('monitoreo',this)"><i class="fas fa-desktop"></i> Monitoreo</a>
+            <a href="#" data-view="directores" onclick="cambiarVista('directores',this)"><i class="fas fa-users"></i> Gestión de Directores</a>
+            <a href="#" data-view="ies" onclick="cambiarVista('ies',this)"><i class="fas fa-school"></i> Gestión de IEs</a>
+            <a href="#" data-view="reportes" onclick="cambiarVista('reportes',this)"><i class="fas fa-file-excel"></i> Reportes</a>
+            <a href="#" data-view="notificaciones" onclick="cambiarVista('notificaciones',this)"><i class="fas fa-bell"></i> Notificaciones</a>
+            <a href="#" data-view="perfil" onclick="cambiarVista('perfil',this)"><i class="fas fa-user"></i> Mi Perfil</a>
+        `;
+        footer.innerHTML = `<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>`;
+    }
+    nav.innerHTML = items;
+}
+
+// ===================== USER HEADER =====================
+function updateUserHeader() {
+    const initials = currentUser.nombre.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-name').textContent = currentUser.nombre;
+    document.getElementById('user-role').textContent = currentUser.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';
+}
+
+// ===================== NAVIGATION =====================
+const viewTitles = {
+    'dashboard-director': 'Dashboard',
+    'mis-actividades': 'Mis Actividades',
+    'dashboard-supervisor': 'Dashboard General',
+    'asignar-actividad': 'Asignar Actividad',
+    'monitoreo': 'Monitoreo',
+    'directores': 'Gestión de Directores',
+    'ies': 'Gestión de IEs',
+    'reportes': 'Reportes',
+    'notificaciones': 'Notificaciones',
+    'perfil': 'Mi Perfil'
+};
+
+function cambiarVista(vista, el) {
+    if (event) event.preventDefault();
+    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+    const section = document.getElementById('view-' + vista);
+    if (section) section.classList.add('active');
+    document.querySelectorAll('#sidebar-nav a').forEach(a => a.classList.remove('active'));
+    if (el) el.classList.add('active');
+    else {
+        const link = document.querySelector(`#sidebar-nav a[data-view="${vista}"]`);
+        if (link) link.classList.add('active');
+    }
+    document.getElementById('view-title').textContent = viewTitles[vista] || vista;
+    // close sidebar on mobile
+    document.getElementById('sidebar').classList.remove('show');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+    // Load data for the view
+    loadViewData(vista);
+}
+
+function loadViewData(vista) {
+    switch(vista) {
+        case 'dashboard-director': loadDashboardDirector(); break;
+        case 'mis-actividades': loadMisActividades(); break;
+        case 'dashboard-supervisor': loadDashboardSupervisor(); break;
+        case 'asignar-actividad': loadIEsForAsignar(); break;
+        case 'monitoreo': loadMonitoreo(); break;
+        case 'directores': loadDirectores(); break;
+        case 'ies': loadIEs(); break;
+        case 'notificaciones': loadNotificaciones(); loadDirectoresForNotif(); break;
+        case 'perfil': loadPerfil(); break;
+    }
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('show');
+    document.getElementById('sidebar-overlay').classList.toggle('show');
+}
+
+// ===================== SOCKET.IO =====================
+function initSocket() {
+    try {
+        const socket = io();
+        socket.on('actividad-creada', () => {
+            showToast('Nueva actividad creada', 'info');
+            refreshCurrentView();
+        });
+        socket.on('asignacion-actualizada', () => {
+            showToast('Una asignación fue actualizada', 'info');
+            refreshCurrentView();
+        });
+        socket.on('notificacion-nueva', () => {
+            loadNotifBadge();
+            showToast('Nueva notificación recibida', 'info');
+        });
+    } catch (e) {}
+}
+
+function refreshCurrentView() {
+    const active = document.querySelector('.view-section.active');
+    if (active) {
+        const id = active.id.replace('view-', '');
+        loadViewData(id);
+    }
+    if (currentUser.rol === 'supervisor') loadNotifBadge();
+}
+
+// ===================== TIPOS ACTIVIDAD =====================
+async function cargarTiposActividad() {
+    try {
+        const data = await api('/api/tipos-actividad');
+        const sel = document.getElementById('as-tipo');
+        sel.innerHTML = '<option value="">Seleccionar...</option>';
+        (data.tipos || data || []).forEach(t => {
+            sel.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
+        });
+    } catch (e) {}
+}
+
+// ===================== DASHBOARD DIRECTOR =====================
+async function loadDashboardDirector() {
+    try {
+        const data = await api('/api/dashboard');
+        const s = data.stats || {};
+        const total = s.total || 0;
+        const completadas = s.completadas || 0;
+        const pendientes = s.pendientes || 0;
+        const vencidas = s.vencidas || 0;
+        const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+        document.getElementById('director-stats').innerHTML = `
+            <div class="col-sm-6 col-lg-3"><div class="stat-card granate"><div class="icon"><i class="fas fa-list"></i></div><div class="value">${total}</div><div class="label">Total</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card verde"><div class="icon"><i class="fas fa-check-circle"></i></div><div class="value">${completadas}</div><div class="label">Completadas</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card dorado"><div class="icon"><i class="fas fa-clock"></i></div><div class="value">${pendientes}</div><div class="label">Pendientes</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card rojo"><div class="icon"><i class="fas fa-exclamation-triangle"></i></div><div class="value">${vencidas}</div><div class="label">Vencidas</div></div></div>
+        `;
+
+        const cls = pct >= 70 ? 'alto' : pct >= 40 ? 'medio' : 'bajo';
+        document.getElementById('director-compliance-bar').innerHTML = `
+            <div class="compliance-bar-wrapper">
+                <h6><i class="fas fa-chart-line"></i> Porcentaje de Cumplimiento</h6>
+                <div class="compliance-bar"><div class="compliance-fill ${cls}" style="width:${pct}%">${pct}%</div></div>
+            </div>
+        `;
+
+        const rows = (data.asignaciones || data.recent || []).slice(0, 10);
+        document.getElementById('director-recent-table').innerHTML = rows.length ? rows.map(a => `
+            <tr>
+                <td>${a.titulo || a.actividad_titulo || '-'}</td>
+                <td>${a.tipo_nombre || a.tipo || '-'}</td>
+                <td>${a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-'}</td>
+                <td><span class="badge badge-${a.estado}">${a.estado.replace('_', ' ').toUpperCase()}</span></td>
+            </tr>
+        `).join('') : '<tr><td colspan="4" class="text-center text-muted">No hay actividades registradas</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar dashboard: ' + err.message, 'error');
+    }
+}
+
+// ===================== MIS ACTIVIDADES =====================
+async function loadMisActividades() {
+    try {
+        const data = await api('/api/asignaciones');
+        const rows = data.asignaciones || data || [];
+        document.getElementById('mis-actividades-table').innerHTML = rows.length ? rows.map(a => `
+            <tr>
+                <td>${a.titulo || a.actividad_titulo || '-'}</td>
+                <td>${a.tipo_nombre || a.tipo || '-'}</td>
+                <td>${a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-'}</td>
+                <td>${a.hora_limite || '-'}</td>
+                <td><span class="badge badge-${a.estado}">${a.estado.replace('_', ' ').toUpperCase()}</span></td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted">No tiene actividades asignadas</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar actividades', 'error');
+    }
+}
+
+// ===================== DASHBOARD SUPERVISOR =====================
+async function loadDashboardSupervisor() {
+    try {
+        const data = await api('/api/dashboard');
+        const s = data.stats || {};
+        const total = s.total || 0;
+        const completadas = s.completadas || 0;
+        const pendientes = s.pendientes || 0;
+        const vencidas = s.vencidas || 0;
+        const totalIEs = s.total_ies || s.totalIEs || 0;
+        const totalDirectores = s.total_directores || s.totalDirectores || 0;
+        const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+        document.getElementById('supervisor-stats').innerHTML = `
+            <div class="col-sm-6 col-lg-3"><div class="stat-card granate"><div class="icon"><i class="fas fa-list"></i></div><div class="value">${total}</div><div class="label">Total Asignaciones</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card verde"><div class="icon"><i class="fas fa-check-circle"></i></div><div class="value">${completadas}</div><div class="label">Completadas</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card dorado"><div class="icon"><i class="fas fa-clock"></i></div><div class="value">${pendientes}</div><div class="label">Pendientes</div></div></div>
+            <div class="col-sm-6 col-lg-3"><div class="stat-card rojo"><div class="icon"><i class="fas fa-exclamation-triangle"></i></div><div class="value">${vencidas}</div><div class="label">Vencidas</div></div></div>
+        `;
+
+        const cls = pct >= 70 ? 'alto' : pct >= 40 ? 'medio' : 'bajo';
+        document.getElementById('supervisor-compliance-bar').innerHTML = `
+            <div class="compliance-bar-wrapper">
+                <h6><i class="fas fa-chart-line"></i> Porcentaje de Cumplimiento: ${pct}%</h6>
+                <div class="compliance-bar"><div class="compliance-fill ${cls}" style="width:${pct}%">${pct}%</div></div>
+                <div class="mt-2" style="font-size:0.85rem;color:#666;">
+                    <span><strong>Total IEs:</strong> ${totalIEs}</span> &nbsp;|&nbsp;
+                    <span><strong>Total Directores:</strong> ${totalDirectores}</span>
+                </div>
+            </div>
+        `;
+
+        // Charts
+        renderChartRuralidad(data.por_ruralidad || []);
+        renderChartCumplimiento(completadas, pendientes, vencidas);
+
+        // Top vencidas
+        const topV = data.top_vencidas || data.topVencidas || [];
+        document.getElementById('top-vencidas-table').innerHTML = topV.length ? topV.map(v => `
+            <tr><td>${v.ie_nombre || v.nombre || '-'}</td><td><span class="badge bg-danger">${v.vencidas || 0}</span></td></tr>
+        `).join('') : '<tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>';
+
+        // Recent
+        const recent = (data.asignaciones || data.recent || []).slice(0, 10);
+        document.getElementById('supervisor-recent-table').innerHTML = recent.length ? recent.map(a => `
+            <tr>
+                <td>${a.ie_nombre || '-'}</td>
+                <td>${a.titulo || a.actividad_titulo || '-'}</td>
+                <td><span class="badge badge-${a.estado}">${a.estado.replace('_', ' ').toUpperCase()}</span></td>
+            </tr>
+        `).join('') : '<tr><td colspan="3" class="text-center text-muted">Sin datos</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar dashboard: ' + err.message, 'error');
+    }
+}
+
+function renderChartRuralidad(porRuralidad) {
+    const ctx = document.getElementById('chart-ruralidad');
+    if (chartRuralidad) chartRuralidad.destroy();
+    const labels = (porRuralidad || []).map(r => r.ruralidad || r.nombre || '-');
+    const completadas = (porRuralidad || []).map(r => r.completadas || 0);
+    const pendientes = (porRuralidad || []).map(r => r.pendientes || 0);
+    chartRuralidad = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Completadas', data: completadas, backgroundColor: '#2E7D32', borderRadius: 6 },
+                { label: 'Pendientes', data: pendientes, backgroundColor: '#D4A017', borderRadius: 6 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+}
+
+function renderChartCumplimiento(completadas, pendientes, vencidas) {
+    const ctx = document.getElementById('chart-cumplimiento');
+    if (chartCumplimiento) chartCumplimiento.destroy();
+    chartCumplimiento = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completadas', 'Pendientes', 'Vencidas'],
+            datasets: [{ data: [completadas, pendientes, vencidas], backgroundColor: ['#2E7D32', '#D4A017', '#e74c3c'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+}
+
+// ===================== ASIGNAR ACTIVIDAD =====================
+async function loadIEsForAsignar() {
+    try {
+        const data = await api('/api/ies');
+        allIEs = data.ies || data || [];
+        renderIECheckboxes(allIEs);
+    } catch (e) {}
+}
+
+function renderIECheckboxes(ies) {
+    document.getElementById('ie-checkbox-list').innerHTML = ies.map(ie => `
+        <div class="ie-item">
+            <input type="checkbox" class="ie-checkbox" value="${ie.id}">
+            <div class="ie-info">
+                <span class="ie-codigo">${ie.codigo}</span>
+                <span class="ie-nombre">${ie.nombre}</span>
+                <span class="ie-ruralidad">(${ie.ruralidad || '-'})</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function filterIEList() {
+    const q = document.getElementById('ie-search').value.toLowerCase();
+    const filtered = allIEs.filter(ie => ie.codigo.toLowerCase().includes(q) || ie.nombre.toLowerCase().includes(q));
+    renderIECheckboxes(filtered);
+}
+
+function toggleAllIEs(state) {
+    document.querySelectorAll('.ie-checkbox').forEach(cb => cb.checked = state);
+}
+
+async function submitAsignar() {
+    const titulo = document.getElementById('as-titulo').value.trim();
+    const tipo_id = document.getElementById('as-tipo').value;
+    const descripcion = document.getElementById('as-descripcion').value.trim();
+    const fecha_limite = document.getElementById('as-fecha').value;
+    const hora_limite = document.getElementById('as-hora').value;
+    const ie_ids = Array.from(document.querySelectorAll('.ie-checkbox:checked')).map(cb => parseInt(cb.value));
+
+    if (!titulo || !tipo_id || !fecha_limite || !hora_limite) {
+        showToast('Complete todos los campos obligatorios', 'error');
+        return;
+    }
+    if (ie_ids.length === 0) {
+        showToast('Seleccione al menos una Institución Educativa', 'error');
+        return;
+    }
+
+    try {
+        await api('/api/actividades', {
+            method: 'POST',
+            body: { titulo, tipo_id, descripcion, fecha_limite, hora_limite, ie_ids }
+        });
+        showToast('Actividad asignada correctamente', 'success');
+        document.getElementById('asignar-form').reset();
+        document.querySelectorAll('.ie-checkbox').forEach(cb => cb.checked = false);
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// ===================== MONITOREO =====================
+async function loadMonitoreo() {
+    try {
+        const ruralidad = document.getElementById('mon-ruralidad').value;
+        const estado = document.getElementById('mon-estado').value;
+        const buscar = document.getElementById('mon-buscar').value;
+        let url = '/api/asignaciones?';
+        if (ruralidad) url += `ruralidad=${encodeURIComponent(ruralidad)}&`;
+        if (estado) url += `estado=${encodeURIComponent(estado)}&`;
+        if (buscar) url += `buscar=${encodeURIComponent(buscar)}&`;
+        const data = await api(url);
+        const rows = data.asignaciones || data || [];
+        document.getElementById('monitoreo-table').innerHTML = rows.length ? rows.map(a => `
+            <tr>
+                <td>${a.ie_codigo || '-'}</td>
+                <td>${a.ie_nombre || '-'}</td>
+                <td>${a.ruralidad || '-'}</td>
+                <td>${a.director_nombre || '-'}</td>
+                <td>${a.titulo || a.actividad_titulo || '-'}</td>
+                <td>${a.tipo_nombre || a.tipo || '-'}</td>
+                <td>${a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-'}</td>
+                <td><span class="badge badge-${a.estado}">${a.estado.replace('_', ' ').toUpperCase()}</span></td>
+                <td>
+                    ${a.estado === 'pendiente' ? `
+                        <button class="btn btn-sm btn-success me-1" onclick="cambiarEstadoAsignacion(${a.id}, 'completada')" title="Marcar completada"><i class="fas fa-check"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="cambiarEstadoAsignacion(${a.id}, 'no_cumplida')" title="Marcar no cumplida"><i class="fas fa-times"></i></button>
+                    ` : ''}
+                    <button class="btn btn-sm btn-info" onclick="verDetalleAsignacion(${a.id})" title="Ver detalle"><i class="fas fa-eye"></i></button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" class="text-center text-muted">No se encontraron asignaciones</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar monitoreo', 'error');
+    }
+}
+
+function cambiarEstadoAsignacion(id, estado) {
+    const texto = estado === 'completada' ? 'Marcar como COMPLETADA' : 'Marcar como NO CUMPLIDA';
+    showModal(texto, `
+        <div class="mb-3">
+            <label class="form-label fw-bold">Notas del Supervisor (opcional)</label>
+            <textarea class="form-control" id="notas-supervisor" rows="3" placeholder="Ingrese observaciones..."></textarea>
+        </div>
+    `, `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn ${estado === 'completada' ? 'btn-success' : 'btn-danger'}" onclick="confirmarEstado(${id}, '${estado}')">Confirmar</button>
+    `);
+}
+
+async function confirmarEstado(id, estado) {
+    const notas = document.getElementById('notas-supervisor').value.trim();
+    try {
+        await api(`/api/asignaciones/${id}/estado`, {
+            method: 'PUT',
+            body: { estado, notas_supervisor: notas }
+        });
+        showToast('Estado actualizado correctamente', 'success');
+        closeModal();
+        loadMonitoreo();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function verDetalleAsignacion(id) {
+    try {
+        const data = await api(`/api/asignaciones/${id}`);
+        const a = data.asignacion || data;
+        showModal('Detalle de Asignación', `
+            <div class="row g-3">
+                <div class="col-6"><strong>IE:</strong> ${a.ie_nombre || '-'}</div>
+                <div class="col-6"><strong>Código:</strong> ${a.ie_codigo || '-'}</div>
+                <div class="col-6"><strong>Ruralidad:</strong> ${a.ruralidad || '-'}</div>
+                <div class="col-6"><strong>Director:</strong> ${a.director_nombre || '-'}</div>
+                <div class="col-12"><strong>Actividad:</strong> ${a.titulo || a.actividad_titulo || '-'}</div>
+                <div class="col-12"><strong>Descripción:</strong> ${a.descripcion || a.actividad_descripcion || '-'}</div>
+                <div class="col-6"><strong>Tipo:</strong> ${a.tipo_nombre || a.tipo || '-'}</div>
+                <div class="col-6"><strong>Fecha Límite:</strong> ${a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-'}</div>
+                <div class="col-6"><strong>Hora:</strong> ${a.hora_limite || '-'}</div>
+                <div class="col-6"><strong>Estado:</strong> <span class="badge badge-${a.estado}">${a.estado.replace('_', ' ').toUpperCase()}</span></div>
+                ${a.notas_supervisor ? `<div class="col-12"><strong>Notas:</strong> ${a.notas_supervisor}</div>` : ''}
+                ${a.fecha_completado ? `<div class="col-12"><strong>Fecha Completado:</strong> ${new Date(a.fecha_completado).toLocaleString('es-PE')}</div>` : ''}
+            </div>
+        `);
+    } catch (err) {
+        showToast('Error al cargar detalle', 'error');
+    }
+}
+
+// ===================== DIRECTORES =====================
+async function loadDirectores() {
+    try {
+        const data = await api('/api/directores');
+        allDirectores = data.directores || data || [];
+        document.getElementById('directores-table').innerHTML = allDirectores.length ? allDirectores.map(d => `
+            <tr>
+                <td>${d.nombre || '-'}</td>
+                <td>${d.dni || '-'}</td>
+                <td>${d.ie_codigo || d.codigo_ie || '-'}</td>
+                <td>${d.ie_nombre || '-'}</td>
+                <td>${d.ruralidad || '-'}</td>
+                <td>${d.email || '-'}</td>
+                <td>${d.telefono || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editDirector(${d.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDirector(${d.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="8" class="text-center text-muted">No hay directores registrados</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar directores', 'error');
+    }
+}
+
+function openDirectorModal(director = null) {
+    const isEdit = director !== null;
+    showModal(isEdit ? 'Editar Director' : 'Nuevo Director', `
+        <form id="director-form">
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label fw-bold">Nombre *</label><input type="text" class="form-control" id="d-nombre" value="${director ? director.nombre : ''}" required></div>
+                <div class="col-md-6"><label class="form-label fw-bold">DNI *</label><input type="text" class="form-control" id="d-dni" value="${director ? director.dni : ''}" required></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Email</label><input type="email" class="form-control" id="d-email" value="${director ? director.email || '' : ''}"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Teléfono</label><input type="text" class="form-control" id="d-telefono" value="${director ? director.telefono || '' : ''}"></div>
+                <div class="col-md-6"><label class="form-label fw-bold">IE (Código) *</label><input type="text" class="form-control" id="d-ie-codigo" value="${director ? director.ie_codigo || director.codigo_ie || '' : ''}" required></div>
+            </div>
+        </form>
+    `, `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn" style="background:var(--granate);color:#fff;" onclick="saveDirector(${director ? director.id : 'null'})">${isEdit ? 'Actualizar' : 'Crear'}</button>
+    `);
+}
+
+async function saveDirector(id) {
+    const body = {
+        nombre: document.getElementById('d-nombre').value.trim(),
+        dni: document.getElementById('d-dni').value.trim(),
+        email: document.getElementById('d-email').value.trim(),
+        telefono: document.getElementById('d-telefono').value.trim(),
+        ie_codigo: document.getElementById('d-ie-codigo').value.trim()
+    };
+    try {
+        if (id) {
+            await api(`/api/directores/${id}`, { method: 'PUT', body });
+        } else {
+            await api('/api/directores', { method: 'POST', body });
+        }
+        showToast(id ? 'Director actualizado' : 'Director creado', 'success');
+        closeModal();
+        loadDirectores();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function editDirector(id) {
+    try {
+        const data = await api(`/api/directores/${id}`);
+        openDirectorModal(data.director || data);
+    } catch (err) {
+        showToast('Error al cargar director', 'error');
+    }
+}
+
+async function deleteDirector(id) {
+    showModal('Confirmar Eliminación', '<p>¿Está seguro de eliminar este director? Esta acción no se puede deshacer.</p>', `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmDeleteDirector(${id})">Eliminar</button>
+    `);
+}
+
+async function confirmDeleteDirector(id) {
+    try {
+        await api(`/api/directores/${id}`, { method: 'DELETE' });
+        showToast('Director eliminado', 'success');
+        closeModal();
+        loadDirectores();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// ===================== IEs =====================
+async function loadIEs() {
+    try {
+        const ruralidad = document.getElementById('ie-ruralidad-filter').value;
+        let url = '/api/ies?';
+        if (ruralidad) url += `ruralidad=${encodeURIComponent(ruralidad)}`;
+        const data = await api(url);
+        const ies = data.ies || data || [];
+        document.getElementById('ies-table').innerHTML = ies.length ? ies.map(ie => `
+            <tr>
+                <td>${ie.codigo}</td>
+                <td>${ie.nombre}</td>
+                <td>${ie.ruralidad || '-'}</td>
+                <td>
+                    ${ie.tiene_inicial ? '<span class="badge bg-info me-1">Inicial</span>' : ''}
+                    ${ie.tiene_primaria ? '<span class="badge bg-primary me-1">Primaria</span>' : ''}
+                    ${ie.tiene_secundaria ? '<span class="badge bg-success">Secundaria</span>' : ''}
+                    ${!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria ? '<span class="text-muted">-</span>' : ''}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editIE(${ie.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteIE(${ie.id})" title="Eliminar"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted">No hay IEs registradas</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar IEs', 'error');
+    }
+}
+
+function openIEModal(ie = null) {
+    const isEdit = ie !== null;
+    showModal(isEdit ? 'Editar IE' : 'Nueva IE', `
+        <form id="ie-form">
+            <div class="row g-3">
+                <div class="col-md-6"><label class="form-label fw-bold">Código *</label><input type="text" class="form-control" id="ie-codigo" value="${ie ? ie.codigo : ''}" required></div>
+                <div class="col-md-6"><label class="form-label fw-bold">Nombre *</label><input type="text" class="form-control" id="ie-nombre" value="${ie ? ie.nombre : ''}" required></div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Ruralidad *</label>
+                    <select class="form-select" id="ie-ruralidad" required>
+                        <option value="URBANO" ${ie && ie.ruralidad === 'URBANO' ? 'selected' : ''}>Urbano</option>
+                        <option value="RURAL 1" ${ie && ie.ruralidad === 'RURAL 1' ? 'selected' : ''}>Rural 1</option>
+                        <option value="RURAL 2" ${ie && ie.ruralidad === 'RURAL 2' ? 'selected' : ''}>Rural 2</option>
+                        <option value="RURAL 3" ${ie && ie.ruralidad === 'RURAL 3' ? 'selected' : ''}>Rural 3</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">Niveles</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ie-inicial" ${ie && ie.tiene_inicial ? 'checked' : ''}><label class="form-check-label">Inicial</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ie-primaria" ${ie && ie.tiene_primaria ? 'checked' : ''}><label class="form-check-label">Primaria</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="ie-secundaria" ${ie && ie.tiene_secundaria ? 'checked' : ''}><label class="form-check-label">Secundaria</label></div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    `, `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn" style="background:var(--granate);color:#fff;" onclick="saveIE(${ie ? ie.id : 'null'})">${isEdit ? 'Actualizar' : 'Crear'}</button>
+    `);
+}
+
+async function saveIE(id) {
+    const body = {
+        codigo: document.getElementById('ie-codigo').value.trim(),
+        nombre: document.getElementById('ie-nombre').value.trim(),
+        ruralidad: document.getElementById('ie-ruralidad').value,
+        tiene_inicial: document.getElementById('ie-inicial').checked,
+        tiene_primaria: document.getElementById('ie-primaria').checked,
+        tiene_secundaria: document.getElementById('ie-secundaria').checked
+    };
+    try {
+        if (id) {
+            await api(`/api/ies/${id}`, { method: 'PUT', body });
+        } else {
+            await api('/api/ies', { method: 'POST', body });
+        }
+        showToast(id ? 'IE actualizada' : 'IE creada', 'success');
+        closeModal();
+        loadIEs();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function editIE(id) {
+    try {
+        const data = await api(`/api/ies/${id}`);
+        openIEModal(data.ie || data);
+    } catch (err) {
+        showToast('Error al cargar IE', 'error');
+    }
+}
+
+async function deleteIE(id) {
+    showModal('Confirmar Eliminación', '<p>¿Está seguro de eliminar esta Institución Educativa? Esta acción no se puede deshacer.</p>', `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-danger" onclick="confirmDeleteIE(${id})">Eliminar</button>
+    `);
+}
+
+async function confirmDeleteIE(id) {
+    try {
+        await api(`/api/ies/${id}`, { method: 'DELETE' });
+        showToast('IE eliminada', 'success');
+        closeModal();
+        loadIEs();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// ===================== REPORTES =====================
+function previewReporte() {
+    const params = new URLSearchParams();
+    const ruralidad = document.getElementById('rep-ruralidad').value;
+    const estado = document.getElementById('rep-estado').value;
+    const fd = document.getElementById('rep-fecha-desde').value;
+    const fh = document.getElementById('rep-fecha-hasta').value;
+    if (ruralidad) params.set('ruralidad', ruralidad);
+    if (estado) params.set('estado', estado);
+    if (fd) params.set('fecha_desde', fd);
+    if (fh) params.set('fecha_hasta', fh);
+    // Use the same export endpoint to preview
+    const url = '/api/exportar-excel?' + params.toString();
+    window.open(url, '_blank');
+    // Also load into table
+    loadReportePreview(params);
+}
+
+async function loadReportePreview(params) {
+    try {
+        const data = await api('/api/exportar-excel?' + params.toString());
+        // If the endpoint returns JSON (for preview), render it
+        if (Array.isArray(data)) {
+            document.getElementById('reporte-table').innerHTML = data.length ? data.map(r => `
+                <tr>
+                    <td>${r.ie_nombre || r.nombre || '-'}</td>
+                    <td>${r.ruralidad || '-'}</td>
+                    <td>${r.director_nombre || '-'}</td>
+                    <td>${r.titulo || r.actividad_titulo || '-'}</td>
+                    <td>${r.tipo_nombre || r.tipo || '-'}</td>
+                    <td>${r.fecha_limite ? new Date(r.fecha_limite).toLocaleDateString('es-PE') : '-'}</td>
+                    <td><span class="badge badge-${r.estado}">${r.estado ? r.estado.replace('_', ' ').toUpperCase() : '-'}</span></td>
+                </tr>
+            `).join('') : '<tr><td colspan="7" class="text-center text-muted">No hay datos</td></tr>';
+        }
+    } catch (e) {}
+}
+
+function exportarExcel() {
+    const params = new URLSearchParams();
+    const ruralidad = document.getElementById('rep-ruralidad').value;
+    const estado = document.getElementById('rep-estado').value;
+    const fd = document.getElementById('rep-fecha-desde').value;
+    const fh = document.getElementById('rep-fecha-hasta').value;
+    if (ruralidad) params.set('ruralidad', ruralidad);
+    if (estado) params.set('estado', estado);
+    if (fd) params.set('fecha_desde', fd);
+    if (fh) params.set('fecha_hasta', fh);
+    window.location.href = '/api/exportar-excel?' + params.toString();
+    showToast('Descargando archivo Excel...', 'success');
+}
+
+// ===================== NOTIFICACIONES =====================
+async function loadNotificaciones() {
+    try {
+        const data = await api('/api/notificaciones');
+        const rows = data.notificaciones || data || [];
+        document.getElementById('notificaciones-table').innerHTML = rows.length ? rows.map(n => `
+            <tr>
+                <td>${n.director_nombre || '-'}</td>
+                <td>${n.titulo || '-'}</td>
+                <td>${(n.mensaje || '-').substring(0, 80)}${(n.mensaje || '').length > 80 ? '...' : ''}</td>
+                <td>${n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-'}</td>
+                <td><span class="badge ${n.leida ? 'bg-secondary' : 'bg-warning'}">${n.leida ? 'Sí' : 'No'}</span></td>
+            </tr>
+        `).join('') : '<tr><td colspan="5" class="text-center text-muted">No hay notificaciones</td></tr>';
+    } catch (err) {
+        showToast('Error al cargar notificaciones', 'error');
+    }
+}
+
+async function loadDirectoresForNotif() {
+    try {
+        const data = await api('/api/directores');
+        const dirs = data.directores || data || [];
+        const sel = document.getElementById('notif-director');
+        sel.innerHTML = '<option value="">Seleccionar director...</option>';
+        dirs.forEach(d => {
+            sel.innerHTML += `<option value="${d.id}">${d.nombre} - ${d.ie_nombre || d.ie_codigo || ''}</option>`;
+        });
+    } catch (e) {}
+}
+
+async function sendNotificacion() {
+    const director_id = document.getElementById('notif-director').value;
+    const titulo = document.getElementById('notif-titulo').value.trim();
+    const mensaje = document.getElementById('notif-mensaje').value.trim();
+    if (!director_id || !titulo || !mensaje) {
+        showToast('Complete todos los campos', 'error');
+        return;
+    }
+    try {
+        await api('/api/notificaciones', {
+            method: 'POST',
+            body: { director_id, titulo, mensaje }
+        });
+        showToast('Notificación enviada', 'success');
+        document.getElementById('notif-director').value = '';
+        document.getElementById('notif-titulo').value = '';
+        document.getElementById('notif-mensaje').value = '';
+        loadNotificaciones();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function loadNotifBadge() {
+    try {
+        const data = await api('/api/notificaciones/no-leidas');
+        const count = data.count || data.no_leidas || 0;
+        const badge = document.getElementById('notif-badge');
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    } catch (e) {}
+}
+
+function toggleNotifDropdown() {
+    document.getElementById('notif-dropdown').classList.toggle('show');
+}
+
+async function marcarLeidas() {
+    try {
+        await api('/api/notificaciones/marcar-leidas', { method: 'PUT' });
+        loadNotifBadge();
+        loadNotificaciones();
+        showToast('Notificaciones marcadas como leídas', 'success');
+    } catch (err) {}
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('notif-dropdown');
+    const btn = document.querySelector('.notif-btn');
+    if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// ===================== PERFIL =====================
+async function loadPerfil() {
+    try {
+        const data = await api('/api/perfil');
+        const p = data.perfil || data;
+        document.getElementById('perfil-nombre').value = p.nombre || '';
+        document.getElementById('perfil-dni').value = p.dni || '';
+        document.getElementById('perfil-ie').value = p.ie_nombre || p.institucion || '';
+        document.getElementById('perfil-rol').value = p.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';
+        document.getElementById('perfil-email').value = p.email || '';
+        document.getElementById('perfil-telefono').value = p.telefono || '';
+    } catch (err) {
+        showToast('Error al cargar perfil', 'error');
+    }
+}
+
+async function savePerfil() {
+    const body = {
+        email: document.getElementById('perfil-email').value.trim(),
+        telefono: document.getElementById('perfil-telefono').value.trim()
+    };
+    try {
+        await api('/api/perfil', { method: 'PUT', body });
+        showToast('Perfil actualizado correctamente', 'success');
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+// ===================== INIT =====================
+checkSession();
+</script>
+</body>
+</html>
