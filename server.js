@@ -1,19 +1,14 @@
 require('dotenv').config();
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const { Pool } = require('pg');
 const session = require('express-session');
 const path = require('path');
 const ExcelJS = require('exceljs');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
 
 if (!process.env.DATABASE_URL) {
     console.error('ERROR: DATABASE_URL no configurada en .env');
-    process.exit(1);
 }
 
 const pool = new Pool({
@@ -44,7 +39,7 @@ const db = {
 };
 
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
     secret: process.env.SESSION_SECRET || 'ugel_monitoreo_2026',
     resave: false,
@@ -52,11 +47,10 @@ app.use(session({
     cookie: { maxAge: 8 * 60 * 60 * 1000 }
 }));
 
-function normalizar(txt) {
-    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
+let dbInitialized = false;
 
 async function initDatabase() {
+    if (dbInitialized) return;
     await db.exec(`
         CREATE TABLE IF NOT EXISTS instituciones_educativas (
             id SERIAL PRIMARY KEY,
@@ -124,11 +118,6 @@ async function initDatabase() {
             tipo VARCHAR(50),
             created_at TIMESTAMP DEFAULT NOW()
         );
-
-        CREATE TABLE IF NOT EXISTS tipos_actividad_seed (
-            id SERIAL PRIMARY KEY,
-            nombre VARCHAR(100) NOT NULL
-        );
     `);
 
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
@@ -137,9 +126,22 @@ async function initDatabase() {
         for (const t of tiposList) {
             await db.prepare('INSERT INTO tipos_actividad (nombre) VALUES (?)').run(t);
         }
-        console.log('Tipos de actividad creados');
     }
-    console.log('Base de datos inicializada');
+    dbInitialized = true;
+}
+
+app.use(async (req, res, next) => {
+    try {
+        await initDatabase();
+        next();
+    } catch (err) {
+        console.error('DB init error:', err);
+        next();
+    }
+});
+
+function normalizar(txt) {
+    return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 const authSupervisor = (req, res, next) => {
@@ -372,7 +374,6 @@ app.post('/api/actividades', authSupervisor, async (req, res) => {
             }
         }
 
-        io.emit('actividad-creada', { id: actividadId, titulo });
         res.json({ ok: true, id: actividadId });
     } catch (err) {
         console.error('Error crear actividad:', err);
@@ -477,10 +478,8 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
             await db.prepare(
                 'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
             ).run(asig.director_id, `Actividad ${estado}`, mensaje, 'estado');
-            io.to(`user_${asig.director_id}`).emit('notificacion-nueva', { titulo: `Actividad ${estado}`, mensaje });
         }
 
-        io.emit('asignacion-actualizada', { id: req.params.id, estado });
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -670,7 +669,6 @@ app.post('/api/notificaciones', authSupervisor, async (req, res) => {
         const result = await db.prepare(
             'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?) RETURNING id'
         ).run(usuario_id, titulo, mensaje, tipo || 'manual');
-        io.to(`user_${usuario_id}`).emit('notificacion-nueva', { titulo, mensaje });
         res.json({ ok: true, id: result.lastInsertRowid });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -774,85 +772,16 @@ app.get('/api/exportar-excel', authSupervisor, async (req, res) => {
     }
 });
 
-io.on('connection', (socket) => {
-    console.log('Usuario conectado:', socket.id);
-
-    socket.on('user-online', (userId) => {
-        socket.userId = userId;
-        socket.join(`user_${userId}`);
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3000;
+    initDatabase().then(() => {
+        app.listen(PORT, () => {
+            console.log(`Servidor corriendo en http://localhost:${PORT}`);
+        });
+    }).catch(err => {
+        console.error('Error al iniciar:', err);
+        process.exit(1);
     });
-
-    socket.on('disconnect', () => {
-        console.log('Usuario desconectado:', socket.id);
-    });
-});
-
-async function verificarVencimientos() {
-    try {
-        const hoy = new Date().toISOString().split('T')[0];
-        const manana = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-        const porVencer = await db.prepare(`
-            SELECT ase.*, a.titulo, a.fecha_limite,
-                   u.nombre_completo as director_nombre
-            FROM asignaciones ase
-            INNER JOIN actividades a ON ase.actividad_id = a.id
-            LEFT JOIN usuarios u ON ase.director_id = u.id
-            WHERE ase.estado = 'pendiente' AND a.fecha_limite = ?
-        `).all(manana);
-
-        for (const ase of porVencer) {
-            const yaNotificado = await db.prepare(
-                "SELECT COUNT(*) as c FROM notificaciones WHERE usuario_id = ? AND titulo LIKE '%vence mañana%' AND mensaje LIKE ?"
-            ).get(ase.director_id, `%${ase.titulo}%`);
-
-            if (yaNotificado.c == 0) {
-                await db.prepare(
-                    'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
-                ).run(ase.director_id, 'Actividad vence mañana', `La actividad "${ase.titulo}" vence mañana`, 'vencimiento');
-
-                if (ase.asignador_id) {
-                    await db.prepare(
-                        'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
-                    ).run(ase.asignador_id, 'Actividad vence mañana', `La actividad "${ase.titulo}" de ${ase.director_nombre} vence mañana`, 'vencimiento');
-                }
-            }
-        }
-
-        const vencidas = await db.prepare(`
-            SELECT ase.*, a.titulo, a.fecha_limite,
-                   u.nombre_completo as director_nombre
-            FROM asignaciones ase
-            INNER JOIN actividades a ON ase.actividad_id = a.id
-            LEFT JOIN usuarios u ON ase.director_id = u.id
-            WHERE ase.estado = 'pendiente' AND a.fecha_limite < ?
-        `).all(hoy);
-
-        for (const ase of vencidas) {
-            const yaNotificado = await db.prepare(
-                "SELECT COUNT(*) as c FROM notificaciones WHERE usuario_id = ? AND titulo LIKE '%vencida%' AND mensaje LIKE ?"
-            ).get(ase.asignador_id, `%${ase.titulo}%`);
-
-            if (yaNotificado.c == 0 && ase.asignador_id) {
-                await db.prepare(
-                    'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
-                ).run(ase.asignador_id, 'Actividad vencida', `La actividad "${ase.titulo}" de ${ase.director_nombre} venció sin completar`, 'vencida');
-            }
-        }
-    } catch (err) {
-        console.error('Error verificación vencimientos:', err);
-    }
 }
 
-const PORT = process.env.PORT || 3000;
-
-initDatabase().then(() => {
-    server.listen(PORT, () => {
-        console.log(`Servidor corriendo en http://localhost:${PORT}`);
-        verificarVencimientos();
-        setInterval(verificarVencimientos, 60 * 60 * 1000);
-    });
-}).catch(err => {
-    console.error('Error al iniciar:', err);
-    process.exit(1);
-});
+module.exports = app;
