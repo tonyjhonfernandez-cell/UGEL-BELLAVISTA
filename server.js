@@ -167,24 +167,35 @@ const authDirector = (req, res, next) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { codigo } = req.body;
-        if (!codigo) return res.status(400).json({ error: 'Ingrese un código' });
+        if (!codigo) return res.status(400).json({ error: 'Ingrese un código o nombre' });
 
         const cod = normalizar(codigo);
 
-        if (cod.startsWith('ugel')) {
-            const user = await db.prepare(
-                "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true LIMIT 1"
-            ).get();
-            if (!user) return res.status(401).json({ error: 'No se encontró supervisor' });
-            req.session.user = { id: user.id, nombre: user.nombre_completo, rol: 'supervisor', ie_codigo: 'UGEL01' };
+        const supervisor = await db.prepare(
+            "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true AND normalizar(nombre_completo) = ?"
+        ).get(cod);
+
+        if (supervisor) {
+            req.session.user = { id: supervisor.id, nombre: supervisor.nombre_completo, rol: 'supervisor' };
             return res.json({ ok: true, user: req.session.user });
+        }
+
+        const allSupervisors = await db.prepare(
+            "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true"
+        ).all();
+
+        for (const s of allSupervisors) {
+            if (normalizar(s.nombre_completo) === cod) {
+                req.session.user = { id: s.id, nombre: s.nombre_completo, rol: 'supervisor' };
+                return res.json({ ok: true, user: req.session.user });
+            }
         }
 
         const ie = await db.prepare(
             "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
         ).get(codigo);
 
-        if (!ie) return res.status(401).json({ error: 'Institución no encontrada' });
+        if (!ie) return res.status(401).json({ error: 'Institución o nombre no encontrado' });
 
         let director = await db.prepare(
             "SELECT * FROM usuarios WHERE ie_codigo = ? AND rol = 'director' AND activo = true LIMIT 1"
@@ -1049,9 +1060,14 @@ app.get('/api/seed', async (req, res) => {
         ];
 
         for (const s of supervisores) {
-            await db.prepare(
-                "INSERT INTO usuarios (nombre_completo, rol, dependencia, puesto) VALUES (?, 'supervisor', ?, ?) ON CONFLICT (dni) DO NOTHING"
-            ).run(...s);
+            const existing = await db.prepare(
+                "SELECT id FROM usuarios WHERE nombre_completo = ? AND rol = 'supervisor'"
+            ).get(s[0]);
+            if (!existing) {
+                await db.prepare(
+                    "INSERT INTO usuarios (nombre_completo, rol, dependencia, puesto) VALUES (?, 'supervisor', ?, ?)"
+                ).run(...s);
+            }
         }
 
         const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
