@@ -744,6 +744,19 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 ORDER BY asignador.dependencia, d.nombre_completo
             `).all();
 
+            const ranking_ies = await db.prepare(`
+                SELECT ie.codigo, ie.nombre, ie.ruralidad,
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
+                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
+                    COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
+                ${baseJoin} ${buildWhere()}
+                GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
+                HAVING COUNT(*) > 0
+                ORDER BY COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) DESC, COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) ASC
+                LIMIT 15
+            `).all(...buildParams());
+
             res.json({
                 total: total.c,
                 completadas: completadas.c,
@@ -753,6 +766,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 porcentaje_cumplimiento: total.c > 0 ? Math.round((completadas.c / total.c) * 100) : 0,
                 por_ruralidad,
                 por_ie,
+                ranking_ies,
                 recientes,
                 total_ies: total_ies.c,
                 total_directores: total_directores.c,

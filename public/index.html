@@ -512,6 +512,10 @@ body.director-mode #app-shell{display:block}
             <div class="t-wrap"><table><thead><tr><th>Institución Educativa</th><th style="width:70px">Vencidas</th></tr></thead><tbody id="top-vencidas-table"></tbody></table></div>
           </div>
           <div class="t-card">
+            <div class="t-hd"><i class="fas fa-trophy" style="color:var(--amber)"></i> Ranking de Colegios (Cumplimiento)</div>
+            <div class="t-wrap"><table><thead><tr><th>IE</th><th style="width:70px">Cumplidas</th><th style="width:70px">Venc.</th></tr></thead><tbody id="ranking-ies-table"></tbody></table></div>
+          </div>
+          <div class="t-card" style="grid-column: 1 / -1">
             <div class="t-hd"><i class="fas fa-clock"></i> Actividades Recientes</div>
             <div class="t-wrap"><table><thead><tr><th>IE</th><th>Actividad</th><th style="width:110px">Estado</th></tr></thead><tbody id="supervisor-recent-table"></tbody></table></div>
           </div>
@@ -1351,16 +1355,27 @@ async function loadDashboardSupervisor() {
       '<div class="kpi-card"><div class="kpi-icon" style="background:var(--granate-light);color:var(--granate)"><i class="fas fa-users"></i></div><div class="kpi-body"><div class="kpi-label">Directores</div><div class="kpi-value">' + td + '</div><div class="kpi-sub">' + pct + '% cumplimiento</div></div></div>';
     document.getElementById('supervisor-compliance-bar').innerHTML =
       '<div class="compliance-card"><div class="clabel"><span><i class="fas fa-chart-line" style="color:var(--granate)"></i>Cumplimiento General</span><span>' + pct + '%</span></div><div class="track"><div class="fill ' + (pct >= 70 ? 'alto' : (pct >= 40 ? 'medio' : 'bajo')) + '" style="width:' + pct + '%"></div></div></div>';
-    var topV = d.top_vencidas || d.topVencidas || [];
-    var htmlV = '';
-    if (topV.length > 0) {
-      for (var i = 0; i < topV.length; i++) {
-        htmlV += '<tr><td>' + (topV[i].ie_nombre || topV[i].nombre || '-') + '</td><td><span class="badge bg-danger">' + (topV[i].vencidas || 0) + '</span></td></tr>';
+    
+    var topHtml = '';
+      if (d.por_ie && d.por_ie.length > 0) {
+        for (var i = 0; i < d.por_ie.length; i++) {
+          topHtml += '<tr><td>' + (d.por_ie[i].nombre || '-') + '</td><td><span class="badge badge-danger">' + d.por_ie[i].no_cumplidas + '</span></td></tr>';
+        }
+      } else {
+        topHtml = '<tr class="empty"><td colspan="2">No hay vencidas</td></tr>';
       }
-    } else {
-      htmlV = '<tr class="empty"><td colspan="2">Sin datos</td></tr>';
-    }
-    document.getElementById('top-vencidas-table').innerHTML = htmlV;
+      document.getElementById('top-vencidas-table').innerHTML = topHtml;
+
+      var rankHtml = '';
+      if (d.ranking_ies && d.ranking_ies.length > 0) {
+        for (var i = 0; i < d.ranking_ies.length; i++) {
+          rankHtml += '<tr><td>' + (d.ranking_ies[i].nombre || '-') + '</td><td><span class="badge badge-success">' + d.ranking_ies[i].completadas + '</span></td><td><span class="badge badge-danger">' + d.ranking_ies[i].no_cumplidas + '</span></td></tr>';
+        }
+      } else {
+        rankHtml = '<tr class="empty"><td colspan="3">No hay datos</td></tr>';
+      }
+      if(document.getElementById('ranking-ies-table')) document.getElementById('ranking-ies-table').innerHTML = rankHtml;
+      
     var rec = d.recientes || d.asignaciones || [];
     rec = rec.slice(0, 10);
     var htmlR = '';
@@ -1518,7 +1533,14 @@ async function loadMonitoreo() {
       for (var i = 0; i < rows.length; i++) {
         var a = rows[i];
         var act = a.actividad_id || a.id;
-        html += '<tr><td>' + (a.ie_codigo || '-') + '</td><td>' + (a.ie_nombre || '-') + '</td><td>' + (a.ruralidad || '-') + '</td><td>' + (a.director_nombre || '-') + '</td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td nowrap>' + (a.estado === 'pendiente' ? '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'completada\')"><i class="fas fa-check"></i></button><button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')"><i class="fas fa-times"></i></button>' : '') + '<button class="btn btn-xs btn-info me-1" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-warning me-1" onclick="editarActividadModal(' + act + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        var actionBtns = '';
+        if (a.estado !== 'completada') {
+          actionBtns += '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'completada\')" title="Marcar completada"><i class="fas fa-check"></i></button>';
+        }
+        if (a.estado !== 'no_cumplida') {
+          actionBtns += '<button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')" title="Marcar vencida"><i class="fas fa-times"></i></button>';
+        }
+        html += '<tr><td>' + (a.ie_codigo || '-') + '</td><td>' + (a.ie_nombre || '-') + '</td><td>' + (a.ruralidad || '-') + '</td><td>' + (a.director_nombre || '-') + '</td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td nowrap>' + actionBtns + '<button class="btn btn-xs btn-info me-1" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-warning me-1" onclick="editarActividadModal(' + act + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></td></tr>';
       }
     } else {
       html = '<tr class="empty"><td colspan="11">No se encontraron asignaciones</td></tr>';
