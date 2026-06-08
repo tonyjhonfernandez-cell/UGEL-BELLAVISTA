@@ -846,6 +846,9 @@ function formatFechaMock(dateStr) {
     return dateStr;
   }
 }
+function normalizar(txt) {
+  return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
 function selectSchoolForDashboard(codigo, nombre) {
   document.getElementById('dir-filter-codigo').value = codigo;
   document.getElementById('dir-filter-iename').textContent = nombre;
@@ -862,6 +865,14 @@ function onSearchIE(q) {
   var matches = allIEs.filter(function(ie) {
     return normalizar(ie.codigo).indexOf(query) !== -1 || normalizar(ie.nombre).indexOf(query) !== -1;
   });
+  
+  var exactMatch = allIEs.find(function(ie) {
+    return normalizar(ie.codigo) === query;
+  });
+  if (exactMatch) {
+    document.getElementById('dir-filter-iename').textContent = exactMatch.nombre;
+    loadDirectorMain(exactMatch.codigo);
+  }
   
   if (matches.length === 0) {
     container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.8rem;text-align:center">No se encontraron resultados</div>';
@@ -890,6 +901,23 @@ async function initPublicDashboard() {
       // Intentar buscar el código 471496 del mockup por defecto
       var defaultIE = allIEs.find(function(ie) { return ie.codigo === '471496'; }) || allIEs[0];
       selectSchoolForDashboard(defaultIE.codigo, defaultIE.nombre);
+    }
+    
+    var input = document.getElementById('dir-filter-codigo');
+    if (input && !input.dataset.hasListener) {
+      input.dataset.hasListener = 'true';
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          var q = this.value;
+          var query = normalizar(q);
+          var match = allIEs.find(function(ie) {
+            return normalizar(ie.codigo) === query || normalizar(ie.nombre).indexOf(query) !== -1;
+          });
+          if (match) {
+            selectSchoolForDashboard(match.codigo, match.nombre);
+          }
+        }
+      });
     }
   } catch (e) {}
 }
