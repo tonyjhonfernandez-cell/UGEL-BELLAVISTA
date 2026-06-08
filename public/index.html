@@ -413,12 +413,7 @@ body.director-mode #app-shell{display:block}
 
     <!-- MAIN CONTENT -->
     <div class="main" style="padding:0;overflow:hidden">
-      <!-- FILTER BAR -->
-      <div id="global-filter-bar" class="filter-bar" style="display:none">
-        <div class="filter-group"><label>Nivel</label><select id="filter-nivel" onchange="onFilterChange()"><option value="">Todos</option><option value="inicial">Inicial</option><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></div>
-        <div class="filter-group"><label>Ruralidad</label><select id="filter-ruralidad" onchange="onFilterChange()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
-        <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
-      </div>
+
 
       <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
       <div class="view-section active" id="view-director-main">
@@ -487,6 +482,11 @@ body.director-mode #app-shell{display:block}
       <!-- ==================== SUPERVISOR: DASHBOARD ==================== -->
       <div class="view-section" id="view-dashboard-supervisor">
         <div class="page-hd"><h2>Dashboard General</h2><span>UGEL Bellavista · Panel de Supervisión</span></div>
+        <div id="global-filter-bar" class="filter-bar" style="margin-bottom: 16px;">
+          <div class="filter-group"><label>Nivel</label><select id="filter-nivel" onchange="onFilterChange()"><option value="">Todos</option><option value="inicial">Inicial</option><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></div>
+          <div class="filter-group"><label>Ruralidad</label><select id="filter-ruralidad" onchange="onFilterChange()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
+          <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
+        </div>
         <div class="kpi-grid" id="supervisor-stats"></div>
         <div id="supervisor-compliance-bar"></div>
         <div class="dash-grid">
@@ -997,16 +997,17 @@ async function checkSession() {
 
 // ===================== INIT =====================
 function initDirectorApp() {
-  document.getElementById('global-filter-bar').style.display = 'none';
   document.getElementById('sidebar').style.display = 'none';
   document.getElementById('sidebar-footer').style.display = 'none';
   document.getElementById('sidebar-nav').style.display = 'none';
   var tb = document.querySelector('.top-bar');
-  if (tb) tb.style.display = 'none';
-  var m = document.querySelector('.main');
-  if (m) { m.style.padding = '0'; m.style.overflow = 'hidden'; }
-  document.body.style.background = '#f0f1f3';
-
+  if(tb) tb.style.display = 'none';
+  var main = document.querySelector('.main');
+  if(main) { main.style.marginLeft = '0'; main.style.paddingTop = '0'; }
+  document.getElementById('mobile-nav').style.display = 'none';
+  if(window.innerWidth<=768){
+    document.querySelector('.mobile-header').style.display = 'none';
+  }
   document.getElementById('app-shell').style.display = 'block';
   document.getElementById('login-screen').style.display = 'none';
 
@@ -1017,8 +1018,6 @@ function initDirectorApp() {
   loadDirectorMain();
 }
 function initSupervisorApp() {
-  document.getElementById('global-filter-bar').style.display = '';
-  document.getElementById('sidebar').style.display = '';
   document.getElementById('sidebar-footer').style.display = '';
   document.getElementById('sidebar-nav').style.display = '';
   var tb = document.querySelector('.top-bar');
@@ -1239,11 +1238,13 @@ async function loadDirectorMain(ieCodigo) {
         else if (est === 'no_cumplida') { badgeClass = 'red'; badgeText = 'Vencido'; }
         else if (a.fecha_limite && a.fecha_limite < hoy && est !== 'completada') { badgeClass = 'red'; badgeText = 'Vencido'; }
         var resp = '-';
-        if (a.asignador_nombre && a.area) resp = a.asignador_nombre + ' (' + a.area + ')';
+        if (a.asignador_nombre && a.area && a.subarea) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ' - ' + a.subarea + ')</small>';
+        else if (a.asignador_nombre && a.area) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ')</small>';
         else if (a.asignador_nombre) resp = a.asignador_nombre;
         else if (a.area) resp = a.area;
 
-        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? formatFechaMock(a.fecha_limite) : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + resp + '</td><td>' + (a.asignador_telefono || '-') + '</td></tr>';
+        const waBtn = a.asignador_telefono ? `<a href="https://wa.me/51${a.asignador_telefono}" target="_blank" class="btn btn-sm btn-success" style="padding: 2px 8px; font-size: 12px; background-color: #25D366; border-color: #25D366; color: white; text-decoration: none;"><i class="fab fa-whatsapp"></i> ${a.asignador_telefono}</a>` : '-';
+        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? formatFechaMock(a.fecha_limite) : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + resp + '</td><td>' + waBtn + '</td></tr>';
       }
     } else {
       html = '<tr><td class="dir-empty" colspan="5">No tiene actividades asignadas</td></tr>';
@@ -1616,6 +1617,37 @@ async function guardarDirector(id) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+async function verHistorialDirector(id) {
+  var dir = null;
+  for (var i = 0; i < allDirectores.length; i++) {
+    if (allDirectores[i].id === id) { dir = allDirectores[i]; break; }
+  }
+  if (!dir) { showToast('Director no encontrado', 'error'); return; }
+
+  try {
+    const historial = await api('/api/directores/' + id + '/historial');
+    let html = '<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>Actividad</th><th>Fecha Límite</th><th>Estado</th><th>Asignado por</th><th>Notas</th></tr></thead><tbody>';
+    
+    if (historial.length === 0) {
+      html += '<tr><td colspan="5" class="text-center">No hay actividades registradas</td></tr>';
+    } else {
+      for (const h of historial) {
+        let badge = '<span class="badge bg-warning">Pendiente</span>';
+        if (h.estado === 'completada') badge = '<span class="badge bg-success">Cumplido</span>';
+        else if (h.estado === 'no_cumplida') badge = '<span class="badge bg-danger">Vencido</span>';
+        
+        const notas = h.notas_supervisor ? h.notas_supervisor : '-';
+        html += `<tr><td>${h.titulo}</td><td>${h.fecha_limite ? formatFechaMock(h.fecha_limite) : '-'}</td><td>${badge}</td><td>${h.asignador_nombre || '-'}</td><td>${notas}</td></tr>`;
+      }
+    }
+    html += '</tbody></table></div>';
+    
+    showModal('Historial: ' + (dir.ie_nombre || dir.nombre_completo || 'Director'), html, '<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>', 'modal-lg');
+  } catch (e) {
+    showToast('Error al cargar historial: ' + e.message, 'error');
+  }
+}
+
 // ===================== DIRECTORES =====================
 async function loadDirectores() {
   try {
@@ -1672,7 +1704,7 @@ async function loadDirectores() {
               areaBadge += '<span class="badge bg-secondary me-1" style="font-size:.7rem">' + aa[ai] + '</span>';
             }
           }
-          html += '<tr><td>' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.dni || '-') + '</td><td>' + areaBadge + '</td><td>' + (dr.ie_nombre || '-') + '</td><td>' + (dr.email || '-') + '</td><td>' + (dr.telefono || '-') + '</td><td><button class="btn btn-xs btn-outline" onclick="editarDirector(' + dr.id + ')"><i class="fas fa-edit"></i></button></td></tr>';
+          html += '<tr><td>' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.dni || '-') + '</td><td>' + areaBadge + '</td><td>' + (dr.ie_nombre || '-') + '</td><td>' + (dr.email || '-') + '</td><td>' + (dr.telefono || '-') + '</td><td><button class="btn btn-xs btn-outline" onclick="editarDirector(' + dr.id + ')" title="Editar Director"><i class="fas fa-edit"></i></button> <button class="btn btn-xs btn-outline" style="margin-left: 4px;" onclick="verHistorialDirector(' + dr.id + ')" title="Ver Historial"><i class="fas fa-history"></i></button></td></tr>';
         }
       }
     } else {
