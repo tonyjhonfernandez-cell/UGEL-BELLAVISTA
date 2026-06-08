@@ -173,7 +173,7 @@ async function autoExpireAssignments() {
     }
 }
 
-const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria'];
+const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria', 'otros'];
 function validarNivel(nivel) {
     return NIVELES_VALIDOS.includes(nivel) ? nivel : '';
 }
@@ -276,10 +276,24 @@ app.get('/api/check-session', (req, res) => {
 
 app.get('/api/ies', async (req, res) => {
     try {
-        const { ruralidad } = req.query;
+        const { ruralidad, nivel, buscar } = req.query;
         let sql = 'SELECT * FROM instituciones_educativas WHERE activa = true';
         const params = [];
-        if (ruralidad) { sql += ' AND ruralidad = ?'; params.push(ruralidad); }
+        if (ruralidad) {
+            sql += ' AND ruralidad = ?';
+            params.push(ruralidad);
+        }
+        if (nivel) {
+            const nv = (['inicial', 'primaria', 'secundaria', 'otros'].includes(nivel)) ? nivel : '';
+            if (nv) {
+                sql += ` AND tiene_${nv} = true`;
+            }
+        }
+        if (buscar) {
+            sql += ' AND (nombre ILIKE ? OR codigo ILIKE ?)';
+            const q = `%${buscar}%`;
+            params.push(q, q);
+        }
         sql += ' ORDER BY codigo';
         const ies = await db.prepare(sql).all(...params);
         res.json(ies);

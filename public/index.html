@@ -534,7 +534,32 @@ body.director-mode #app-shell{display:block}
                   <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
                 </div>
               </div>
-              <input type="text" class="form-control mb-3" id="ie-search" placeholder="Buscar por código o nombre..." oninput="filterIEList()">
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label" style="font-size:.75rem">Buscar IE</label>
+                  <input type="text" class="form-control" id="ie-search" placeholder="Código, N° o Nombre..." oninput="filterIEList()">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label" style="font-size:.75rem">Ruralidad</label>
+                  <select class="form-select" id="ie-filter-ruralidad" onchange="filterIEList()">
+                    <option value="">Todas</option>
+                    <option value="URBANO">Urbano</option>
+                    <option value="RURAL 1">Rural 1</option>
+                    <option value="RURAL 2">Rural 2</option>
+                    <option value="RURAL 3">Rural 3</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label" style="font-size:.75rem">Nivel</label>
+                  <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
+                    <option value="">Todos</option>
+                    <option value="inicial">Inicial</option>
+                    <option value="primaria">Primaria</option>
+                    <option value="secundaria">Secundaria</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                </div>
+              </div>
               <div class="ie-list" id="ie-checkbox-list"></div>
               <div class="mt-4 text-center"><button type="submit" class="btn btn-primary px-5">Asignar Actividad</button></div>
             </form>
@@ -546,9 +571,39 @@ body.director-mode #app-shell{display:block}
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd"><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por IE</span></div>
         <div class="filter-bar">
-          <div class="filter-group"><label>Ruralidad</label><select class="form-select" id="mon-ruralidad" onchange="loadMonitoreo()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
-          <div class="filter-group"><label>Estado</label><select class="form-select" id="mon-estado" onchange="loadMonitoreo()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
-          <div class="filter-group"><label>Buscar IE</label><input type="text" class="form-control" id="mon-buscar" placeholder="Nombre de IE..." oninput="loadMonitoreo()"></div>
+          <div class="filter-group">
+            <label>Buscar IE</label>
+            <input type="text" class="form-control" id="mon-buscar" placeholder="Código, N° o Nombre..." oninput="loadMonitoreo()">
+          </div>
+          <div class="filter-group">
+            <label>Ruralidad</label>
+            <select class="form-select" id="mon-ruralidad" onchange="loadMonitoreo()">
+              <option value="">Todas</option>
+              <option value="URBANO">Urbano</option>
+              <option value="RURAL 1">Rural 1</option>
+              <option value="RURAL 2">Rural 2</option>
+              <option value="RURAL 3">Rural 3</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Nivel</label>
+            <select class="form-select" id="mon-nivel" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
+              <option value="inicial">Inicial</option>
+              <option value="primaria">Primaria</option>
+              <option value="secundaria">Secundaria</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select class="form-select" id="mon-estado" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="completada">Completada</option>
+              <option value="no_cumplida">No Cumplida</option>
+            </select>
+          </div>
         </div>
         <div class="t-card">
           <div class="t-hd"><i class="fas fa-desktop"></i> Monitoreo de Asignaciones</div>
@@ -569,8 +624,33 @@ body.director-mode #app-shell{display:block}
       <!-- ==================== SUPERVISOR: IEs ==================== -->
       <div class="view-section" id="view-ies">
         <div class="page-hd"><h2>Instituciones Educativas</h2><span>Registro de IEs de UGEL Bellavista</span></div>
-        <div class="filter-bar" style="margin-bottom:16px"><div class="filter-group"><label>Ruralidad</label><select class="form-select" id="ie-ruralidad-filter" onchange="loadIEs()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div></div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Ruralidad</th><th>Niveles</th></tr></thead><tbody id="ies-table"></tbody></table></div></div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group">
+            <label>Buscar</label>
+            <input type="text" class="form-control" id="ie-search-text" placeholder="Código, N° o Nombre..." oninput="loadIEs()">
+          </div>
+          <div class="filter-group">
+            <label>Ruralidad</label>
+            <select class="form-select" id="ie-ruralidad-filter" onchange="loadIEs()">
+              <option value="">Todas</option>
+              <option value="URBANO">Urbano</option>
+              <option value="RURAL 1">Rural 1</option>
+              <option value="RURAL 2">Rural 2</option>
+              <option value="RURAL 3">Rural 3</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Nivel</label>
+            <select class="form-select" id="ie-nivel-filter" onchange="loadIEs()">
+              <option value="">Todos</option>
+              <option value="inicial">Inicial</option>
+              <option value="primaria">Primaria</option>
+              <option value="secundaria">Secundaria</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+        </div>
+        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Código Modular</th><th>Nombre de IE</th><th>Ruralidad</th><th>Niveles</th></tr></thead><tbody id="ies-table"></tbody></table></div></div>
       </div>
 
       <!-- ==================== SUPERVISOR: NOTIFICACIONES ==================== -->
@@ -1317,51 +1397,90 @@ function renderChartCumplimiento(c, p, v) {
 }
 
 // ===================== ASIGNAR =====================
+let selectedIEIds = new Set();
+
+function syncSelectedIEs() {
+  var cbs = document.querySelectorAll('.ie-checkbox');
+  for (var i = 0; i < cbs.length; i++) {
+    var id = parseInt(cbs[i].value);
+    if (cbs[i].checked) {
+      selectedIEIds.add(id);
+    } else {
+      selectedIEIds.delete(id);
+    }
+  }
+}
+
 async function loadIEsForAsignar() {
   try {
     var d = await api('/api/ies');
     allIEs = d.ies || d || [];
+    selectedIEIds.clear();
     renderIECheckboxes(allIEs);
   } catch (e) {}
 }
+
 function renderIECheckboxes(ies) {
   var html = '';
   for (var i = 0; i < ies.length; i++) {
-    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" value="' + ies[i].id + '"><span class="ie-codigo">' + ies[i].codigo + '</span><span class="ie-nombre">' + ies[i].nombre + '</span><span class="ie-ruralidad">(' + (ies[i].ruralidad || '-') + ')</span></label>';
+    var isChecked = selectedIEIds.has(ies[i].id) ? 'checked' : '';
+    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + ies[i].id + '" ' + isChecked + '><span class="ie-codigo">' + ies[i].codigo + '</span><span class="ie-nombre">' + ies[i].nombre + '</span><span class="ie-ruralidad">(' + (ies[i].ruralidad || '-') + ')</span></label>';
   }
   document.getElementById('ie-checkbox-list').innerHTML = html;
 }
+
 function filterIEList() {
+  syncSelectedIEs();
   var q = document.getElementById('ie-search').value.toLowerCase();
-  var filtered = [];
-  for (var i = 0; i < allIEs.length; i++) {
-    if (allIEs[i].codigo.toLowerCase().indexOf(q) !== -1 || allIEs[i].nombre.toLowerCase().indexOf(q) !== -1) {
-      filtered.push(allIEs[i]);
-    }
-  }
+  var r = document.getElementById('ie-filter-ruralidad').value;
+  var n = document.getElementById('ie-filter-nivel').value;
+  
+  var filtered = allIEs.filter(function(ie) {
+    var matchSearch = ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
+    var matchRural = !r || ie.ruralidad === r;
+    var matchNivel = true;
+    if (n === 'inicial') matchNivel = ie.tiene_inicial;
+    else if (n === 'primaria') matchNivel = ie.tiene_primaria;
+    else if (n === 'secundaria') matchNivel = ie.tiene_secundaria;
+    else if (n === 'otros') matchNivel = ie.tiene_otros;
+    return matchSearch && matchRural && matchNivel;
+  });
+  
   renderIECheckboxes(filtered);
 }
+
 function toggleAllIEs(s) {
   var cbs = document.querySelectorAll('.ie-checkbox');
-  for (var i = 0; i < cbs.length; i++) { cbs[i].checked = s; }
+  for (var i = 0; i < cbs.length; i++) { 
+    cbs[i].checked = s; 
+    var id = parseInt(cbs[i].value);
+    if (s) {
+      selectedIEIds.add(id);
+    } else {
+      selectedIEIds.delete(id);
+    }
+  }
 }
+
 async function submitAsignar() {
+  syncSelectedIEs();
   var tit = document.getElementById('as-titulo').value.trim();
   var ti = document.getElementById('as-tipo').value;
   var desc = document.getElementById('as-descripcion').value.trim();
   var fec = document.getElementById('as-fecha').value;
   var hor = document.getElementById('as-hora').value;
-  var cbs = document.querySelectorAll('.ie-checkbox:checked');
-  var ids = [];
-  for (var i = 0; i < cbs.length; i++) { ids.push(parseInt(cbs[i].value)); }
+  var ids = Array.from(selectedIEIds);
   if (!tit || !ti || !fec || !hor) { showToast('Complete campos obligatorios', 'error'); return; }
   if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
   try {
     await api('/api/actividades', { method: 'POST', body: { titulo: tit, tipo_id: ti, descripcion: desc, fecha_limite: fec, hora_limite: hor, ie_ids: ids } });
     showToast('Actividad asignada', 'success');
     document.getElementById('asignar-form').reset();
-    var allCbs = document.querySelectorAll('.ie-checkbox');
-    for (var i = 0; i < allCbs.length; i++) { allCbs[i].checked = false; }
+    document.getElementById('ie-filter-ruralidad').value = '';
+    document.getElementById('ie-filter-nivel').value = '';
+    document.getElementById('ie-search').value = '';
+    selectedIEIds.clear();
+    renderIECheckboxes(allIEs);
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
@@ -1371,10 +1490,12 @@ async function loadMonitoreo() {
     var r = document.getElementById('mon-ruralidad').value;
     var es = document.getElementById('mon-estado').value;
     var bu = document.getElementById('mon-buscar').value;
+    var n = document.getElementById('mon-nivel').value;
     var u = '/api/asignaciones?';
     if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
     if (es) u += 'estado=' + encodeURIComponent(es) + '&';
     if (bu) u += 'buscar=' + encodeURIComponent(bu) + '&';
+    if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
     var d = await api(u);
     var rows = d.asignaciones || d || [];
     var html = '';
@@ -1568,8 +1689,12 @@ async function loadDirectores() {
 async function loadIEs() {
   try {
     var r = document.getElementById('ie-ruralidad-filter').value;
+    var n = document.getElementById('ie-nivel-filter').value;
+    var b = document.getElementById('ie-search-text').value;
     var u = '/api/ies?';
-    if (r) u += 'ruralidad=' + encodeURIComponent(r);
+    if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
+    if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
+    if (b) u += 'buscar=' + encodeURIComponent(b) + '&';
     var d = await api(u);
     var ies = d.ies || d || [];
     var html = '';
@@ -1579,8 +1704,9 @@ async function loadIEs() {
         var niveles = '';
         if (ie.tiene_inicial) niveles += '<span class="badge bg-info me-1">Inicial</span>';
         if (ie.tiene_primaria) niveles += '<span class="badge bg-primary me-1">Primaria</span>';
-        if (ie.tiene_secundaria) niveles += '<span class="badge bg-success">Secundaria</span>';
-        if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria) niveles = '<span class="text-muted">-</span>';
+        if (ie.tiene_secundaria) niveles += '<span class="badge bg-success me-1">Secundaria</span>';
+        if (ie.tiene_otros) niveles += '<span class="badge bg-secondary me-1" title="' + (ie.tipo_otros || 'Otros') + '">' + (ie.tipo_otros || 'Otros') + '</span>';
+        if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria && !ie.tiene_otros) niveles = '<span class="text-muted">-</span>';
         html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + (ie.ruralidad || '-') + '</td><td>' + niveles + '</td></tr>';
       }
     } else {
