@@ -874,7 +874,7 @@
                         <form onsubmit="event.preventDefault(); savePerfil();">
                             <div class="row g-3">
                                 <div class="col-md-6"><label class="form-label">Nombre</label><input type="text" class="form-control" id="perfil-nombre" readonly></div>
-                                <div class="col-md-6"><label class="form-label">DNI</label><input type="text" class="form-control" id="perfil-dni" readonly></div>
+                                <div class="col-md-6"><label class="form-label">DNI</label><input type="text" class="form-control" id="perfil-dni"></div>
                                 <div class="col-md-6"><label class="form-label">Institución</label><input type="text" class="form-control" id="perfil-ie" readonly></div>
                                 <div class="col-md-6"><label class="form-label">Rol</label><input type="text" class="form-control" id="perfil-rol" readonly></div>
                                 <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="perfil-email"></div>
@@ -1205,11 +1205,10 @@ function renderKpiDonut(completadas, pendientes, vencidas, containerId) {
 async function loadDashboardDirector() {
     try {
         const data = await api('/api/dashboard');
-        const s = data.stats || {};
-        const total = s.total || 0;
-        const completadas = s.completadas || 0;
-        const pendientes = s.pendientes || 0;
-        const vencidas = s.vencidas || 0;
+        const total = data.total || 0;
+        const completadas = data.completadas || 0;
+        const pendientes = data.pendientes || 0;
+        const vencidas = data.vencidas || 0;
         const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
 
         document.getElementById('director-stats').innerHTML = `
@@ -1281,13 +1280,12 @@ async function loadMisActividades() {
 async function loadDashboardSupervisor() {
     try {
         const data = await api('/api/dashboard');
-        const s = data.stats || {};
-        const total = s.total || 0;
-        const completadas = s.completadas || 0;
-        const pendientes = s.pendientes || 0;
-        const vencidas = s.vencidas || 0;
-        const totalIEs = s.total_ies || s.totalIEs || 0;
-        const totalDirectores = s.total_directores || s.totalDirectores || 0;
+        const total = data.total || 0;
+        const completadas = data.completadas || 0;
+        const pendientes = data.pendientes || 0;
+        const vencidas = data.vencidas || 0;
+        const totalIEs = data.total_ies || data.totalIEs || 0;
+        const totalDirectores = data.total_directores || data.totalDirectores || 0;
         const pct = total > 0 ? Math.round((completadas / total) * 100) : 0;
 
         document.getElementById('supervisor-stats').innerHTML = `
@@ -1887,7 +1885,8 @@ async function loadPerfil() {
 async function savePerfil() {
     const body = {
         email: document.getElementById('perfil-email').value.trim(),
-        telefono: document.getElementById('perfil-telefono').value.trim()
+        telefono: document.getElementById('perfil-telefono').value.trim(),
+        dni: document.getElementById('perfil-dni').value.trim()
     };
     try {
         await api('/api/perfil', { method: 'PUT', body });

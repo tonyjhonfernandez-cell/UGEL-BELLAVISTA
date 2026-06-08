@@ -725,9 +725,9 @@ app.get('/api/perfil', authDirector, async (req, res) => {
 
 app.put('/api/perfil', authDirector, async (req, res) => {
     try {
-        const { email, telefono } = req.body;
-        await db.prepare('UPDATE usuarios SET email=?, telefono=? WHERE id=?')
-            .run(email, telefono, req.session.user.id);
+        const { email, telefono, dni } = req.body;
+        await db.prepare('UPDATE usuarios SET email=?, telefono=?, dni=? WHERE id=?')
+            .run(email, telefono, dni, req.session.user.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
