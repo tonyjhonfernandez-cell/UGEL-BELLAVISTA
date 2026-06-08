@@ -767,9 +767,18 @@ app.get('/api/perfil', authDirector, async (req, res) => {
 
 app.put('/api/perfil', authDirector, async (req, res) => {
     try {
-        const { email, telefono, dni } = req.body;
-        await db.prepare('UPDATE usuarios SET email=?, telefono=?, dni=? WHERE id=?')
-            .run(email, telefono, dni, req.session.user.id);
+        const { nombre, email, telefono, dni } = req.body;
+        const updates = [];
+        const params = [];
+        if (nombre !== undefined) { updates.push('nombre_completo=?'); params.push(nombre); }
+        if (email !== undefined) { updates.push('email=?'); params.push(email); }
+        if (telefono !== undefined) { updates.push('telefono=?'); params.push(telefono); }
+        if (dni !== undefined) { updates.push('dni=?'); params.push(dni); }
+        if (updates.length > 0) {
+            params.push(req.session.user.id);
+            await db.prepare(`UPDATE usuarios SET ${updates.join(',')} WHERE id=?`).run(...params);
+            if (nombre) req.session.user.nombre = nombre;
+        }
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
