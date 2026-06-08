@@ -337,12 +337,15 @@ body.director-mode #app-shell{display:block}
   .dir-header{flex-wrap:wrap;text-align:center}
   .dir-header h1{font-size:.9rem;width:100%;order:3;margin-top:6px}
 }
+.autocomplete-item:hover {
+  background: #e8f4f4 !important;
+}
 </style>
 </head>
 <body>
 
 <!-- ==================== IE SELECTOR (DIRECTOR) ==================== -->
-<div id="sel-screen">
+<div id="sel-screen" style="display:none">
   <div class="sel-card">
     <div class="sel-logo">UGEL<br>BELLAVISTA</div>
     <h2>Sistema de Monitoreo de Actividades</h2>
@@ -369,16 +372,16 @@ body.director-mode #app-shell{display:block}
       </div>
       <button type="submit" class="btn-login">Ingresar</button>
     </form>
-    <p style="margin-top:12px;text-align:center;font-size:.75rem;color:var(--text3)">Directores: <a href="#" onclick="event.preventDefault();showSelector()" style="color:var(--granate)">seleccione su IE aquí</a></p>
+    <p style="margin-top:12px;text-align:center;font-size:.75rem;color:var(--text3)">¿Desea ver las actividades? <a href="#" onclick="event.preventDefault();showPublicDashboardFromLogin()" style="color:var(--granate)">Volver al panel público</a></p>
   </div>
 </div>
 
 <!-- ==================== APP SHELL ==================== -->
-<div id="app-shell" style="display:none">
+<div id="app-shell">
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
   <!-- TOP BAR -->
-  <div class="top-bar">
+  <div class="top-bar" style="display:none">
     <div class="top-bar-left">
       <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
       <div class="brand"><img src="logo.png" alt=""><span>UGEL Bellavista</span></div>
@@ -403,22 +406,22 @@ body.director-mode #app-shell{display:block}
 
   <div class="app-wrap">
     <!-- SIDEBAR -->
-    <div class="sidebar" id="sidebar">
+    <div class="sidebar" id="sidebar" style="display:none">
       <div id="sidebar-nav"></div>
       <div class="logout" id="sidebar-footer"></div>
     </div>
 
     <!-- MAIN CONTENT -->
-    <div class="main">
+    <div class="main" style="padding:0;overflow:hidden">
       <!-- FILTER BAR -->
-      <div id="global-filter-bar" class="filter-bar">
+      <div id="global-filter-bar" class="filter-bar" style="display:none">
         <div class="filter-group"><label>Nivel</label><select id="filter-nivel" onchange="onFilterChange()"><option value="">Todos</option><option value="inicial">Inicial</option><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></div>
         <div class="filter-group"><label>Ruralidad</label><select id="filter-ruralidad" onchange="onFilterChange()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
         <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
       </div>
 
       <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
-      <div class="view-section" id="view-director-main">
+      <div class="view-section active" id="view-director-main">
         <div class="dir-layout">
           <div class="dir-header" style="background:transparent;padding:24px 28px 12px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none">
             <div class="dh-left" style="display:flex;align-items:center;gap:12px">
@@ -458,11 +461,12 @@ body.director-mode #app-shell{display:block}
               </div>
             </div>
             <div class="dir-bottom-row">
-              <div class="dir-filter-panel">
+              <div class="dir-filter-panel" style="position:relative">
                 <h3>FILTRAR</h3>
                 <label><i class="fas fa-search"></i> Código Local</label>
-                <input type="text" id="dir-filter-codigo" readonly>
-                <strong class="dir-ie-name" id="dir-filter-iename"></strong>
+                <input type="text" id="dir-filter-codigo" placeholder="Código, N° o Nombre..." autocomplete="off" oninput="onSearchIE(this.value)">
+                <div id="dir-search-autocomplete" style="display:none;position:absolute;top:110px;left:16px;right:16px;background:#fff;border:1px solid #dde0e3;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-height:220px;overflow-y:auto;text-align:left"></div>
+                <strong class="dir-ie-name" id="dir-filter-iename">Seleccione una IE</strong>
               </div>
               <div class="dir-table-section">
                 <h3>LISTADO DE ACTIVIDADES ASIGNADAS</h3>
@@ -727,6 +731,12 @@ async function goToSupervisorLogin() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-codigo').value = '';
 }
+function showPublicDashboardFromLogin() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'block';
+  initDirectorApp();
+  initPublicDashboard();
+}
 function formatFechaMock(dateStr) {
   if (!dateStr) return '-';
   try {
@@ -753,6 +763,61 @@ function formatFechaMock(dateStr) {
     return dateStr;
   }
 }
+function selectSchoolForDashboard(codigo, nombre) {
+  document.getElementById('dir-filter-codigo').value = codigo;
+  document.getElementById('dir-filter-iename').textContent = nombre;
+  document.getElementById('dir-search-autocomplete').style.display = 'none';
+  loadDirectorMain(codigo);
+}
+function onSearchIE(q) {
+  var container = document.getElementById('dir-search-autocomplete');
+  if (!q || q.trim() === '') {
+    container.style.display = 'none';
+    return;
+  }
+  var query = normalizar(q);
+  var matches = allIEs.filter(function(ie) {
+    return normalizar(ie.codigo).indexOf(query) !== -1 || normalizar(ie.nombre).indexOf(query) !== -1;
+  });
+  
+  if (matches.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.8rem;text-align:center">No se encontraron resultados</div>';
+  } else {
+    var html = '';
+    var limit = Math.min(matches.length, 15);
+    for (var i = 0; i < limit; i++) {
+      var ie = matches[i];
+      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
+      html += '<div class="autocomplete-item" onclick="selectSchoolForDashboard(\'' + ie.codigo + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s">';
+      html += '<span style="font-weight:700;color:#008080;margin-right:8px">' + ie.codigo + '</span>';
+      html += '<span style="color:#333">' + ie.nombre + '</span>';
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  }
+  container.style.display = 'block';
+}
+async function initPublicDashboard() {
+  try {
+    if (!allIEs || allIEs.length === 0) {
+      var d = await api('/api/ies');
+      allIEs = d.ies || d || [];
+    }
+    if (allIEs.length > 0) {
+      // Intentar buscar el código 471496 del mockup por defecto
+      var defaultIE = allIEs.find(function(ie) { return ie.codigo === '471496'; }) || allIEs[0];
+      selectSchoolForDashboard(defaultIE.codigo, defaultIE.nombre);
+    }
+  } catch (e) {}
+}
+// Cerrar autocompletado al hacer clic fuera
+document.addEventListener('click', function(e) {
+  var container = document.getElementById('dir-search-autocomplete');
+  var input = document.getElementById('dir-filter-codigo');
+  if (container && !container.contains(e.target) && e.target !== input) {
+    container.style.display = 'none';
+  }
+});
 async function loginComoDirector(ieId) {
   try {
     var ie = null;
@@ -796,9 +861,8 @@ async function logout() {
   try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
   currentUser = null;
   document.body.classList.remove('director-mode');
-  document.getElementById('app-shell').style.display = 'none';
-  document.getElementById('sel-screen').style.display = 'flex';
-  document.getElementById('login-codigo').value = '';
+  initDirectorApp();
+  initPublicDashboard();
 }
 async function checkSession() {
   try {
@@ -806,20 +870,21 @@ async function checkSession() {
     if (data.usuario || data.user) {
       currentUser = data.usuario || data.user;
       if (currentUser.rol === 'director') {
-        document.getElementById('sel-screen').style.display = 'none';
-        document.body.classList.add('director-mode');
-        document.getElementById('app-shell').style.display = 'block';
-        document.getElementById('dir-user-name').textContent = currentUser.nombre;
-        document.getElementById('dir-filter-codigo').value = currentUser.ie_codigo || '';
-        document.getElementById('dir-filter-iename').textContent = currentUser.ie_nombre || '';
         initDirectorApp();
+        selectSchoolForDashboard(currentUser.ie_codigo || '', currentUser.ie_nombre || '');
       } else {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-shell').style.display = 'block';
         initSupervisorApp();
       }
+    } else {
+      initDirectorApp();
+      initPublicDashboard();
     }
-  } catch (e) {}
+  } catch (e) {
+    initDirectorApp();
+    initPublicDashboard();
+  }
 }
 
 // ===================== INIT =====================
@@ -1004,9 +1069,11 @@ function renderDonut(completadas, pendientes, vencidas, containerId) {
 }
 
 // ===================== DIRECTOR MAIN VIEW =====================
-async function loadDirectorMain() {
+async function loadDirectorMain(ieCodigo) {
   try {
-    var d = await api('/api/asignaciones');
+    var codigo = ieCodigo || document.getElementById('dir-filter-codigo').value;
+    if (!codigo) return;
+    var d = await api('/api/asignaciones?ie_codigo=' + encodeURIComponent(codigo));
     var rows = d.asignaciones || d || [];
     var hoy = new Date().toISOString().substring(0, 10);
     var total = rows.length;

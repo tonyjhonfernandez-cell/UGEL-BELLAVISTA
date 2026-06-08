@@ -509,8 +509,35 @@ app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.get('/api/asignaciones', authDirector, async (req, res) => {
+app.get('/api/asignaciones', async (req, res) => {
     try {
+        const { ie_codigo } = req.query;
+
+        if (ie_codigo) {
+            // Acceso público para una escuela específica por su código modular
+            const asignaciones = await db.prepare(`
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
+                       ta.nombre as tipo_nombre,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+                       u.nombre_completo as director_nombre,
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
+                FROM asignaciones ase
+                LEFT JOIN actividades a ON ase.actividad_id = a.id
+                LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
+                LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+                LEFT JOIN usuarios u ON ase.director_id = u.id
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
+                WHERE ie.codigo = ?
+                ORDER BY a.fecha_limite ASC
+            `).all(ie_codigo);
+            return res.json(asignaciones);
+        }
+
+        // Si no se especifica ie_codigo, requerir autenticación
+        if (!req.session.user) {
+            return res.status(403).json({ error: 'No autenticado' });
+        }
+
         const nivel = validarNivel(req.query.nivel || '');
         const { ruralidad, estado, buscar } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
