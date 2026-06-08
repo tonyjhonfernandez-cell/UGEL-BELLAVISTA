@@ -4,7 +4,6 @@ const { Pool } = require('pg');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
-const ExcelJS = require('exceljs');
 const { seedDatabase } = require('./seed');
 
 const app = express();
