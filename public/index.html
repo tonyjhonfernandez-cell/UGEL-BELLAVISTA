@@ -567,6 +567,15 @@
                     <label>Institución Educativa</label>
                     <select id="filter-ie-nombre"><option value="">Todas</option></select>
                 </div>
+                <div class="filter-group">
+                    <label>Nivel</label>
+                    <select id="filter-nivel" onchange="onFilterChange()">
+                        <option value="">Todos</option>
+                        <option value="inicial">Inicial</option>
+                        <option value="primaria">Primaria</option>
+                        <option value="secundaria">Secundaria</option>
+                    </select>
+                </div>
             </div>
 
             <!-- ==================== DIRECTOR: DASHBOARD ==================== -->
@@ -1117,6 +1126,20 @@ function onGlobalSearch() {
     }
 }
 
+function onFilterChange() {
+    const active = document.querySelector('.view-section.active');
+    if (active) {
+        const id = active.id.replace('view-', '');
+        if (id === 'dashboard-director' || id === 'dashboard-supervisor') {
+            loadViewData(id);
+        }
+    }
+}
+
+function getNivelFilter() {
+    return document.getElementById('filter-nivel').value;
+}
+
 async function populateFilterDropdowns(searchTerm) {
     try {
         const data = await api('/api/ies');
@@ -1204,7 +1227,7 @@ function renderKpiDonut(completadas, pendientes, vencidas, containerId) {
 // ===================== DASHBOARD DIRECTOR =====================
 async function loadDashboardDirector() {
     try {
-        const data = await api('/api/dashboard');
+        const data = await api('/api/dashboard?nivel=' + getNivelFilter());
         const total = data.total || 0;
         const completadas = data.completadas || 0;
         const pendientes = data.pendientes || 0;
@@ -1279,7 +1302,7 @@ async function loadMisActividades() {
 // ===================== DASHBOARD SUPERVISOR =====================
 async function loadDashboardSupervisor() {
     try {
-        const data = await api('/api/dashboard');
+        const data = await api('/api/dashboard?nivel=' + getNivelFilter());
         const total = data.total || 0;
         const completadas = data.completadas || 0;
         const pendientes = data.pendientes || 0;

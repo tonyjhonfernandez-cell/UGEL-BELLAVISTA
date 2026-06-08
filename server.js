@@ -522,6 +522,8 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
 
 app.get('/api/asignaciones', authDirector, async (req, res) => {
     try {
+        const nivel = req.query.nivel || '';
+        const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
         let asignaciones;
         if (req.session.user.rol === 'supervisor') {
             asignaciones = await db.prepare(`
@@ -534,6 +536,7 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
+                WHERE 1=1 ${nivelWhere}
                 ORDER BY a.fecha_limite ASC
             `).all();
         } else {
@@ -545,7 +548,7 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
-                WHERE ase.director_id = ?
+                WHERE ase.director_id = ? ${nivelWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(req.session.user.id);
         }
@@ -557,17 +560,21 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
 
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
+        const nivel = req.query.nivel || '';
+        const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
+
         if (req.session.user.rol === 'supervisor') {
-            const total = await db.prepare('SELECT COUNT(*) as c FROM asignaciones').get();
-            const completadas = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE estado = 'completada'").get();
-            const pendientes = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE estado = 'pendiente'").get();
-            const no_cumplidas = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE estado = 'no_cumplida'").get();
+            const baseJoin = 'FROM asignaciones ase INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id';
+            const total = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE 1=1 ${nivelWhere}`).get();
+            const completadas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'completada' ${nivelWhere}`).get();
+            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'pendiente' ${nivelWhere}`).get();
+            const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'no_cumplida' ${nivelWhere}`).get();
 
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = await db.prepare(`
-                SELECT COUNT(*) as c FROM asignaciones ase
+                SELECT COUNT(*) as c ${baseJoin}
                 INNER JOIN actividades a ON ase.actividad_id = a.id
-                WHERE ase.estado = 'pendiente' AND a.fecha_limite < ?
+                WHERE ase.estado = 'pendiente' AND a.fecha_limite < ? ${nivelWhere}
             `).get(hoy);
 
             const por_ruralidad = await db.prepare(`
@@ -576,10 +583,8 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
-                FROM asignaciones ase
-                INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
-                GROUP BY ie.ruralidad
-                ORDER BY ie.ruralidad
+                ${baseJoin} WHERE 1=1 ${nivelWhere}
+                GROUP BY ie.ruralidad ORDER BY ie.ruralidad
             `).all();
 
             const por_ie = await db.prepare(`
@@ -588,8 +593,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
-                FROM asignaciones ase
-                INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+                ${baseJoin} WHERE 1=1 ${nivelWhere}
                 GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
                 HAVING COUNT(*) > 0
                 ORDER BY COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) DESC
@@ -599,15 +603,15 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const recientes = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo
-                FROM actividades a
+                ${baseJoin}
+                LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
-                LEFT JOIN asignaciones ase ON a.id = ase.actividad_id
-                LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
-                ORDER BY a.created_at DESC
-                LIMIT 10
+                WHERE 1=1 ${nivelWhere}
+                ORDER BY a.created_at DESC LIMIT 10
             `).all();
 
-            const total_ies = await db.prepare("SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true").get();
+            const nivelIeWhere = nivel ? `AND tiene_${nivel} = true` : '';
+            const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
             const total_directores = await db.prepare("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'director' AND activo = true").get();
 
             res.json({
@@ -625,16 +629,21 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             });
         } else {
             const userId = req.session.user.id;
-            const total = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE director_id = ?").get(userId);
-            const completadas = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE director_id = ? AND estado = 'completada'").get(userId);
-            const pendientes = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE director_id = ? AND estado = 'pendiente'").get(userId);
-            const no_cumplidas = await db.prepare("SELECT COUNT(*) as c FROM asignaciones WHERE director_id = ? AND estado = 'no_cumplida'").get(userId);
+            const nivelJoin = nivel ? `INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id AND ie.tiene_${nivel} = true` : '';
+            const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
+            const fromDir = `FROM asignaciones ase ${nivelJoin} WHERE ase.director_id = ?`;
+
+            const total = await db.prepare(`SELECT COUNT(*) as c ${fromDir}`).get(userId);
+            const completadas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'completada'`).get(userId);
+            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'pendiente'`).get(userId);
+            const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'no_cumplida'`).get(userId);
 
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = await db.prepare(`
                 SELECT COUNT(*) as c FROM asignaciones ase
                 INNER JOIN actividades a ON ase.actividad_id = a.id
-                WHERE ase.director_id = ? AND ase.estado = 'pendiente' AND a.fecha_limite < ?
+                ${nivelJoin.replace('ase.ie_id', 'ase.ie_id') || ''}
+                WHERE ase.director_id = ? AND ase.estado = 'pendiente' AND a.fecha_limite < ? ${nivelWhere}
             `).get(userId, hoy);
 
             const recientes = await db.prepare(`
@@ -643,6 +652,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 INNER JOIN asignaciones ase ON a.id = ase.actividad_id
+                ${nivelJoin ? `INNER JOIN instituciones_educativas ie2 ON ase.ie_id = ie2.id AND ie2.tiene_${nivel} = true` : ''}
                 WHERE ase.director_id = ?
                 ORDER BY a.fecha_limite ASC
                 LIMIT 10
