@@ -39,6 +39,7 @@ const db = {
     }
 };
 
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -182,6 +183,7 @@ app.post('/api/login', async (req, res) => {
         for (const s of allSupervisors) {
             if (normalizar(s.nombre_completo) === cod) {
                 req.session.user = { id: s.id, nombre: s.nombre_completo, rol: 'supervisor' };
+                req.session.save();
                 return res.json({ ok: true, user: req.session.user });
             }
         }
@@ -232,6 +234,7 @@ app.post('/api/login', async (req, res) => {
             ie_nombre: ie.nombre,
             ie_id: ie.id
         };
+        req.session.save();
         res.json({ ok: true, user: req.session.user });
     } catch (err) {
         console.error('Login error:', err);
