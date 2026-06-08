@@ -5,6 +5,7 @@ const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const ExcelJS = require('exceljs');
+const { seedDatabase } = require('./seed');
 
 const app = express();
 
@@ -132,6 +133,10 @@ async function initDatabase() {
         for (const t of tiposList) {
             await db.prepare('INSERT INTO tipos_actividad (nombre) VALUES (?)').run(t);
         }
+    }
+    const iesCount = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
+    if (iesCount.c === 0) {
+        await seedDatabase(db);
     }
     dbInitialized = true;
 }
@@ -803,11 +808,6 @@ app.get('/api/exportar-excel', authSupervisor, async (req, res) => {
 
 app.get('/api/seed', async (req, res) => {
     try {
-        const existing = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
-        if (existing.c > 0) {
-            return res.json({ ok: true, msg: 'Datos ya cargados', ies: existing.c });
-        }
-
         const iesData = [
             ['084429','0005 SAN JOSE OBRERO','RURAL 3',true,true,false,false,null],
             ['471255','001 MADRE TERESA DE CALCUTA','URBANO',true,false,false,false,null],
@@ -996,7 +996,7 @@ app.get('/api/seed', async (req, res) => {
 
         for (const ie of iesData) {
             await db.prepare(
-                'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO NOTHING'
+                'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO UPDATE SET nombre = excluded.nombre, ruralidad = excluded.ruralidad, tiene_inicial = excluded.tiene_inicial, tiene_primaria = excluded.tiene_primaria, tiene_secundaria = excluded.tiene_secundaria, tiene_otros = excluded.tiene_otros, tipo_otros = excluded.tipo_otros'
             ).run(...ie);
         }
 
