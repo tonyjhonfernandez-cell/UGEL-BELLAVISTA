@@ -161,8 +161,10 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 
 /* CHART */
 .chart-card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid #f3f4f6}
-.chart-card .ctitle{font-size:.82rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.chart-card .ctitle{font-size:.82rem;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .chart-card .ctitle i{color:var(--granate);font-size:.9rem}
+.chart-card .chart-wrap{height:220px;position:relative}
+.chart-card .chart-wrap canvas{width:100%!important;height:100%!important}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:none;border-radius:var(--radius-sm);font-size:.8rem;font-weight:500;font-family:inherit;cursor:pointer;transition:all .12s;text-decoration:none}
@@ -297,10 +299,10 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
     <!-- MAIN CONTENT -->
     <div class="main">
       <!-- FILTER BAR -->
-      <div id="global-filter-bar" class="filter-bar" style="display:none">
-        <div class="filter-group"><label>Código de Local</label><select id="filter-codigo-local"><option value="">Todos</option></select></div>
-        <div class="filter-group"><label>Institución Educativa</label><select id="filter-ie-nombre"><option value="">Todas</option></select></div>
+      <div id="global-filter-bar" class="filter-bar">
         <div class="filter-group"><label>Nivel</label><select id="filter-nivel" onchange="onFilterChange()"><option value="">Todos</option><option value="inicial">Inicial</option><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></div>
+        <div class="filter-group"><label>Ruralidad</label><select id="filter-ruralidad" onchange="onFilterChange()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
+        <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
       </div>
 
       <!-- ==================== DIRECTOR: DASHBOARD ==================== -->
@@ -348,8 +350,8 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
           </div>
         </div>
         <div class="two-col" style="margin-bottom:0">
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</div><canvas id="chart-ruralidad" height="240"></canvas></div>
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-doughnut"></i> Cumplimiento General</div><canvas id="chart-cumplimiento" height="240"></canvas></div>
+          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</div><div class="chart-wrap"><canvas id="chart-ruralidad"></canvas></div></div>
+          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-doughnut"></i> Cumplimiento General</div><div class="chart-wrap"><canvas id="chart-cumplimiento"></canvas></div></div>
         </div>
       </div>
 
@@ -657,6 +659,16 @@ function onFilterChange() {
 function getNivelFilter() {
   return document.getElementById('filter-nivel').value;
 }
+function getFilterParams() {
+  var p = new URLSearchParams();
+  var n = document.getElementById('filter-nivel').value;
+  var r = document.getElementById('filter-ruralidad').value;
+  var e = document.getElementById('filter-estado').value;
+  if (n) p.set('nivel', n);
+  if (r) p.set('ruralidad', r);
+  if (e) p.set('estado', e);
+  return p.toString();
+}
 
 // ===================== TIPOS =====================
 async function cargarTiposActividad() {
@@ -716,8 +728,7 @@ function renderDonut(completadas, pendientes, vencidas, containerId) {
 // ===================== DASHBOARD DIRECTOR =====================
 async function loadDashboardDirector() {
   try {
-    var niv = getNivelFilter();
-    var d = await api('/api/dashboard?nivel=' + niv);
+    var d = await api('/api/dashboard?' + getFilterParams());
     var t = d.total || 0;
     var c = d.completadas || 0;
     var p = d.pendientes || 0;
@@ -752,8 +763,7 @@ async function loadDashboardDirector() {
 // ===================== MIS ACTIVIDADES =====================
 async function loadMisActividades() {
   try {
-    var niv = getNivelFilter();
-    var d = await api('/api/asignaciones?nivel=' + niv);
+    var d = await api('/api/asignaciones?' + getFilterParams());
     var rows = d.asignaciones || d || [];
     var html = '';
     if (rows.length > 0) {
@@ -789,8 +799,7 @@ async function enviarContacto(asignacionId) {
 // ===================== DASHBOARD SUPERVISOR =====================
 async function loadDashboardSupervisor() {
   try {
-    var niv = getNivelFilter();
-    var d = await api('/api/dashboard?nivel=' + niv);
+    var d = await api('/api/dashboard?' + getFilterParams());
     var t = d.total || 0;
     var c = d.completadas || 0;
     var p = d.pendientes || 0;

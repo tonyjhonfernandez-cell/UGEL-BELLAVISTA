@@ -562,21 +562,38 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
         const nivel = validarNivel(req.query.nivel || '');
-        const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
+        const ruralidad = req.query.ruralidad || '';
+        const estado = req.query.estado || '';
+
+        function buildWhere(extra) {
+            let w = 'WHERE 1=1';
+            if (nivel) w += ` AND ie.tiene_${nivel} = true`;
+            if (ruralidad) w += ' AND ie.ruralidad = ?';
+            if (estado) w += ' AND ase.estado = ?';
+            if (extra) w += ' ' + extra;
+            return w;
+        }
+        function buildParams(extra) {
+            const p = [];
+            if (ruralidad) p.push(ruralidad);
+            if (estado) p.push(estado);
+            if (extra) p.push(...extra);
+            return p;
+        }
 
         if (req.session.user.rol === 'supervisor') {
             const baseJoin = 'FROM asignaciones ase INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id';
-            const total = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE 1=1 ${nivelWhere}`).get();
-            const completadas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'completada' ${nivelWhere}`).get();
-            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'pendiente' ${nivelWhere}`).get();
-            const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} WHERE ase.estado = 'no_cumplida' ${nivelWhere}`).get();
+            const total = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere()}`).get(...buildParams());
+            const completadas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'completada'")}`).get(...buildParams());
+            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'pendiente'")}`).get(...buildParams());
+            const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'no_cumplida'")}`).get(...buildParams());
 
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = await db.prepare(`
                 SELECT COUNT(*) as c ${baseJoin}
                 INNER JOIN actividades a ON ase.actividad_id = a.id
-                WHERE ase.estado = 'pendiente' AND a.fecha_limite < ? ${nivelWhere}
-            `).get(hoy);
+                ${buildWhere("AND ase.estado = 'pendiente' AND a.fecha_limite < ?")}
+            `).get(...buildParams([hoy]));
 
             const por_ruralidad = await db.prepare(`
                 SELECT ie.ruralidad,
@@ -584,9 +601,9 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
-                ${baseJoin} WHERE 1=1 ${nivelWhere}
+                ${baseJoin} ${buildWhere()}
                 GROUP BY ie.ruralidad ORDER BY ie.ruralidad
-            `).all();
+            `).all(...buildParams());
 
             const por_ie = await db.prepare(`
                 SELECT ie.codigo, ie.nombre, ie.ruralidad,
@@ -594,12 +611,12 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
-                ${baseJoin} WHERE 1=1 ${nivelWhere}
+                ${baseJoin} ${buildWhere()}
                 GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
                 HAVING COUNT(*) > 0
                 ORDER BY COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) DESC
                 LIMIT 10
-            `).all();
+            `).all(...buildParams());
 
             const recientes = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
@@ -607,9 +624,9 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 ${baseJoin}
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
-                WHERE 1=1 ${nivelWhere}
+                ${buildWhere()}
                 ORDER BY a.created_at DESC LIMIT 10
-            `).all();
+            `).all(...buildParams());
 
             const nivelIeWhere = nivel ? `AND tiene_${nivel} = true` : '';
             const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
