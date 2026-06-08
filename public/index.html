@@ -302,7 +302,8 @@ body.director-mode #app-shell{display:block}
 
 .dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
 .dir-chart-box h3{font-size:.75rem;font-weight:800;color:#008080;letter-spacing:.5px;margin-bottom:12px;text-align:left;text-transform:uppercase}
-.dir-chart-box canvas{flex:1;width:100%!important;min-height:140px}
+.dir-chart-wrap{position:relative;flex:1;width:100%;min-height:160px}
+.dir-chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
 
 .dir-bottom-row{display:flex;gap:18px}
 .dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:20px 16px;width:240px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;flex-direction:column;align-items:center}
@@ -456,8 +457,10 @@ body.director-mode #app-shell{display:block}
                 </div>
               </div>
               <div class="dir-chart-box">
-                <h3>LISTADO DE ACTIVIDADES ASIGNADAS</h3>
-                <canvas id="dir-pie-chart"></canvas>
+                <h3>AVANCE DE ACTIVIDADES</h3>
+                <div class="dir-chart-wrap">
+                  <canvas id="dir-pie-chart"></canvas>
+                </div>
               </div>
             </div>
             <div class="dir-bottom-row">
@@ -1075,7 +1078,7 @@ async function loadDirectorMain(ieCodigo) {
     if (!codigo) return;
     var d = await api('/api/asignaciones?ie_codigo=' + encodeURIComponent(codigo));
     var rows = d.asignaciones || d || [];
-    var hoy = new Date().toISOString().substring(0, 10);
+    var hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
     var total = rows.length;
     var pendientes = 0, completadas = 0, vencidas = 0;
     for (var i = 0; i < rows.length; i++) {

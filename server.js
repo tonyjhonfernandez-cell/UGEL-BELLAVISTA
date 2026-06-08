@@ -153,6 +153,26 @@ function normalizar(txt) {
     return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+async function autoExpireAssignments() {
+    try {
+        const localStr = new Date().toLocaleString('sv', { timeZone: 'America/Lima' });
+        const [localDate, localTime] = localStr.split(' ');
+        await db.prepare(`
+            UPDATE asignaciones
+            SET estado = 'no_cumplida'
+            WHERE id IN (
+                SELECT ase.id
+                FROM asignaciones ase
+                INNER JOIN actividades a ON ase.actividad_id = a.id
+                WHERE ase.estado = 'pendiente'
+                  AND (a.fecha_limite < ?::date OR (a.fecha_limite = ?::date AND a.hora_limite < ?::time))
+            )
+        `).run(localDate, localDate, localTime);
+    } catch (err) {
+        console.error('Error auto-expiring assignments:', err);
+    }
+}
+
 const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria'];
 function validarNivel(nivel) {
     return NIVELES_VALIDOS.includes(nivel) ? nivel : '';
@@ -404,6 +424,7 @@ app.post('/api/actividades', authSupervisor, async (req, res) => {
 
 app.get('/api/actividades', authDirector, async (req, res) => {
     try {
+        await autoExpireAssignments();
         let actividades;
         if (req.session.user.rol === 'supervisor') {
             actividades = await db.prepare(`
@@ -437,6 +458,7 @@ app.get('/api/actividades', authDirector, async (req, res) => {
 
 app.get('/api/actividades/:id', authDirector, async (req, res) => {
     try {
+        await autoExpireAssignments();
         const act = await db.prepare(`
             SELECT a.*, ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre
             FROM actividades a
@@ -465,9 +487,22 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite } = req.body;
+        const hora = hora_limite || '23:59';
         await db.prepare(
             'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=? WHERE id=?'
-        ).run(titulo, descripcion, tipo_id, fecha_limite, hora_limite || '23:59', req.params.id);
+        ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.params.id);
+
+        const localStr = new Date().toLocaleString('sv', { timeZone: 'America/Lima' });
+        const [localDate, localTime] = localStr.split(' ');
+        const isFuture = (fecha_limite > localDate) || (fecha_limite === localDate && hora > localTime);
+        if (isFuture) {
+            await db.prepare(`
+                UPDATE asignaciones
+                SET estado = 'pendiente', fecha_completado = NULL
+                WHERE actividad_id = ? AND estado = 'no_cumplida'
+            `).run(req.params.id);
+        }
+
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -511,6 +546,7 @@ app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
 
 app.get('/api/asignaciones', async (req, res) => {
     try {
+        await autoExpireAssignments();
         const { ie_codigo } = req.query;
 
         if (ie_codigo) {
@@ -588,6 +624,7 @@ app.get('/api/asignaciones', async (req, res) => {
 
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
+        await autoExpireAssignments();
         const nivel = validarNivel(req.query.nivel || '');
         const ruralidad = req.query.ruralidad || '';
         const estado = req.query.estado || '';
