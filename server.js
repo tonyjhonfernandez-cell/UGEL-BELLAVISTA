@@ -884,13 +884,15 @@ app.get('/api/perfil', authDirector, async (req, res) => {
 
 app.put('/api/perfil', authDirector, async (req, res) => {
     try {
-        const { nombre, email, telefono, dni } = req.body;
+        const { nombre, email, telefono, dni, dependencia, puesto } = req.body;
         const updates = [];
         const params = [];
         if (nombre !== undefined) { updates.push('nombre_completo=?'); params.push(nombre); }
         if (email !== undefined) { updates.push('email=?'); params.push(email); }
         if (telefono !== undefined) { updates.push('telefono=?'); params.push(telefono); }
         if (dni !== undefined) { updates.push('dni=?'); params.push(dni); }
+        if (dependencia !== undefined) { updates.push('dependencia=?'); params.push(dependencia); }
+        if (puesto !== undefined) { updates.push('puesto=?'); params.push(puesto); }
         if (updates.length > 0) {
             params.push(req.session.user.id);
             await db.prepare(`UPDATE usuarios SET ${updates.join(',')} WHERE id=?`).run(...params);

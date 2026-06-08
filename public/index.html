@@ -689,8 +689,10 @@ body.director-mode #app-shell{display:block}
             <div class="row">
               <div class="col-md-6"><label class="form-label">Nombre</label><input type="text" class="form-control" id="perfil-nombre"></div>
               <div class="col-md-6"><label class="form-label">DNI</label><input type="text" class="form-control" id="perfil-dni"></div>
-              <div class="col-md-6"><label class="form-label">Institución</label><input type="text" class="form-control" id="perfil-ie" readonly></div>
+              <div class="col-md-6" id="perfil-ie-container"><label class="form-label">Institución</label><input type="text" class="form-control" id="perfil-ie" readonly></div>
               <div class="col-md-6"><label class="form-label">Rol</label><input type="text" class="form-control" id="perfil-rol" readonly></div>
+              <div class="col-md-6" id="perfil-dependencia-container"><label class="form-label">Área / Dependencia</label><input type="text" class="form-control" id="perfil-dependencia"></div>
+              <div class="col-md-6" id="perfil-puesto-container"><label class="form-label">Cargo / Puesto</label><input type="text" class="form-control" id="perfil-puesto"></div>
               <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="perfil-email"></div>
               <div class="col-md-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="perfil-telefono"></div>
             </div>
@@ -1790,8 +1792,20 @@ async function loadPerfil() {
     document.getElementById('perfil-dni').value = p.dni || '';
     document.getElementById('perfil-ie').value = p.ie_nombre || p.institucion || '';
     document.getElementById('perfil-rol').value = p.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';
+    document.getElementById('perfil-dependencia').value = p.dependencia || '';
+    document.getElementById('perfil-puesto').value = p.puesto || '';
     document.getElementById('perfil-email').value = p.email || '';
     document.getElementById('perfil-telefono').value = p.telefono || '';
+
+    if (p.rol === 'supervisor') {
+      document.getElementById('perfil-ie-container').style.display = 'none';
+      document.getElementById('perfil-dependencia-container').style.display = 'block';
+      document.getElementById('perfil-puesto-container').style.display = 'block';
+    } else {
+      document.getElementById('perfil-ie-container').style.display = 'block';
+      document.getElementById('perfil-dependencia-container').style.display = 'none';
+      document.getElementById('perfil-puesto-container').style.display = 'none';
+    }
   } catch (e) { showToast('Error al cargar perfil', 'error'); }
 }
 async function savePerfil() {
@@ -1800,7 +1814,9 @@ async function savePerfil() {
     nombre: nombre,
     email: document.getElementById('perfil-email').value.trim(),
     telefono: document.getElementById('perfil-telefono').value.trim(),
-    dni: document.getElementById('perfil-dni').value.trim()
+    dni: document.getElementById('perfil-dni').value.trim(),
+    dependencia: document.getElementById('perfil-dependencia').value.trim(),
+    puesto: document.getElementById('perfil-puesto').value.trim()
   };
   try {
     await api('/api/perfil', { method: 'PUT', body: body });
