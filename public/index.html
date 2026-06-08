@@ -347,9 +347,9 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
             <div class="t-wrap" style="max-height:280px;overflow-y:auto"><table><thead><tr><th>Nombre</th><th>IE</th><th style="width:70px">Estado</th></tr></thead><tbody id="dashboard-directores-table"></tbody></table></div>
           </div>
         </div>
-        <div class="dash-grid" style="margin-bottom:0">
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</div><canvas id="chart-ruralidad" height="180"></canvas></div>
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-doughnut"></i> Cumplimiento General</div><canvas id="chart-cumplimiento" height="180"></canvas></div>
+        <div class="two-col" style="margin-bottom:0">
+          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</div><canvas id="chart-ruralidad" height="240"></canvas></div>
+          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-doughnut"></i> Cumplimiento General</div><canvas id="chart-cumplimiento" height="240"></canvas></div>
         </div>
       </div>
 
@@ -401,8 +401,8 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 
       <!-- ==================== SUPERVISOR: DIRECTORES ==================== -->
       <div class="view-section" id="view-directores">
-        <div class="page-hd"><h2>Directores</h2><span>Gestión de directores de instituciones educativas</span><button class="btn btn-primary" onclick="openDirectorModal()"><i class="fas fa-plus"></i> Nuevo</button></div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Código IE</th><th>IE</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
+        <div class="page-hd"><h2>Directores</h2><span>Lista de directores de instituciones educativas</span></div>
+        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Código IE</th><th>IE</th><th>Email</th><th>Teléfono</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
       </div>
 
       <!-- ==================== SUPERVISOR: IEs ==================== -->
@@ -1020,44 +1020,13 @@ async function loadDirectores() {
     if (allDirectores.length > 0) {
       for (var i = 0; i < allDirectores.length; i++) {
         var dir = allDirectores[i];
-        html += '<tr><td>' + (dir.nombre || '-') + '</td><td>' + (dir.dni || '-') + '</td><td>' + (dir.ie_codigo || dir.codigo_ie || '-') + '</td><td>' + (dir.ie_nombre || '-') + '</td><td>' + (dir.email || '-') + '</td><td>' + (dir.telefono || '-') + '</td><td><button class="btn btn-xs btn-warning me-1" onclick="editDirector(' + dir.id + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="deleteDirector(' + dir.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        html += '<tr><td>' + (dir.nombre || '-') + '</td><td>' + (dir.dni || '-') + '</td><td>' + (dir.ie_codigo || dir.codigo_ie || '-') + '</td><td>' + (dir.ie_nombre || '-') + '</td><td>' + (dir.email || '-') + '</td><td>' + (dir.telefono || '-') + '</td></tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="7">No hay directores</td></tr>';
+      html = '<tr class="empty"><td colspan="6">No hay directores</td></tr>';
     }
     document.getElementById('directores-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar directores', 'error'); }
-}
-function openDirectorModal(d) {
-  var isEdit = d !== null;
-  showModal(isEdit ? 'Editar Director' : 'Nuevo Director',
-    '<form id="director-form"><div class="row"><div class="col-md-6"><label class="form-label">Nombre *</label><input type="text" class="form-control" id="d-nombre" value="' + (d ? d.nombre : '') + '" required></div><div class="col-md-6"><label class="form-label">DNI *</label><input type="text" class="form-control" id="d-dni" value="' + (d ? d.dni : '') + '" required></div><div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="d-email" value="' + (d ? (d.email || '') : '') + '"></div><div class="col-md-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="d-telefono" value="' + (d ? (d.telefono || '') : '') + '"></div><div class="col-md-6"><label class="form-label">IE (Código) *</label><input type="text" class="form-control" id="d-ie-codigo" value="' + (d ? (d.ie_codigo || d.codigo_ie || '') : '') + '" required></div></div></form>',
-    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveDirector(' + (d ? d.id : 'null') + ')">' + (isEdit ? 'Actualizar' : 'Crear') + '</button>');
-}
-async function saveDirector(id) {
-  var body = {
-    nombre: document.getElementById('d-nombre').value.trim(),
-    dni: document.getElementById('d-dni').value.trim(),
-    email: document.getElementById('d-email').value.trim(),
-    telefono: document.getElementById('d-telefono').value.trim(),
-    ie_codigo: document.getElementById('d-ie-codigo').value.trim()
-  };
-  try {
-    if (id) { await api('/api/directores/' + id, { method: 'PUT', body: body }); }
-    else { await api('/api/directores', { method: 'POST', body: body }); }
-    showToast(id ? 'Actualizado' : 'Creado', 'success');
-    closeModal();
-    loadDirectores();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-async function editDirector(id) {
-  try { var d = await api('/api/directores/' + id); openDirectorModal(d.director || d); } catch (e) { showToast('Error al cargar', 'error'); }
-}
-function deleteDirector(id) {
-  showModal('Confirmar', '<p>¿Eliminar este director?</p>', '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmDeleteDirector(' + id + ')">Eliminar</button>');
-}
-async function confirmDeleteDirector(id) {
-  try { await api('/api/directores/' + id, { method: 'DELETE' }); showToast('Eliminado', 'success'); closeModal(); loadDirectores(); } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 // ===================== IEs =====================
@@ -1161,7 +1130,7 @@ async function loadPerfil() {
   try {
     var d = await api('/api/perfil');
     var p = d.perfil || d;
-    document.getElementById('perfil-nombre').value = p.nombre || '';
+    document.getElementById('perfil-nombre').value = p.nombre_completo || p.nombre || '';
     document.getElementById('perfil-dni').value = p.dni || '';
     document.getElementById('perfil-ie').value = p.ie_nombre || p.institucion || '';
     document.getElementById('perfil-rol').value = p.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';

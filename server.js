@@ -294,19 +294,6 @@ app.put('/api/ies/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.post('/api/directores', authSupervisor, async (req, res) => {
-    try {
-        const { nombre, nombre_completo, dni, ie_codigo, email, telefono } = req.body;
-        const name = nombre_completo || nombre;
-        if (!name || !ie_codigo) return res.status(400).json({ error: 'Nombre y código IE requeridos' });
-        const result = await db.prepare(
-            "INSERT INTO usuarios (nombre_completo, dni, ie_codigo, email, telefono, rol) VALUES (?, ?, ?, ?, ?, 'director') RETURNING id"
-        ).run(name, dni || null, ie_codigo, email || null, telefono || null);
-        res.json({ ok: true, id: result.lastInsertRowid });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 app.get('/api/directores', authSupervisor, async (req, res) => {
     try {
