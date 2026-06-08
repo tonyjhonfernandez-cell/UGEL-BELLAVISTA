@@ -391,15 +391,16 @@ app.get('/api/tipos-actividad', async (req, res) => {
 app.post('/api/actividades', authSupervisor, async (req, res) => {
     try {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids } = req.body;
-
-        const result = await db.prepare(
-            'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id'
-        ).run(titulo, descripcion, tipo_id, fecha_limite, hora_limite || '23:59', req.session.user.id);
-
-        const actividadId = result.lastInsertRowid;
+        const hora = hora_limite || '23:59';
 
         if (ie_ids && ie_ids.length > 0) {
             for (const ieId of ie_ids) {
+                const result = await db.prepare(
+                    'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id'
+                ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id);
+
+                const actividadId = result.lastInsertRowid;
+
                 const ie = await db.prepare('SELECT * FROM instituciones_educativas WHERE id = ?').get(ieId);
                 if (ie) {
                     let director = await db.prepare(
@@ -429,7 +430,7 @@ app.post('/api/actividades', authSupervisor, async (req, res) => {
             }
         }
 
-        res.json({ ok: true, id: actividadId });
+        res.json({ ok: true });
     } catch (err) {
         console.error('Error crear actividad:', err);
         res.status(500).json({ error: err.message });
