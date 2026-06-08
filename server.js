@@ -51,7 +51,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'ugel_monitoreo_2026',
     resave: false,
     saveUninitialized: true,
-    cookie: { maxAge: 8 * 60 * 60 * 1000, secure: false }
+    cookie: { maxAge: 8 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production' }
 }));
 
 let dbInitialized = false;
@@ -255,9 +255,12 @@ app.get('/api/check-session', (req, res) => {
 
 app.get('/api/ies', async (req, res) => {
     try {
-        const ies = await db.prepare(
-            'SELECT * FROM instituciones_educativas WHERE activa = true ORDER BY codigo'
-        ).all();
+        const { ruralidad } = req.query;
+        let sql = 'SELECT * FROM instituciones_educativas WHERE activa = true';
+        const params = [];
+        if (ruralidad) { sql += ' AND ruralidad = ?'; params.push(ruralidad); }
+        sql += ' ORDER BY codigo';
+        const ies = await db.prepare(sql).all(...params);
         res.json(ies);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -307,6 +310,20 @@ app.delete('/api/ies/:id', authSupervisor, async (req, res) => {
     }
 });
 
+app.post('/api/directores', authSupervisor, async (req, res) => {
+    try {
+        const { nombre, nombre_completo, dni, ie_codigo, email, telefono } = req.body;
+        const name = nombre_completo || nombre;
+        if (!name || !ie_codigo) return res.status(400).json({ error: 'Nombre y código IE requeridos' });
+        const result = await db.prepare(
+            "INSERT INTO usuarios (nombre_completo, dni, ie_codigo, email, telefono, rol) VALUES (?, ?, ?, ?, ?, 'director') RETURNING id"
+        ).run(name, dni || null, ie_codigo, email || null, telefono || null);
+        res.json({ ok: true, id: result.lastInsertRowid });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/directores', authSupervisor, async (req, res) => {
     try {
         const directores = await db.prepare(`
@@ -339,10 +356,11 @@ app.get('/api/directores/:id', authSupervisor, async (req, res) => {
 
 app.put('/api/directores/:id', authSupervisor, async (req, res) => {
     try {
-        const { nombre_completo, dni, ie_codigo, email, telefono } = req.body;
+        const { nombre, nombre_completo, dni, ie_codigo, email, telefono } = req.body;
+        const name = nombre_completo || nombre;
         await db.prepare(
             'UPDATE usuarios SET nombre_completo=?, dni=?, ie_codigo=?, email=?, telefono=? WHERE id=?'
-        ).run(nombre_completo, dni, ie_codigo, email, telefono, req.params.id);
+        ).run(name, dni, ie_codigo, email, telefono, req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -485,15 +503,6 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
-    try {
-        await db.prepare('DELETE FROM actividades WHERE id = ?').run(req.params.id);
-        res.json({ ok: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     try {
         const { estado, notas_supervisor } = req.body;
@@ -520,10 +529,27 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     }
 });
 
+app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
+    try {
+        await db.prepare('DELETE FROM actividades WHERE id = ?').run(req.params.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/asignaciones', authDirector, async (req, res) => {
     try {
         const nivel = req.query.nivel || '';
+        const { ruralidad, estado, buscar } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
+        const ruralidadWhere = ruralidad ? 'AND ie.ruralidad = ?' : '';
+        const estadoWhere = estado ? 'AND ase.estado = ?' : '';
+        const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ?)' : '';
+        const params = [];
+        if (ruralidad) params.push(ruralidad);
+        if (estado) params.push(estado);
+        if (buscar) { const q = `%${buscar}%`; params.push(q, q); }
         let asignaciones;
         if (req.session.user.rol === 'supervisor') {
             asignaciones = await db.prepare(`
@@ -538,9 +564,9 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere}
+                WHERE 1=1 ${nivelWhere} ${ruralidadWhere} ${estadoWhere} ${buscarWhere}
                 ORDER BY a.fecha_limite ASC
-            `).all();
+            `).all(...params);
         } else {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
@@ -768,7 +794,7 @@ app.put('/api/perfil', authDirector, async (req, res) => {
 
 app.get('/api/exportar-excel', authSupervisor, async (req, res) => {
     try {
-        const { ie_id, ruralidad, estado, fecha_desde, fecha_hasta } = req.query;
+        const { ie_id, ruralidad, estado, fecha_desde, fecha_hasta, preview } = req.query;
 
         let where = 'WHERE 1=1';
         const params = [];
@@ -792,6 +818,10 @@ app.get('/api/exportar-excel', authSupervisor, async (req, res) => {
             ${where}
             ORDER BY ie.codigo, a.fecha_limite
         `).all(...params);
+
+        if (preview === '1') {
+            return res.json(asignaciones);
+        }
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Reporte Monitoreo');
