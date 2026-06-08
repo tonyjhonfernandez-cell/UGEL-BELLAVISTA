@@ -41,8 +41,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 /* LOGIN */
 #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#7A1E2C 0%,#4a101a 50%,#1a1a2e 100%);padding:20px}
 .login-card{background:var(--card);border-radius:16px;padding:48px 40px 40px;width:100%;max-width:400px;box-shadow:0 25px 60px rgba(0,0,0,0.3)}
-.login-logo{width:80px;height:80px;background:var(--granate);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(122,30,44,0.25)}
-.login-logo i{font-size:36px;color:var(--dorado)}
+.login-logo{width:90px;height:90px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 24px rgba(122,30,44,0.25);overflow:hidden;border:3px solid var(--dorado)}
+.login-logo img{width:80px;height:80px;object-fit:contain}
 .login-card h2{text-align:center;font-weight:700;font-size:1.25rem;margin-bottom:4px}
 .login-card p{text-align:center;color:var(--text2);font-size:.85rem;margin-bottom:28px}
 .login-field{width:100%;padding:14px 16px;border:2px solid #e5e7eb;border-radius:var(--radius-sm);font-size:.95rem;font-family:inherit;transition:all .2s;background:#f9fafb;outline:none}
@@ -55,7 +55,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .top-bar{background:var(--granate);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
 .top-bar-left{display:flex;align-items:center;gap:12px}
 .top-bar-left .brand{display:flex;align-items:center;gap:10px;color:#fff}
-.top-bar-left .brand i{font-size:1.3rem;color:var(--dorado)}
+.top-bar-left .brand img{width:28px;height:28px;border-radius:50%;object-fit:contain;background:#fff}
 .top-bar-left .brand span{font-weight:700;font-size:.95rem;letter-spacing:.3px}
 .top-bar-right{display:flex;align-items:center;gap:16px}
 .top-bar-right .notif-btn{position:relative;background:rgba(255,255,255,0.12);border:none;color:#fff;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:background .15s}
@@ -241,7 +241,7 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 <!-- ==================== LOGIN ==================== -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-logo"><i class="fas fa-school"></i></div>
+    <div class="login-logo"><img src="logo.png" alt="UGEL Bellavista"></div>
     <h2>UGEL Bellavista</h2>
     <p>Sistema de Monitoreo de Actividades</p>
     <div id="login-error"></div>
@@ -262,7 +262,7 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
   <div class="top-bar">
     <div class="top-bar-left">
       <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-      <div class="brand"><i class="fas fa-school"></i><span>UGEL Bellavista</span></div>
+      <div class="brand"><img src="logo.png" alt=""><span>UGEL Bellavista</span></div>
     </div>
     <div class="top-bar-right">
       <div style="position:relative">
@@ -398,22 +398,9 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 
       <!-- ==================== SUPERVISOR: IEs ==================== -->
       <div class="view-section" id="view-ies">
-        <div class="page-hd"><h2>Instituciones Educativas</h2><span>Registro de IEs de UGEL Bellavista</span><button class="btn btn-primary" onclick="openIEModal()"><i class="fas fa-plus"></i> Nueva</button></div>
+        <div class="page-hd"><h2>Instituciones Educativas</h2><span>Registro de IEs de UGEL Bellavista</span></div>
         <div class="filter-bar" style="margin-bottom:16px"><div class="filter-group"><label>Ruralidad</label><select class="form-select" id="ie-ruralidad-filter" onchange="loadIEs()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div></div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Ruralidad</th><th>Niveles</th><th>Acciones</th></tr></thead><tbody id="ies-table"></tbody></table></div></div>
-      </div>
-
-      <!-- ==================== SUPERVISOR: REPORTES ==================== -->
-      <div class="view-section" id="view-reportes">
-        <div class="page-hd"><h2>Reportes</h2><span>Exportación de datos y reportes estadísticos</span></div>
-        <div class="filter-bar">
-          <div class="filter-group"><label>Ruralidad</label><select class="form-select" id="rep-ruralidad"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
-          <div class="filter-group"><label>Estado</label><select class="form-select" id="rep-estado"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
-          <div class="filter-group"><label>Fecha Desde</label><input type="date" class="form-control" id="rep-fecha-desde"></div>
-          <div class="filter-group"><label>Fecha Hasta</label><input type="date" class="form-control" id="rep-fecha-hasta"></div>
-          <div class="filter-group" style="justify-content:flex-end"><label>&nbsp;</label><div class="d-flex gap-2"><button class="btn btn-outline" onclick="previewReporte()"><i class="fas fa-eye"></i> Vista Previa</button><button class="btn btn-primary" onclick="exportarExcel()"><i class="fas fa-file-excel"></i> Exportar</button></div></div>
-        </div>
-        <div class="t-card"><div class="t-hd"><i class="fas fa-table"></i> Vista Previa</div><div class="t-wrap"><table><thead><tr><th>IE</th><th>Ruralidad</th><th>Director</th><th>Actividad</th><th>Tipo</th><th>Fecha Límite</th><th>Estado</th></tr></thead><tbody id="reporte-table"></tbody></table></div></div>
+        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Código</th><th>Nombre</th><th>Ruralidad</th><th>Niveles</th></tr></thead><tbody id="ies-table"></tbody></table></div></div>
       </div>
 
       <!-- ==================== SUPERVISOR: NOTIFICACIONES ==================== -->
@@ -581,7 +568,7 @@ function buildSidebar() {
     nav.innerHTML = '<div class="label">Principal</div><a href="#" data-view="dashboard-director" class="active" onclick="cambiarVista(\'dashboard-director\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><a href="#" data-view="mis-actividades" onclick="cambiarVista(\'mis-actividades\',this)"><i class="fas fa-list-check"></i> Mis Actividades</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
     ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>';
   } else {
-    nav.innerHTML = '<div class="label">General</div><a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><div class="label">Gestión</div><a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a><a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a><a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a><a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a><div class="label">Reportes</div><a href="#" data-view="reportes" onclick="cambiarVista(\'reportes\',this)"><i class="fas fa-file-excel"></i> Reportes</a><a href="#" data-view="notificaciones" onclick="cambiarVista(\'notificaciones\',this)"><i class="fas fa-bell"></i> Notificaciones</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
+    nav.innerHTML = '<div class="label">General</div><a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><div class="label">Gestión</div><a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a><a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a><a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a><a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a><div class="label">Comunicación</div><a href="#" data-view="notificaciones" onclick="cambiarVista(\'notificaciones\',this)"><i class="fas fa-bell"></i> Notificaciones</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
     ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>';
   }
 }
@@ -603,7 +590,6 @@ var viewTitles = {
   'monitoreo': 'Monitoreo',
   'directores': 'Directores',
   'ies': 'IEs',
-  'reportes': 'Reportes',
   'notificaciones': 'Notificaciones',
   'perfil': 'Mi Perfil'
 };
@@ -1063,90 +1049,13 @@ async function loadIEs() {
         if (ie.tiene_primaria) niveles += '<span class="badge bg-primary me-1">Primaria</span>';
         if (ie.tiene_secundaria) niveles += '<span class="badge bg-success">Secundaria</span>';
         if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria) niveles = '<span class="text-muted">-</span>';
-        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + (ie.ruralidad || '-') + '</td><td>' + niveles + '</td><td><button class="btn btn-xs btn-warning me-1" onclick="editIE(' + ie.id + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="deleteIE(' + ie.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + (ie.ruralidad || '-') + '</td><td>' + niveles + '</td></tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="5">No hay IEs</td></tr>';
+      html = '<tr class="empty"><td colspan="4">No hay IEs</td></tr>';
     }
     document.getElementById('ies-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar IEs', 'error'); }
-}
-function openIEModal(ie) {
-  var isEdit = ie !== null;
-  showModal(isEdit ? 'Editar IE' : 'Nueva IE',
-    '<form id="ie-form"><div class="row"><div class="col-md-6"><label class="form-label">Código *</label><input type="text" class="form-control" id="ie-codigo" value="' + (ie ? ie.codigo : '') + '" required></div><div class="col-md-6"><label class="form-label">Nombre *</label><input type="text" class="form-control" id="ie-nombre" value="' + (ie ? ie.nombre : '') + '" required></div><div class="col-md-6"><label class="form-label">Ruralidad *</label><select class="form-select" id="ie-ruralidad" required><option value="URBANO"' + (ie && ie.ruralidad === 'URBANO' ? ' selected' : '') + '>Urbano</option><option value="RURAL 1"' + (ie && ie.ruralidad === 'RURAL 1' ? ' selected' : '') + '>Rural 1</option><option value="RURAL 2"' + (ie && ie.ruralidad === 'RURAL 2' ? ' selected' : '') + '>Rural 2</option><option value="RURAL 3"' + (ie && ie.ruralidad === 'RURAL 3' ? ' selected' : '') + '>Rural 3</option></select></div><div class="col-md-12"><label class="form-label">Niveles</label><div class="d-flex gap-3"><label class="form-check"><input class="form-check-input" type="checkbox" id="ie-inicial"' + (ie && ie.tiene_inicial ? ' checked' : '') + '> Inicial</label><label class="form-check"><input class="form-check-input" type="checkbox" id="ie-primaria"' + (ie && ie.tiene_primaria ? ' checked' : '') + '> Primaria</label><label class="form-check"><input class="form-check-input" type="checkbox" id="ie-secundaria"' + (ie && ie.tiene_secundaria ? ' checked' : '') + '> Secundaria</label></div></div></div></form>',
-    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveIE(' + (ie ? ie.id : 'null') + ')">' + (isEdit ? 'Actualizar' : 'Crear') + '</button>');
-}
-async function saveIE(id) {
-  var body = {
-    codigo: document.getElementById('ie-codigo').value.trim(),
-    nombre: document.getElementById('ie-nombre').value.trim(),
-    ruralidad: document.getElementById('ie-ruralidad').value,
-    tiene_inicial: document.getElementById('ie-inicial').checked,
-    tiene_primaria: document.getElementById('ie-primaria').checked,
-    tiene_secundaria: document.getElementById('ie-secundaria').checked
-  };
-  try {
-    if (id) { await api('/api/ies/' + id, { method: 'PUT', body: body }); }
-    else { await api('/api/ies', { method: 'POST', body: body }); }
-    showToast(id ? 'Actualizada' : 'Creada', 'success');
-    closeModal();
-    loadIEs();
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-async function editIE(id) {
-  try { var d = await api('/api/ies/' + id); openIEModal(d.ie || d); } catch (e) { showToast('Error al cargar', 'error'); }
-}
-function deleteIE(id) {
-  showModal('Confirmar', '<p>¿Eliminar esta IE?</p>', '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmDeleteIE(' + id + ')">Eliminar</button>');
-}
-async function confirmDeleteIE(id) {
-  try { await api('/api/ies/' + id, { method: 'DELETE' }); showToast('Eliminada', 'success'); closeModal(); loadIEs(); } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
-
-// ===================== REPORTES =====================
-function previewReporte() {
-  var p = new URLSearchParams();
-  var ruralidad = document.getElementById('rep-ruralidad').value;
-  var estado = document.getElementById('rep-estado').value;
-  var fd = document.getElementById('rep-fecha-desde').value;
-  var fh = document.getElementById('rep-fecha-hasta').value;
-  if (ruralidad) p.set('ruralidad', ruralidad);
-  if (estado) p.set('estado', estado);
-  if (fd) p.set('fecha_desde', fd);
-  if (fh) p.set('fecha_hasta', fh);
-  loadReportePreview(p);
-}
-async function loadReportePreview(p) {
-  try {
-    p.set('preview', '1');
-    var d = await api('/api/exportar-excel?' + p.toString());
-    if (Array.isArray(d)) {
-      var html = '';
-      if (d.length > 0) {
-        for (var i = 0; i < d.length; i++) {
-          var r = d[i];
-          html += '<tr><td>' + (r.ie_nombre || r.nombre || '-') + '</td><td>' + (r.ruralidad || '-') + '</td><td>' + (r.director_nombre || '-') + '</td><td>' + (r.titulo || r.actividad_titulo || '-') + '</td><td>' + (r.tipo_nombre || r.tipo || '-') + '</td><td>' + (r.fecha_limite ? new Date(r.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + r.estado + '">' + (r.estado ? r.estado.replace('_', ' ').toUpperCase() : '-') + '</span></td></tr>';
-        }
-      } else {
-        html = '<tr class="empty"><td colspan="7">No hay datos</td></tr>';
-      }
-      document.getElementById('reporte-table').innerHTML = html;
-    }
-  } catch (e) {}
-}
-function exportarExcel() {
-  var p = new URLSearchParams();
-  var ruralidad = document.getElementById('rep-ruralidad').value;
-  var estado = document.getElementById('rep-estado').value;
-  var fd = document.getElementById('rep-fecha-desde').value;
-  var fh = document.getElementById('rep-fecha-hasta').value;
-  if (ruralidad) p.set('ruralidad', ruralidad);
-  if (estado) p.set('estado', estado);
-  if (fd) p.set('fecha_desde', fd);
-  if (fh) p.set('fecha_hasta', fh);
-  window.location.href = '/api/exportar-excel?' + p.toString();
-  showToast('Descargando...', 'success');
 }
 
 // ===================== NOTIFICACIONES =====================

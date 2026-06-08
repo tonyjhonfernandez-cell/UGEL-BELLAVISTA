@@ -277,17 +277,6 @@ app.get('/api/ies/:id', async (req, res) => {
     }
 });
 
-app.post('/api/ies', authSupervisor, async (req, res) => {
-    try {
-        const { codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
-        const result = await db.prepare(
-            'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
-        ).run(codigo, nombre, ruralidad || 'URBANO', tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null);
-        res.json({ ok: true, id: result.lastInsertRowid });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 app.put('/api/ies/:id', authSupervisor, async (req, res) => {
     try {
@@ -295,15 +284,6 @@ app.put('/api/ies/:id', authSupervisor, async (req, res) => {
         await db.prepare(
             'UPDATE instituciones_educativas SET codigo=?, nombre=?, ruralidad=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=? WHERE id=?'
         ).run(codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, req.params.id);
-        res.json({ ok: true });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.delete('/api/ies/:id', authSupervisor, async (req, res) => {
-    try {
-        await db.prepare('UPDATE instituciones_educativas SET activa = false WHERE id = ?').run(req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -792,81 +772,6 @@ app.put('/api/perfil', authDirector, async (req, res) => {
     }
 });
 
-app.get('/api/exportar-excel', authSupervisor, async (req, res) => {
-    try {
-        const { ie_id, ruralidad, estado, fecha_desde, fecha_hasta, preview } = req.query;
-
-        let where = 'WHERE 1=1';
-        const params = [];
-
-        if (ie_id) { where += ' AND ase.ie_id = ?'; params.push(ie_id); }
-        if (ruralidad) { where += ' AND ie.ruralidad = ?'; params.push(ruralidad); }
-        if (estado) { where += ' AND ase.estado = ?'; params.push(estado); }
-        if (fecha_desde) { where += ' AND a.fecha_limite >= ?'; params.push(fecha_desde); }
-        if (fecha_hasta) { where += ' AND a.fecha_limite <= ?'; params.push(fecha_hasta); }
-
-        const asignaciones = await db.prepare(`
-            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion,
-                   ta.nombre as tipo_nombre,
-                   ie.codigo as ie_codigo, ie.nombre as ie_nombre, ie.ruralidad,
-                   u.nombre_completo as director_nombre
-            FROM asignaciones ase
-            LEFT JOIN actividades a ON ase.actividad_id = a.id
-            LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
-            LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
-            LEFT JOIN usuarios u ON ase.director_id = u.id
-            ${where}
-            ORDER BY ie.codigo, a.fecha_limite
-        `).all(...params);
-
-        if (preview === '1') {
-            return res.json(asignaciones);
-        }
-
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Reporte Monitoreo');
-
-        sheet.columns = [
-            { header: 'Código IE', key: 'ie_codigo', width: 15 },
-            { header: 'Institución', key: 'ie_nombre', width: 35 },
-            { header: 'Ruralidad', key: 'ruralidad', width: 15 },
-            { header: 'Director', key: 'director_nombre', width: 30 },
-            { header: 'Actividad', key: 'actividad_titulo', width: 30 },
-            { header: 'Tipo', key: 'tipo_nombre', width: 15 },
-            { header: 'Fecha Límite', key: 'fecha_limite', width: 15 },
-            { header: 'Estado', key: 'estado', width: 15 },
-            { header: 'Descripción', key: 'descripcion', width: 40 },
-            { header: 'Notas Supervisor', key: 'notas_supervisor', width: 30 }
-        ];
-
-        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7A1E2C' } };
-
-        asignaciones.forEach(a => {
-            sheet.addRow({
-                ie_codigo: a.ie_codigo,
-                ie_nombre: a.ie_nombre,
-                ruralidad: a.ruralidad,
-                director_nombre: a.director_nombre,
-                actividad_titulo: a.actividad_titulo,
-                tipo_nombre: a.tipo_nombre,
-                fecha_limite: a.fecha_limite,
-                estado: a.estado,
-                descripcion: a.descripcion,
-                notas_supervisor: a.notas_supervisor
-            });
-        });
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=reporte_monitoreo.xlsx');
-
-        await workbook.xlsx.write(res);
-        res.end();
-    } catch (err) {
-        console.error('Export error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
 
 app.get('/api/seed', async (req, res) => {
     try {
