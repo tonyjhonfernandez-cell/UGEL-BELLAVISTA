@@ -276,54 +276,55 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 .sel-list .sel-empty{padding:24px;text-align:center;color:#999;font-size:.8rem}
 
 /* Flat Director View */
-body.director-mode{background:#f0f1f3}
+body.director-mode{background:#f0f2f5}
 body.director-mode #app-shell{display:block}
-.dir-layout{min-height:100vh;background:#f0f1f3}
-.dir-header{background:#fff;border-bottom:2px solid #008080;padding:10px 28px;display:flex;align-items:center;justify-content:space-between;gap:18px}
-.dir-header .dh-left{display:flex;align-items:center;gap:14px}
-.dir-header .dh-left .dh-logo{background:#008080;color:#fff;font-weight:800;font-size:.82rem;padding:8px 12px;text-align:center;line-height:1.2;letter-spacing:1px;flex-shrink:0}
-.dir-header h1{font-size:1.05rem;font-weight:700;color:#008080;letter-spacing:.5px;text-align:center;flex:1}
-.dir-header .dh-right{text-align:right;flex-shrink:0}
-.dir-header .dh-right .dh-user{font-size:.82rem;font-weight:600;color:#333}
-.dir-header .dh-right .dh-role{font-size:.7rem;color:#999}
+.dir-layout{min-height:100vh;background:#f0f2f5}
+.dir-header{background:transparent;padding:24px 28px 12px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none}
+.dir-header .dh-left{display:flex;align-items:center;gap:12px}
+.dir-header h1{font-size:1.6rem;font-weight:800;color:#0d5257;letter-spacing:.5px;text-align:center;margin:0;flex:1}
+.dir-header .dh-right{display:flex;align-items:center;flex-shrink:0}
 
-.dir-body{padding:20px 28px 28px}
+.dir-body{padding:12px 28px 28px}
 .dir-top-row{display:flex;gap:18px;margin-bottom:20px}
 .dir-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1}
-.dir-kpi{background:#fff;border:1px solid #dde0e3;padding:16px 18px 0;display:flex;flex-direction:column;justify-content:space-between}
-.dir-kpi .kpi-label{font-size:.7rem;font-weight:600;color:#999;letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px}
-.dir-kpi .kpi-number{font-size:2rem;font-weight:800;color:#222;margin-bottom:8px;line-height:1}
-.dir-kpi .kpi-line{height:4px;margin:0 -18px;flex-shrink:0}
-.dir-kpi .kpi-line.blue-line{background:#2563eb}
+.dir-kpi{background:#fff;border:1px solid #dde0e3;padding:20px 20px 0;display:flex;flex-direction:column;justify-content:space-between;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+.dir-kpi .kpi-label{font-size:.75rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
+.dir-kpi .kpi-number{font-size:2.4rem;font-weight:800;margin-bottom:12px;line-height:1}
+.dir-kpi .kpi-line{height:4px;margin:0 -20px;flex-shrink:0}
+.dir-kpi .kpi-line.blue-line{background:#1e3a8a}
 .dir-kpi .kpi-line.yellow-line{background:#d97706}
 .dir-kpi .kpi-line.green-line{background:#059669}
 .dir-kpi .kpi-line.red-line{background:#dc2626}
+.dir-kpi.total .kpi-label, .dir-kpi.total .kpi-number { color: #1e3a8a; }
+.dir-kpi.pendientes .kpi-label, .dir-kpi.pendientes .kpi-number { color: #d97706; }
+.dir-kpi.cumplidas .kpi-label, .dir-kpi.cumplidas .kpi-number { color: #059669; }
+.dir-kpi.vencidas .kpi-label, .dir-kpi.vencidas .kpi-number { color: #dc2626; }
 
-.dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column}
-.dir-chart-box h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:8px;text-align:left}
+.dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+.dir-chart-box h3{font-size:.75rem;font-weight:800;color:#008080;letter-spacing:.5px;margin-bottom:12px;text-align:left;text-transform:uppercase}
 .dir-chart-box canvas{flex:1;width:100%!important;min-height:140px}
 
 .dir-bottom-row{display:flex;gap:18px}
-.dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:16px;width:240px;flex-shrink:0}
-.dir-filter-panel h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:12px}
-.dir-filter-panel label{font-size:.75rem;color:#777;display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.dir-filter-panel label i{font-size:.8rem;color:#999}
-.dir-filter-panel input{width:100%;padding:8px 10px;border:1px solid #d0d3d7;font-size:.85rem;font-family:inherit;outline:none;background:#fff;margin-bottom:8px}
-.dir-filter-panel .dir-ie-name{font-size:.82rem;font-weight:700;color:#555;display:block}
+.dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:20px 16px;width:240px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;flex-direction:column;align-items:center}
+.dir-filter-panel h3{font-size:.8rem;font-weight:800;color:#008080;letter-spacing:.5px;margin-bottom:16px;text-transform:uppercase;text-align:center;width:100%}
+.dir-filter-panel label{font-size:.78rem;color:#008080;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;text-align:center;width:100%}
+.dir-filter-panel label i{font-size:.85rem;color:#008080}
+.dir-filter-panel input{width:100%;padding:10px 16px;border:1.5px solid #dde0e3;border-radius:20px;font-size:.85rem;font-weight:700;font-family:inherit;outline:none;background:#fcfcfc;margin-bottom:14px;text-align:center;color:#555}
+.dir-filter-panel input:focus{border-color:#008080;background:#fff}
+.dir-filter-panel .dir-ie-name{font-size:.85rem;font-weight:800;color:#444;display:block;text-align:center;line-height:1.3;margin-top:4px}
 
-.dir-table-section{flex:1;background:#fff;border:1px solid #dde0e3;padding:16px;overflow:hidden}
-.dir-table-section h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:10px}
+.dir-table-section{flex:1;background:#fff;border:1px solid #dde0e3;padding:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+.dir-table-section h3{font-size:.75rem;font-weight:800;color:#008080;letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase}
 .dir-table-wrap{overflow-x:auto}
 .dir-table-section table{width:100%;border-collapse:collapse}
-.dir-table-section th{font-size:.68rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.2px;padding:10px 14px;text-align:left;background:#e8eaed;border-bottom:1px solid #d0d3d7}
-.dir-table-section td{padding:8px 14px;font-size:.8rem;color:#333;border-bottom:1px solid #eee;vertical-align:middle}
+.dir-table-section th{font-size:.72rem;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.3px;padding:12px 16px;text-align:left;background:#f3f4f6;border-bottom:1.5px solid #dde0e3}
+.dir-table-section td{padding:12px 16px;font-size:.82rem;font-weight:500;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:middle}
 .dir-table-section tr:last-child td{border-bottom:none}
-.dir-badge{display:inline-block;padding:3px 12px;border-radius:10px;font-size:.68rem;font-weight:600;color:#fff;letter-spacing:.2px}
+.dir-badge{display:inline-block;padding:6px 16px;border-radius:20px;font-size:.72rem;font-weight:700;color:#fff;letter-spacing:.2px;text-align:center;min-width:90px}
 .dir-badge.red{background:#dc2626}
 .dir-badge.yellow{background:#d97706}
 .dir-badge.green{background:#059669}
-
-.dir-table-section .dir-empty{text-align:center;padding:24px;color:#999;font-size:.8rem}
+.dir-table-section .dir-empty{text-align:center;padding:32px;color:#999;font-size:.85rem;font-weight:500}
 
 @media(max-width:1100px){
   .dir-top-row{flex-direction:column}
@@ -419,32 +420,34 @@ body.director-mode #app-shell{display:block}
       <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
       <div class="view-section" id="view-director-main">
         <div class="dir-layout">
-          <div class="dir-header">
-            <div class="dh-left">
-              <div class="dh-logo">UGEL<br>BELLAVISTA</div>
+          <div class="dir-header" style="background:transparent;padding:24px 28px 12px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none">
+            <div class="dh-left" style="display:flex;align-items:center;gap:12px">
+              <img src="logo.png" alt="UGEL" style="height:54px;width:auto;object-fit:contain">
+              <div style="font-weight:800;font-size:0.85rem;color:#008080;line-height:1.15;letter-spacing:0.5px">UGEL<br>BELLAVISTA</div>
             </div>
-            <h1>SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
-            <div class="dh-right">
-              <div class="dh-user" id="dir-user-name"></div>
-              <div class="dh-role">Director(a)</div>
+            <h1 style="font-size:1.6rem;font-weight:800;color:#0d5257;letter-spacing:0.5px;text-align:center;margin:0;flex:1">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
+            <div class="dh-right" style="display:flex;align-items:center">
+              <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:#008080;color:#008080;font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
+                <i class="fas fa-user-shield"></i> Acceso Supervisor
+              </button>
             </div>
           </div>
           <div class="dir-body">
             <div class="dir-top-row">
               <div class="dir-kpis">
-                <div class="dir-kpi">
+                <div class="dir-kpi total">
                   <div><div class="kpi-label">TOTAL DE ACTIVIDADES</div><div class="kpi-number" id="kpi-total">0</div></div>
                   <div class="kpi-line blue-line"></div>
                 </div>
-                <div class="dir-kpi">
+                <div class="dir-kpi pendientes">
                   <div><div class="kpi-label">PENDIENTES</div><div class="kpi-number" id="kpi-pendientes">0</div></div>
                   <div class="kpi-line yellow-line"></div>
                 </div>
-                <div class="dir-kpi">
+                <div class="dir-kpi cumplidas">
                   <div><div class="kpi-label">CUMPLIDAS</div><div class="kpi-number" id="kpi-cumplidas">0</div></div>
                   <div class="kpi-line green-line"></div>
                 </div>
-                <div class="dir-kpi">
+                <div class="dir-kpi vencidas">
                   <div><div class="kpi-label">VENCIDAS</div><div class="kpi-number" id="kpi-vencidas">0</div></div>
                   <div class="kpi-line red-line"></div>
                 </div>
@@ -714,6 +717,41 @@ function showSelector() {
 function showSupervisorLogin() {
   document.getElementById('sel-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+}
+async function goToSupervisorLogin() {
+  try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+  currentUser = null;
+  document.body.classList.remove('director-mode');
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('sel-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-codigo').value = '';
+}
+function formatFechaMock(dateStr) {
+  if (!dateStr) return '-';
+  try {
+    var parts = dateStr.split('-');
+    if (parts.length < 3) {
+      // If it is ISO string format
+      var d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        var day = d.getDate();
+        var dayStr = day < 10 ? '0' + day : '' + day;
+        var months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        return dayStr + ' de ' + months[d.getMonth()];
+      }
+      return dateStr;
+    }
+    var day = parts[2];
+    if (day.indexOf('T') !== -1) day = day.split('T')[0];
+    var dayNum = parseInt(day);
+    var dayStr = dayNum < 10 ? '0' + dayNum : '' + dayNum;
+    var monthIndex = parseInt(parts[1]) - 1;
+    var months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return dayStr + ' de ' + months[monthIndex];
+  } catch (e) {
+    return dateStr;
+  }
 }
 async function loginComoDirector(ieId) {
   try {
@@ -1017,7 +1055,7 @@ async function loadDirectorMain() {
         if (est === 'pendiente') { badgeClass = 'yellow'; badgeText = 'Pendiente'; }
         else if (est === 'no_cumplida') { badgeClass = 'red'; badgeText = 'Vencido'; }
         else if (a.fecha_limite && a.fecha_limite < hoy && est !== 'completada') { badgeClass = 'red'; badgeText = 'Vencido'; }
-        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.asignador_telefono || '-') + '</td></tr>';
+        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? formatFechaMock(a.fecha_limite) : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + (a.area || a.asignador_nombre || '-') + '</td><td>' + (a.asignador_telefono || '-') + '</td></tr>';
       }
     } else {
       html = '<tr><td class="dir-empty" colspan="5">No tiene actividades asignadas</td></tr>';
