@@ -147,12 +147,17 @@ app.use(async (req, res, next) => {
         next();
     } catch (err) {
         console.error('DB init error:', err);
-        next();
+        return res.status(503).json({ error: 'Base de datos no disponible' });
     }
 });
 
 function normalizar(txt) {
     return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria'];
+function validarNivel(nivel) {
+    return NIVELES_VALIDOS.includes(nivel) ? nivel : '';
 }
 
 const authSupervisor = (req, res, next) => {
@@ -183,8 +188,7 @@ app.post('/api/login', async (req, res) => {
         for (const s of allSupervisors) {
             if (normalizar(s.nombre_completo) === cod) {
                 req.session.user = { id: s.id, nombre: s.nombre_completo, rol: 'supervisor' };
-                req.session.save();
-                return res.json({ ok: true, user: req.session.user });
+                req.session.save(() => res.json({ ok: true, user: req.session.user }));
             }
         }
 
@@ -234,8 +238,7 @@ app.post('/api/login', async (req, res) => {
             ie_nombre: ie.nombre,
             ie_id: ie.id
         };
-        req.session.save();
-        res.json({ ok: true, user: req.session.user });
+        req.session.save(() => res.json({ ok: true, user: req.session.user }));
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Error en el servidor' });
@@ -243,8 +246,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 app.post('/api/logout', (req, res) => {
-    req.session.destroy();
-    res.json({ ok: true });
+    req.session.destroy(() => res.json({ ok: true }));
 });
 
 app.get('/api/check-session', (req, res) => {
@@ -478,7 +480,7 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite } = req.body;
         await db.prepare(
             'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=? WHERE id=?'
-        ).run(titulo, descripcion, tipo_id, fecha_limite, hora_limite, req.params.id);
+        ).run(titulo, descripcion, tipo_id, fecha_limite, hora_limite || '23:59', req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -522,7 +524,7 @@ app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
 
 app.get('/api/asignaciones', authDirector, async (req, res) => {
     try {
-        const nivel = req.query.nivel || '';
+        const nivel = validarNivel(req.query.nivel || '');
         const { ruralidad, estado, buscar } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
         const ruralidadWhere = ruralidad ? 'AND ie.ruralidad = ?' : '';
@@ -572,7 +574,7 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
 
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
-        const nivel = req.query.nivel || '';
+        const nivel = validarNivel(req.query.nivel || '');
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
 
         if (req.session.user.rol === 'supervisor') {
@@ -654,7 +656,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const vencidas = await db.prepare(`
                 SELECT COUNT(*) as c FROM asignaciones ase
                 INNER JOIN actividades a ON ase.actividad_id = a.id
-                ${nivelJoin.replace('ase.ie_id', 'ase.ie_id') || ''}
+                ${nivelJoin}
                 WHERE ase.director_id = ? AND ase.estado = 'pendiente' AND a.fecha_limite < ? ${nivelWhere}
             `).get(userId, hoy);
 
@@ -1081,6 +1083,12 @@ app.get('/api/status', async (req, res) => {
     } catch (err) {
         res.json({ db_conectada: false, error: err.message });
     }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Error no capturado:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 if (process.env.NODE_ENV !== 'production') {
