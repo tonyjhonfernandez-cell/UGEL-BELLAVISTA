@@ -159,6 +159,18 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .compliance-card .track{height:8px;border-radius:4px;background:#f3f4f6;overflow:hidden}
 .compliance-card .fill{height:100%;border-radius:4px;transition:width .8s ease}.fill.alto{background:var(--green)}.fill.medio{background:var(--amber)}.fill.bajo{background:var(--red)}
 
+/* AREA CARDS */
+.area-card{background:var(--card);border:1px solid #f3f4f6;border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:10px}
+.area-card .area-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.area-card .area-name{font-weight:600;font-size:.82rem}
+.area-card .area-counts{font-size:.75rem;color:var(--text3)}
+.area-card .area-track{height:6px;border-radius:3px;background:#f3f4f6;overflow:hidden}
+.area-card .area-fill{height:100%;border-radius:3px;transition:width .8s ease}
+
+/* AREA GROUP */
+.area-group td{background:#f8f5ff; border-bottom:1px solid #e4d9ff; font-weight:600; font-size:.82rem; padding:8px 12px}
+.area-group td strong{color:var(--granate)}
+
 /* CHART */
 .chart-card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);border:1px solid #f3f4f6}
 .chart-card .ctitle{font-size:.82rem;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
@@ -241,23 +253,122 @@ textarea.form-control{resize:vertical;min-height:70px}
 @media(min-width:992px){.col-lg-6{width:50%}}
 hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 .notif-dropdown{display:none}.notif-dropdown.show{display:block}
+#calendar{min-height:480px;padding:12px}
+
+/* ========== NUEVO DISEÑO PLANO - DIRECTOR ========== */
+:root{--teal:#008080;--teal-dark:#005c5c}
+#sel-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f0f1f3;padding:20px}
+.sel-card{background:#fff;border-radius:0;padding:40px 36px;width:100%;max-width:480px;border:1px solid #dde0e3}
+.sel-logo{width:80px;height:80px;background:#008080;color:#fff;font-weight:800;font-size:1rem;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;margin:0 auto 18px;letter-spacing:1px}
+.sel-card h2{text-align:center;font-size:1.1rem;font-weight:700;color:#222;margin-bottom:4px}
+.sel-card p{text-align:center;font-size:.8rem;color:#888;margin-bottom:20px}
+.sel-search-wrap{position:relative;margin-bottom:14px}
+.sel-search-wrap i{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#999;font-size:.9rem}
+.sel-search-wrap input{width:100%;padding:10px 12px 10px 36px;border:1px solid #d0d3d7;font-size:.85rem;font-family:inherit;outline:none;background:#fafafa}
+.sel-search-wrap input:focus{border-color:#008080;background:#fff}
+.sel-list{max-height:340px;overflow-y:auto;border:1px solid #e0e2e5}
+.sel-list .sel-item{padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;display:flex;gap:10px;align-items:center;transition:background .1s}
+.sel-list .sel-item:last-child{border-bottom:none}
+.sel-list .sel-item:hover{background:#e8f4f4}
+.sel-list .sel-item .sel-cod{font-weight:600;color:#008080;font-size:.8rem;flex-shrink:0}
+.sel-list .sel-item .sel-nom{font-size:.82rem;color:#444;flex:1}
+.sel-list .sel-item .sel-rur{font-size:.7rem;color:#999}
+.sel-list .sel-empty{padding:24px;text-align:center;color:#999;font-size:.8rem}
+
+/* Flat Director View */
+body.director-mode{background:#f0f1f3}
+body.director-mode #app-shell{display:block}
+.dir-layout{min-height:100vh;background:#f0f1f3}
+.dir-header{background:#fff;border-bottom:2px solid #008080;padding:10px 28px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.dir-header .dh-left{display:flex;align-items:center;gap:14px}
+.dir-header .dh-left .dh-logo{background:#008080;color:#fff;font-weight:800;font-size:.82rem;padding:8px 12px;text-align:center;line-height:1.2;letter-spacing:1px;flex-shrink:0}
+.dir-header h1{font-size:1.05rem;font-weight:700;color:#008080;letter-spacing:.5px;text-align:center;flex:1}
+.dir-header .dh-right{text-align:right;flex-shrink:0}
+.dir-header .dh-right .dh-user{font-size:.82rem;font-weight:600;color:#333}
+.dir-header .dh-right .dh-role{font-size:.7rem;color:#999}
+
+.dir-body{padding:20px 28px 28px}
+.dir-top-row{display:flex;gap:18px;margin-bottom:20px}
+.dir-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1}
+.dir-kpi{background:#fff;border:1px solid #dde0e3;padding:16px 18px 0;display:flex;flex-direction:column;justify-content:space-between}
+.dir-kpi .kpi-label{font-size:.7rem;font-weight:600;color:#999;letter-spacing:.3px;text-transform:uppercase;margin-bottom:4px}
+.dir-kpi .kpi-number{font-size:2rem;font-weight:800;color:#222;margin-bottom:8px;line-height:1}
+.dir-kpi .kpi-line{height:4px;margin:0 -18px;flex-shrink:0}
+.dir-kpi .kpi-line.blue-line{background:#2563eb}
+.dir-kpi .kpi-line.yellow-line{background:#d97706}
+.dir-kpi .kpi-line.green-line{background:#059669}
+.dir-kpi .kpi-line.red-line{background:#dc2626}
+
+.dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column}
+.dir-chart-box h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:8px;text-align:left}
+.dir-chart-box canvas{flex:1;width:100%!important;min-height:140px}
+
+.dir-bottom-row{display:flex;gap:18px}
+.dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:16px;width:240px;flex-shrink:0}
+.dir-filter-panel h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:12px}
+.dir-filter-panel label{font-size:.75rem;color:#777;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.dir-filter-panel label i{font-size:.8rem;color:#999}
+.dir-filter-panel input{width:100%;padding:8px 10px;border:1px solid #d0d3d7;font-size:.85rem;font-family:inherit;outline:none;background:#fff;margin-bottom:8px}
+.dir-filter-panel .dir-ie-name{font-size:.82rem;font-weight:700;color:#555;display:block}
+
+.dir-table-section{flex:1;background:#fff;border:1px solid #dde0e3;padding:16px;overflow:hidden}
+.dir-table-section h3{font-size:.72rem;font-weight:700;color:#555;letter-spacing:.3px;margin-bottom:10px}
+.dir-table-wrap{overflow-x:auto}
+.dir-table-section table{width:100%;border-collapse:collapse}
+.dir-table-section th{font-size:.68rem;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.2px;padding:10px 14px;text-align:left;background:#e8eaed;border-bottom:1px solid #d0d3d7}
+.dir-table-section td{padding:8px 14px;font-size:.8rem;color:#333;border-bottom:1px solid #eee;vertical-align:middle}
+.dir-table-section tr:last-child td{border-bottom:none}
+.dir-badge{display:inline-block;padding:3px 12px;border-radius:10px;font-size:.68rem;font-weight:600;color:#fff;letter-spacing:.2px}
+.dir-badge.red{background:#dc2626}
+.dir-badge.yellow{background:#d97706}
+.dir-badge.green{background:#059669}
+
+.dir-table-section .dir-empty{text-align:center;padding:24px;color:#999;font-size:.8rem}
+
+@media(max-width:1100px){
+  .dir-top-row{flex-direction:column}
+  .dir-chart-box{width:100%;min-height:200px}
+  .dir-bottom-row{flex-direction:column}
+  .dir-filter-panel{width:100%}
+}
+@media(max-width:700px){
+  .dir-kpis{grid-template-columns:repeat(2,1fr)}
+  .dir-header{flex-wrap:wrap;text-align:center}
+  .dir-header h1{font-size:.9rem;width:100%;order:3;margin-top:6px}
+}
 </style>
 </head>
 <body>
 
-<!-- ==================== LOGIN ==================== -->
-<div id="login-screen">
+<!-- ==================== IE SELECTOR (DIRECTOR) ==================== -->
+<div id="sel-screen">
+  <div class="sel-card">
+    <div class="sel-logo">UGEL<br>BELLAVISTA</div>
+    <h2>Sistema de Monitoreo de Actividades</h2>
+    <p>Seleccione su Institución Educativa</p>
+    <div class="sel-search-wrap">
+      <i class="fas fa-search"></i>
+      <input type="text" id="sel-buscar" placeholder="Buscar por código o nombre..." autocomplete="off">
+    </div>
+    <div class="sel-list" id="sel-ie-list"></div>
+    <p style="margin-top:16px;text-align:center;font-size:.8rem;color:#888">¿Es supervisor? <a href="#" onclick="event.preventDefault();showSupervisorLogin()" style="color:#008080;font-weight:600;text-decoration:none">Ingrese aquí</a></p>
+  </div>
+</div>
+
+<!-- ==================== LOGIN (SUPERVISOR) ==================== -->
+<div id="login-screen" style="display:none">
   <div class="login-card">
     <div class="login-logo"><img src="logo.png" alt="UGEL Bellavista"></div>
     <h2>UGEL Bellavista</h2>
-    <p>Sistema de Monitoreo de Actividades</p>
+    <p>Ingreso para Supervisores</p>
     <div id="login-error"></div>
     <form onsubmit="event.preventDefault();login()">
       <div style="margin-bottom:16px">
-        <input type="text" id="login-codigo" class="login-field" placeholder="Código o Nombre de Institución" required autocomplete="off">
+        <input type="text" id="login-codigo" class="login-field" placeholder="Nombre del supervisor" required autocomplete="off">
       </div>
       <button type="submit" class="btn-login">Ingresar</button>
     </form>
+    <p style="margin-top:12px;text-align:center;font-size:.75rem;color:var(--text3)">Directores: <a href="#" onclick="event.preventDefault();showSelector()" style="color:var(--granate)">seleccione su IE aquí</a></p>
   </div>
 </div>
 
@@ -305,28 +416,62 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
         <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
       </div>
 
-      <!-- ==================== DIRECTOR: DASHBOARD ==================== -->
-      <div class="view-section" id="view-dashboard-director">
-        <div class="page-hd"><h2>Dashboard</h2><span>UGEL Bellavista · Panel de Director</span></div>
-        <div class="kpi-grid" id="director-stats"></div>
-        <div id="director-compliance-bar"></div>
-        <div class="two-col">
-          <div class="t-card">
-            <div class="t-hd"><i class="fas fa-clock"></i> Últimas Actividades</div>
-            <div class="t-wrap"><table><thead><tr><th>Actividad</th><th>Área</th><th>Subárea</th><th style="width:110px">Estado</th><th style="width:100px">Fecha</th></tr></thead><tbody id="director-recent-table"></tbody></table></div>
+      <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
+      <div class="view-section" id="view-director-main">
+        <div class="dir-layout">
+          <div class="dir-header">
+            <div class="dh-left">
+              <div class="dh-logo">UGEL<br>BELLAVISTA</div>
+            </div>
+            <h1>SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
+            <div class="dh-right">
+              <div class="dh-user" id="dir-user-name"></div>
+              <div class="dh-role">Director(a)</div>
+            </div>
           </div>
-          <div class="t-card">
-            <div class="t-hd"><i class="fas fa-chart-pie"></i> Resumen de Estado</div>
-            <div id="director-donut-wrap"></div>
+          <div class="dir-body">
+            <div class="dir-top-row">
+              <div class="dir-kpis">
+                <div class="dir-kpi">
+                  <div><div class="kpi-label">TOTAL DE ACTIVIDADES</div><div class="kpi-number" id="kpi-total">0</div></div>
+                  <div class="kpi-line blue-line"></div>
+                </div>
+                <div class="dir-kpi">
+                  <div><div class="kpi-label">PENDIENTES</div><div class="kpi-number" id="kpi-pendientes">0</div></div>
+                  <div class="kpi-line yellow-line"></div>
+                </div>
+                <div class="dir-kpi">
+                  <div><div class="kpi-label">CUMPLIDAS</div><div class="kpi-number" id="kpi-cumplidas">0</div></div>
+                  <div class="kpi-line green-line"></div>
+                </div>
+                <div class="dir-kpi">
+                  <div><div class="kpi-label">VENCIDAS</div><div class="kpi-number" id="kpi-vencidas">0</div></div>
+                  <div class="kpi-line red-line"></div>
+                </div>
+              </div>
+              <div class="dir-chart-box">
+                <h3>LISTADO DE ACTIVIDADES ASIGNADAS</h3>
+                <canvas id="dir-pie-chart"></canvas>
+              </div>
+            </div>
+            <div class="dir-bottom-row">
+              <div class="dir-filter-panel">
+                <h3>FILTRAR</h3>
+                <label><i class="fas fa-search"></i> Código Local</label>
+                <input type="text" id="dir-filter-codigo" readonly>
+                <strong class="dir-ie-name" id="dir-filter-iename"></strong>
+              </div>
+              <div class="dir-table-section">
+                <h3>LISTADO DE ACTIVIDADES ASIGNADAS</h3>
+                <div class="dir-table-wrap">
+                  <table>
+                    <thead><tr><th>ACTIVIDAD</th><th>FECHA LÍMITE</th><th>ESTADO</th><th>RESPONSABLE</th><th>TELÉFONO</th></tr></thead>
+                    <tbody id="director-actividades-table"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      <!-- ==================== DIRECTOR: MIS ACTIVIDADES ==================== -->
-      <div class="view-section" id="view-mis-actividades">
-        <div class="page-hd"><h2>Mis Actividades</h2><span>Actividades asignadas a su institución</span></div>
-        <div class="t-card">
-          <div class="t-wrap"><table><thead><tr><th>Actividad</th><th>Tipo</th><th>Área</th><th>Subárea</th><th>Asignado por</th><th>Fecha Límite</th><th style="width:60px">Hora</th><th style="width:110px">Estado</th><th style="width:50px"></th></tr></thead><tbody id="mis-actividades-table"></tbody></table></div>
         </div>
       </div>
 
@@ -346,7 +491,7 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
           </div>
           <div class="t-card">
             <div class="t-hd"><i class="fas fa-users"></i> Directores</div>
-            <div class="t-wrap" style="max-height:280px;overflow-y:auto"><table><thead><tr><th>Nombre</th><th>IE</th><th style="width:70px">Estado</th></tr></thead><tbody id="dashboard-directores-table"></tbody></table></div>
+            <div class="t-wrap"><table><thead><tr><th>Nombre</th><th>IE</th><th style="width:70px">Estado</th></tr></thead><tbody id="dashboard-directores-table"></tbody></table></div>
           </div>
         </div>
         <div class="two-col" style="margin-bottom:0">
@@ -397,14 +542,18 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
         </div>
         <div class="t-card">
           <div class="t-hd"><i class="fas fa-desktop"></i> Monitoreo de Asignaciones</div>
-          <div class="t-wrap"><table><thead><tr><th>Código</th><th>IE</th><th>Ruralidad</th><th>Director</th><th>Actividad</th><th>Área</th><th>Subárea</th><th>Fecha Límite</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="monitoreo-table"></tbody></table></div>
+          <div class="t-wrap"><table><thead><tr><th>Código</th><th>IE</th><th>Ruralidad</th><th>Director</th><th>Asignador</th><th>Actividad</th><th>Área</th><th>Subárea</th><th>Fecha Límite</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="monitoreo-table"></tbody></table></div>
         </div>
       </div>
 
       <!-- ==================== SUPERVISOR: DIRECTORES ==================== -->
       <div class="view-section" id="view-directores">
         <div class="page-hd"><h2>Directores</h2><span>Lista de directores de instituciones educativas</span></div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Código IE</th><th>IE</th><th>Email</th><th>Teléfono</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group"><label>Área</label><select class="form-select" id="dir-area-filter" onchange="loadDirectores()"><option value="">Todas</option></select></div>
+          <div class="filter-group"><label>Buscar</label><input type="text" class="form-control" id="dir-buscar" placeholder="Nombre o IE..." oninput="loadDirectores()"></div>
+        </div>
+        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Área</th><th>IE</th><th>Email</th><th>Teléfono</th><th style="width:70px">Acción</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
       </div>
 
       <!-- ==================== SUPERVISOR: IEs ==================== -->
@@ -431,6 +580,15 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
             <div class="t-card"><div class="t-hd"><i class="fas fa-bell"></i> Enviadas</div>
             <div class="t-wrap"><table><thead><tr><th>Director</th><th>Título</th><th>Mensaje</th><th>Fecha</th><th>Leída</th></tr></thead><tbody id="notificaciones-table"></tbody></table></div></div>
           </div>
+        </div>
+      </div>
+
+      <!-- ==================== CALENDARIO ==================== -->
+      <div class="view-section" id="view-calendario">
+        <div class="page-hd"><h2>Calendario</h2><span>Calendario mensual de actividades asignadas</span></div>
+        <div class="t-card">
+          <div class="t-hd"><i class="fas fa-calendar-alt"></i> Cronograma de Actividades</div>
+          <div id="calendar"></div>
         </div>
       </div>
 
@@ -471,6 +629,9 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/locales/es.js"></script>
 <script>
 // ===================== GLOBALS =====================
 let currentUser = null;
@@ -520,12 +681,62 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('show');
 }
 
-// ===================== AUTH =====================
+// ===================== AUTH & IE SELECTOR =====================
+async function iniciarSelector() {
+  try {
+    var d = await api('/api/ies');
+    allIEs = d.ies || d || [];
+    renderList(allIEs);
+    document.getElementById('sel-buscar').addEventListener('input', function() {
+      var q = this.value.toLowerCase().trim();
+      var f = allIEs.filter(function(ie) {
+        return ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
+      });
+      renderList(f);
+    });
+  } catch (e) {}
+}
+function renderList(list) {
+  var h = '';
+  if (list.length > 0) {
+    for (var i = 0; i < list.length; i++) {
+      h += '<div class="sel-item" onclick="loginComoDirector(' + list[i].id + ')"><span class="sel-cod">' + list[i].codigo + '</span><span class="sel-nom">' + list[i].nombre + '</span><span class="sel-rur">' + (list[i].ruralidad || '') + '</span></div>';
+    }
+  } else {
+    h = '<div class="sel-empty">No se encontraron instituciones</div>';
+  }
+  document.getElementById('sel-ie-list').innerHTML = h;
+}
+function showSelector() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('sel-screen').style.display = 'flex';
+}
+function showSupervisorLogin() {
+  document.getElementById('sel-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+async function loginComoDirector(ieId) {
+  try {
+    var ie = null;
+    for (var i = 0; i < allIEs.length; i++) { if (allIEs[i].id === ieId) { ie = allIEs[i]; break; } }
+    if (!ie) { showToast('Error: IE no encontrada', 'error'); return; }
+    var data = await api('/api/login', { method: 'POST', body: { codigo: ie.codigo } });
+    currentUser = data.usuario || data.user;
+    document.getElementById('sel-screen').style.display = 'none';
+    document.body.classList.add('director-mode');
+    document.getElementById('app-shell').style.display = 'block';
+    document.getElementById('dir-user-name').textContent = currentUser.nombre;
+    document.getElementById('dir-filter-codigo').value = ie.codigo;
+    document.getElementById('dir-filter-iename').textContent = ie.nombre;
+    initDirectorApp();
+    showToast('Bienvenido, ' + currentUser.nombre, 'success');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
 async function login() {
   const cod = document.getElementById('login-codigo').value.trim();
   const err = document.getElementById('login-error');
   if (!cod) {
-    err.textContent = 'Ingrese un código o nombre de institución.';
+    err.textContent = 'Ingrese su nombre.';
     err.style.display = 'block';
     return;
   }
@@ -533,54 +744,83 @@ async function login() {
     err.style.display = 'none';
     const data = await api('/api/login', { method: 'POST', body: { codigo: cod } });
     currentUser = data.usuario || data.user;
-    initApp();
+    document.getElementById('sel-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-shell').style.display = 'block';
+    initSupervisorApp();
     showToast('Bienvenido, ' + (currentUser.nombre || ''), 'success');
   } catch (e) {
     err.textContent = e.message || 'Credenciales incorrectas';
     err.style.display = 'block';
   }
 }
-
 async function logout() {
   try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
   currentUser = null;
+  document.body.classList.remove('director-mode');
   document.getElementById('app-shell').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('sel-screen').style.display = 'flex';
   document.getElementById('login-codigo').value = '';
 }
-
 async function checkSession() {
   try {
     const data = await api('/api/check-session');
     if (data.usuario || data.user) {
       currentUser = data.usuario || data.user;
-      initApp();
+      if (currentUser.rol === 'director') {
+        document.getElementById('sel-screen').style.display = 'none';
+        document.body.classList.add('director-mode');
+        document.getElementById('app-shell').style.display = 'block';
+        document.getElementById('dir-user-name').textContent = currentUser.nombre;
+        document.getElementById('dir-filter-codigo').value = currentUser.ie_codigo || '';
+        document.getElementById('dir-filter-iename').textContent = currentUser.ie_nombre || '';
+        initDirectorApp();
+      } else {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-shell').style.display = 'block';
+        initSupervisorApp();
+      }
     }
   } catch (e) {}
 }
 
 // ===================== INIT =====================
-function initApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app-shell').style.display = 'block';
-  var initial = currentUser.rol === 'director' ? 'dashboard-director' : 'dashboard-supervisor';
+function initDirectorApp() {
+  document.getElementById('global-filter-bar').style.display = 'none';
+  document.getElementById('sidebar').style.display = 'none';
+  document.getElementById('sidebar-footer').style.display = 'none';
+  document.getElementById('sidebar-nav').style.display = 'none';
+  var tb = document.querySelector('.top-bar');
+  if (tb) tb.style.display = 'none';
+  var m = document.querySelector('.main');
+  if (m) { m.style.padding = '0'; m.style.overflow = 'hidden'; }
+  document.body.style.background = '#f0f1f3';
+  loadDirectorMain();
+}
+function initSupervisorApp() {
+  document.getElementById('global-filter-bar').style.display = '';
+  document.getElementById('sidebar').style.display = '';
+  document.getElementById('sidebar-footer').style.display = '';
+  document.getElementById('sidebar-nav').style.display = '';
+  var tb = document.querySelector('.top-bar');
+  if (tb) tb.style.display = '';
+  var m = document.querySelector('.main');
+  if (m) { m.style.padding = ''; m.style.overflow = ''; }
+  document.body.style.background = '';
   buildSidebar();
   updateUserHeader();
   cargarTiposActividad();
   loadNotifBadge();
-  cambiarVista(initial);
+  cambiarVista('dashboard-supervisor');
 }
 
 // ===================== SIDEBAR =====================
 function buildSidebar() {
   var nav = document.getElementById('sidebar-nav');
   var ft = document.getElementById('sidebar-footer');
-  if (currentUser.rol === 'director') {
-    nav.innerHTML = '<div class="label">Principal</div><a href="#" data-view="dashboard-director" class="active" onclick="cambiarVista(\'dashboard-director\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><a href="#" data-view="mis-actividades" onclick="cambiarVista(\'mis-actividades\',this)"><i class="fas fa-list-check"></i> Mis Actividades</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
-    ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>';
-  } else {
-    nav.innerHTML = '<div class="label">General</div><a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><div class="label">Gestión</div><a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a><a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a><a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a><a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a><div class="label">Comunicación</div><a href="#" data-view="notificaciones" onclick="cambiarVista(\'notificaciones\',this)"><i class="fas fa-bell"></i> Notificaciones</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
-    ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>';
+  if (currentUser && currentUser.rol === 'supervisor') {
+    nav.innerHTML = '<div class="label">General</div><a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><div class="label">Gesti\u00f3n</div><a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a><a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a><a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a><a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a><a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a><div class="label">Comunicaci\u00f3n</div><a href="#" data-view="notificaciones" onclick="cambiarVista(\'notificaciones\',this)"><i class="fas fa-bell"></i> Notificaciones</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
+    ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesi\u00f3n</a>';
   }
 }
 
@@ -594,14 +834,14 @@ function updateUserHeader() {
 
 // ===================== NAVIGATION =====================
 var viewTitles = {
-  'dashboard-director': 'Dashboard',
-  'mis-actividades': 'Mis Actividades',
+  'director-main': 'Mis Actividades',
   'dashboard-supervisor': 'Dashboard General',
   'asignar-actividad': 'Asignar',
   'monitoreo': 'Monitoreo',
   'directores': 'Directores',
   'ies': 'IEs',
   'notificaciones': 'Notificaciones',
+  'calendario': 'Calendario',
   'perfil': 'Mi Perfil'
 };
 
@@ -626,8 +866,8 @@ function cambiarVista(vista, el) {
 
 function loadViewData(vista) {
   switch (vista) {
-    case 'dashboard-director': loadDashboardDirector(); break;
-    case 'mis-actividades': loadMisActividades(); break;
+    case 'director-main': loadDirectorMain(); break;
+    case 'calendario': loadCalendario(); break;
     case 'dashboard-supervisor': loadDashboardSupervisor(); break;
     case 'asignar-actividad': loadIEsForAsignar(); break;
     case 'monitoreo': loadMonitoreo(); break;
@@ -653,7 +893,7 @@ function onFilterChange() {
   var a = document.querySelector('.view-section.active');
   if (a) {
     var id = a.id.replace('view-', '');
-    if (id === 'dashboard-director' || id === 'dashboard-supervisor') loadViewData(id);
+    if (id === 'dashboard-supervisor') loadViewData(id);
   }
 }
 function getNivelFilter() {
@@ -725,59 +965,66 @@ function renderDonut(completadas, pendientes, vencidas, containerId) {
   ctx.fillText(pc + '%', cx, cy);
 }
 
-// ===================== DASHBOARD DIRECTOR =====================
-async function loadDashboardDirector() {
+// ===================== DIRECTOR MAIN VIEW =====================
+async function loadDirectorMain() {
   try {
-    var d = await api('/api/dashboard?' + getFilterParams());
-    var t = d.total || 0;
-    var c = d.completadas || 0;
-    var p = d.pendientes || 0;
-    var v = d.vencidas || 0;
-    var pct = t > 0 ? Math.round(c / t * 100) : 0;
-    document.getElementById('director-stats').innerHTML =
-      '<div class="kpi-card granate"><div class="kpi-icon"><i class="fas fa-user-tie"></i></div><div class="kpi-body"><div class="kpi-label">Director</div><div class="kpi-value" style="font-size:1.05rem;font-weight:600">' + (currentUser ? currentUser.nombre : '-') + '</div><div class="kpi-sub">' + (currentUser ? (currentUser.ie_nombre || '') : '') + '</div></div></div>' +
-      '<div class="kpi-card green"><div class="kpi-icon"><i class="fas fa-clipboard-list"></i></div><div class="kpi-body"><div class="kpi-label">Total Actividades</div><div class="kpi-value">' + t + '</div><div class="kpi-sub">' + c + ' completadas</div></div></div>' +
-      '<div class="kpi-card amber"><div class="kpi-icon"><i class="fas fa-clock"></i></div><div class="kpi-body"><div class="kpi-label">Pendientes</div><div class="kpi-value">' + p + '</div><div class="kpi-sub">' + pct + '% cumplimiento</div></div></div>' +
-      '<div class="kpi-card red"><div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="kpi-body"><div class="kpi-label">Vencidas</div><div class="kpi-value">' + v + '</div><div class="kpi-sub">requieren atención</div></div></div>';
-    document.getElementById('director-compliance-bar').innerHTML =
-      '<div class="compliance-card"><div class="clabel"><span><i class="fas fa-chart-line" style="color:var(--granate)"></i>Cumplimiento</span><span>' + pct + '%</span></div><div class="track"><div class="fill ' + (pct >= 70 ? 'alto' : (pct >= 40 ? 'medio' : 'bajo')) + '" style="width:' + pct + '%"></div></div></div>';
-    var rows = d.recientes || d.asignaciones || [];
-    rows = rows.slice(0, 10);
-    var html = '';
-    if (rows.length > 0) {
-      for (var i = 0; i < rows.length; i++) {
-        var a = rows[i];
-        var est = a.asignacion_estado || a.estado || 'pendiente';
-        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td><span class="badge badge-' + est + '">' + est.replace('_', ' ').toUpperCase() + '</span></td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td></tr>';
-      }
-    } else {
-      html = '<tr class="empty"><td colspan="5">No hay actividades registradas</td></tr>';
-    }
-    document.getElementById('director-recent-table').innerHTML = html;
-    renderDonut(c, p, v, 'director-donut-wrap');
-  } catch (e) {
-    showToast('Error al cargar dashboard: ' + e.message, 'error');
-  }
-}
-
-// ===================== MIS ACTIVIDADES =====================
-async function loadMisActividades() {
-  try {
-    var d = await api('/api/asignaciones?' + getFilterParams());
+    var d = await api('/api/asignaciones');
     var rows = d.asignaciones || d || [];
+    var hoy = new Date().toISOString().substring(0, 10);
+    var total = rows.length;
+    var pendientes = 0, completadas = 0, vencidas = 0;
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.estado === 'completada') completadas++;
+      else if (r.estado === 'no_cumplida') vencidas++;
+      else if (r.fecha_limite && r.fecha_limite < hoy) vencidas++;
+      else pendientes++;
+    }
+    document.getElementById('kpi-total').textContent = total;
+    document.getElementById('kpi-pendientes').textContent = pendientes;
+    document.getElementById('kpi-cumplidas').textContent = completadas;
+    document.getElementById('kpi-vencidas').textContent = vencidas;
+
+    var ctx = document.getElementById('dir-pie-chart');
+    if (ctx) {
+      if (window.dirChart) window.dirChart.destroy();
+      window.dirChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: total > 0 ? ['Cumplidas', 'Pendientes', 'Vencidas'] : ['Sin datos'],
+          datasets: [{
+            data: total > 0 ? [completadas, pendientes, vencidas] : [1],
+            backgroundColor: total > 0 ? ['#059669', '#d97706', '#dc2626'] : ['#e0e0e0'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10, family: 'Inter' } } },
+            tooltip: { callbacks: { label: function(tt) { var val = tt.parsed || 0; var pct = total > 0 ? Math.round(val / total * 100) : 0; return tt.label + ': ' + val + ' (' + pct + '%)'; } } }
+          }
+        }
+      });
+    }
+
     var html = '';
     if (rows.length > 0) {
       for (var i = 0; i < rows.length; i++) {
         var a = rows[i];
-        var disabled = a.asignador_nombre ? '' : 'disabled';
-        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.tipo_nombre || a.tipo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td>' + (a.hora_limite || '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td><button class="btn btn-xs btn-outline" onclick="contactarSupervisor(' + a.id + ',\'' + (a.asignador_nombre || 'Supervisor') + '\')" ' + disabled + '><i class="fas fa-reply"></i></button></td></tr>';
+        var est = a.estado || 'pendiente';
+        var badgeClass = 'green', badgeText = 'Cumplido';
+        if (est === 'pendiente') { badgeClass = 'yellow'; badgeText = 'Pendiente'; }
+        else if (est === 'no_cumplida') { badgeClass = 'red'; badgeText = 'Vencido'; }
+        else if (a.fecha_limite && a.fecha_limite < hoy && est !== 'completada') { badgeClass = 'red'; badgeText = 'Vencido'; }
+        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.asignador_telefono || '-') + '</td></tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="9">No tiene actividades asignadas</td></tr>';
+      html = '<tr><td class="dir-empty" colspan="5">No tiene actividades asignadas</td></tr>';
     }
-    document.getElementById('mis-actividades-table').innerHTML = html;
+    document.getElementById('director-actividades-table').innerHTML = html;
   } catch (e) {
-    showToast('Error al cargar actividades', 'error');
+    showToast('Error al cargar actividades: ' + e.message, 'error');
   }
 }
 
@@ -794,6 +1041,52 @@ async function enviarContacto(asignacionId) {
     showToast('Mensaje enviado al supervisor', 'success');
     closeModal();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+let calendarInstance = null;
+
+async function loadCalendario() {
+  try {
+    var d = await api('/api/asignaciones');
+    var rows = d.asignaciones || d || [];
+    var events = [];
+    for (var i = 0; i < rows.length; i++) {
+      var a = rows[i];
+      if (!a.fecha_limite) continue;
+      var color = a.estado === 'completada' ? '#059669' : (a.estado === 'no_cumplida' ? '#dc2626' : '#d97706');
+      var dateStr = a.fecha_limite;
+      if (typeof dateStr === 'string') dateStr = dateStr.substring(0, 10);
+      events.push({
+        title: (a.actividad_titulo || a.titulo || 'Actividad') + (currentUser.rol === 'supervisor' ? ' - ' + (a.ie_nombre || '') : ''),
+        start: dateStr,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color,
+        extendedProps: { estado: a.estado, ie: a.ie_nombre, area: a.area, subarea: a.subarea, hora: a.hora_limite, tipo: a.tipo_nombre }
+      });
+    }
+    var calEl = document.getElementById('calendar');
+    if (calendarInstance) { calendarInstance.destroy(); }
+    calendarInstance = new FullCalendar.Calendar(calEl, {
+      initialView: 'dayGridMonth',
+      locale: 'es',
+      height: 'auto',
+      events: events,
+      headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
+      buttonText: { today: 'Hoy', month: 'Mes', listMonth: 'Lista' },
+      eventClick: function(info) {
+        var e = info.event;
+        var p = e.extendedProps;
+        showModal(e.title,
+          '<p><strong>Estado:</strong> <span class="badge badge-' + p.estado + '">' + (p.estado || '').replace('_', ' ').toUpperCase() + '</span></p>'
+          + '<p><strong>Área:</strong> ' + (p.area || '-') + ' / <strong>Subárea:</strong> ' + (p.subarea || '-') + '</p>'
+          + '<p><strong>Tipo:</strong> ' + (p.tipo || '-') + '</p>'
+          + '<p><strong>Hora Límite:</strong> ' + (p.hora || '23:59') + '</p>'
+          + '<p><strong>Fecha:</strong> ' + e.start.toLocaleDateString('es-PE') + '</p>');
+      }
+    });
+    calendarInstance.render();
+  } catch (e) { showToast('Error al cargar calendario: ' + e.message, 'error'); console.error(e); }
 }
 
 // ===================== DASHBOARD SUPERVISOR =====================
@@ -839,27 +1132,49 @@ async function loadDashboardSupervisor() {
     document.getElementById('supervisor-recent-table').innerHTML = htmlR;
     renderChartRuralidad(d.por_ruralidad || []);
     renderChartCumplimiento(c, p, v);
-    loadDashboardDirectores();
+    loadDashboardDirectores(d.directores_por_area);
   } catch (e) {
     showToast('Error al cargar dashboard: ' + e.message, 'error');
   }
 }
 
-async function loadDashboardDirectores() {
+async function loadDashboardDirectores(porArea) {
   try {
-    var d = await api('/api/directores');
-    var dirs = d.directores || d || [];
-    var html = '';
-    if (dirs.length > 0) {
-      for (var i = 0; i < dirs.length; i++) {
-        var dr = dirs[i];
-        var act = dr.activo !== false ? '<span class="badge badge-completada">Activo</span>' : '<span class="badge badge-no_cumplida">Inactivo</span>';
-        html += '<tr><td>' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.ie_nombre || dr.ie_codigo || '-') + '</td><td>' + act + '</td></tr>';
+    if (porArea && porArea.length > 0) {
+      var groups = {};
+      for (var i = 0; i < porArea.length; i++) {
+        var r = porArea[i];
+        var area = r.area || 'Sin área';
+        if (!groups[area]) groups[area] = [];
+        groups[area].push(r);
       }
+      var html = '';
+      var areaKeys = Object.keys(groups).sort();
+      for (var g = 0; g < areaKeys.length; g++) {
+        var areaName = areaKeys[g];
+        var list = groups[areaName];
+        html += '<tr class="area-group"><td colspan="3"><strong>' + areaName + '</strong> <span class="badge bg-secondary">' + list.length + '</span></td></tr>';
+        for (var j = 0; j < list.length; j++) {
+          var dr = list[j];
+          html += '<tr><td style="padding-left:28px">' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.ie_nombre || dr.ie_codigo || '-') + '</td><td><span class="badge badge-completada">Activo</span></td></tr>';
+        }
+      }
+      document.getElementById('dashboard-directores-table').innerHTML = html;
     } else {
-      html = '<tr class="empty"><td colspan="3">Sin directores</td></tr>';
+      var d = await api('/api/directores');
+      var dirs = d.directores || d || [];
+      var html = '';
+      if (dirs.length > 0) {
+        for (var i = 0; i < dirs.length; i++) {
+          var dr = dirs[i];
+          var act = dr.activo !== false ? '<span class="badge badge-completada">Activo</span>' : '<span class="badge badge-no_cumplida">Inactivo</span>';
+          html += '<tr><td>' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.ie_nombre || dr.ie_codigo || '-') + '</td><td>' + act + '</td></tr>';
+        }
+      } else {
+        html = '<tr class="empty"><td colspan="3">Sin directores</td></tr>';
+      }
+      document.getElementById('dashboard-directores-table').innerHTML = html;
     }
-    document.getElementById('dashboard-directores-table').innerHTML = html;
   } catch (e) {}
 }
 
@@ -959,10 +1274,10 @@ async function loadMonitoreo() {
       for (var i = 0; i < rows.length; i++) {
         var a = rows[i];
         var act = a.actividad_id || a.id;
-        html += '<tr><td>' + (a.ie_codigo || '-') + '</td><td>' + (a.ie_nombre || '-') + '</td><td>' + (a.ruralidad || '-') + '</td><td>' + (a.director_nombre || '-') + '</td><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td>' + (a.estado === 'pendiente' ? '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'completada\')"><i class="fas fa-check"></i></button><button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')"><i class="fas fa-times"></i></button>' : '') + '<button class="btn btn-xs btn-info" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-danger ms-1" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        html += '<tr><td>' + (a.ie_codigo || '-') + '</td><td>' + (a.ie_nombre || '-') + '</td><td>' + (a.ruralidad || '-') + '</td><td>' + (a.director_nombre || '-') + '</td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td nowrap>' + (a.estado === 'pendiente' ? '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'completada\')"><i class="fas fa-check"></i></button><button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')"><i class="fas fa-times"></i></button>' : '') + '<button class="btn btn-xs btn-info me-1" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-warning me-1" onclick="editarActividadModal(' + act + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></td></tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="10">No se encontraron asignaciones</td></tr>';
+      html = '<tr class="empty"><td colspan="11">No se encontraron asignaciones</td></tr>';
     }
     document.getElementById('monitoreo-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar monitoreo', 'error'); }
@@ -1020,19 +1335,122 @@ async function confirmarEliminarActividad(id) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+async function editarActividadModal(actividadId) {
+  try {
+    var d = await api('/api/actividades/' + actividadId);
+    var act = d.actividad || d;
+    var tipos = await api('/api/tipos-actividad');
+    var opts = '<option value="">Seleccionar...</option>';
+    var tlist = tipos.tipos || tipos || [];
+    for (var i = 0; i < tlist.length; i++) {
+      opts += '<option value="' + tlist[i].id + '"' + (tlist[i].id === act.tipo_id ? ' selected' : '') + '>' + tlist[i].nombre + '</option>';
+    }
+    showModal('Editar Actividad',
+      '<form id="editar-act-form"><div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ea-titulo" value="' + (act.titulo || '') + '"></div><div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" id="ea-descripcion" rows="3">' + (act.descripcion || '') + '</textarea></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">Tipo</label><select class="form-select" id="ea-tipo">' + opts + '</select></div><div class="col-md-6 mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + (act.fecha_limite || '') + '"></div></div></form>',
+      '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarEdicionActividad(' + actividadId + ')">Guardar</button>');
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+async function guardarEdicionActividad(id) {
+  var body = {
+    titulo: document.getElementById('ea-titulo').value.trim(),
+    descripcion: document.getElementById('ea-descripcion').value.trim(),
+    tipo_id: document.getElementById('ea-tipo').value,
+    fecha_limite: document.getElementById('ea-fecha').value
+  };
+  if (!body.titulo || !body.tipo_id || !body.fecha_limite) { showToast('Complete campos obligatorios', 'error'); return; }
+  try {
+    await api('/api/actividades/' + id, { method: 'PUT', body: body });
+    showToast('Actividad actualizada', 'success');
+    closeModal();
+    loadMonitoreo();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function editarDirector(id) {
+  var dir = null;
+  for (var i = 0; i < allDirectores.length; i++) {
+    if (allDirectores[i].id === id) { dir = allDirectores[i]; break; }
+  }
+  if (!dir) { showToast('Director no encontrado', 'error'); return; }
+  showModal('Editar Director',
+    '<div class="mb-3"><label class="form-label">Nombre completo</label><input class="form-control" id="ed-nombre" value="' + (dir.nombre_completo || dir.nombre || '') + '"></div><div class="row"><div class="col-md-6 mb-3"><label class="form-label">Email</label><input class="form-control" id="ed-email" value="' + (dir.email || '') + '"></div><div class="col-md-6 mb-3"><label class="form-label">Teléfono</label><input class="form-control" id="ed-telefono" value="' + (dir.telefono || '') + '"></div></div>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarDirector(' + id + ')">Guardar</button>');
+}
+
+async function guardarDirector(id) {
+  var nombre = document.getElementById('ed-nombre').value.trim();
+  var email = document.getElementById('ed-email').value.trim();
+  var telefono = document.getElementById('ed-telefono').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  try {
+    await api('/api/directores/' + id, { method: 'PUT', body: { nombre_completo: nombre, email: email, telefono: telefono } });
+    showToast('Director actualizado', 'success');
+    closeModal();
+    loadDirectores();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
 // ===================== DIRECTORES =====================
 async function loadDirectores() {
   try {
     var d = await api('/api/directores');
     allDirectores = d.directores || d || [];
+    var areaFilter = document.getElementById('dir-area-filter');
+    var buscar = (document.getElementById('dir-buscar').value || '').toLowerCase();
+    var areas = {};
+    for (var i = 0; i < allDirectores.length; i++) {
+      var ar = (allDirectores[i].areas || 'Sin área').split(', ');
+      for (var j = 0; j < ar.length; j++) { areas[ar[j]] = true; }
+    }
+    var areaKeys = Object.keys(areas).filter(function(a){return a;}).sort();
+    var prevSelected = areaFilter.value;
+    areaFilter.innerHTML = '<option value="">Todas las áreas</option>';
+    for (var k = 0; k < areaKeys.length; k++) {
+      areaFilter.innerHTML += '<option value="' + areaKeys[k] + '">' + areaKeys[k] + '</option>';
+    }
+    if (prevSelected) areaFilter.value = prevSelected;
+    var filtroArea = areaFilter.value;
+    var filtered = [];
+    for (var i = 0; i < allDirectores.length; i++) {
+      var dir = allDirectores[i];
+      if (filtroArea) {
+        var dirAreas = (dir.areas || 'Sin área').split(', ');
+        if (dirAreas.indexOf(filtroArea) === -1) continue;
+      }
+      if (buscar) {
+        var haystack = (dir.nombre_completo || dir.nombre || '').toLowerCase() + ' ' + (dir.ie_nombre || '').toLowerCase();
+        if (haystack.indexOf(buscar) === -1) continue;
+      }
+      filtered.push(dir);
+    }
     var html = '';
-    if (allDirectores.length > 0) {
-      for (var i = 0; i < allDirectores.length; i++) {
-        var dir = allDirectores[i];
-        html += '<tr><td>' + (dir.nombre || '-') + '</td><td>' + (dir.dni || '-') + '</td><td>' + (dir.ie_codigo || dir.codigo_ie || '-') + '</td><td>' + (dir.ie_nombre || '-') + '</td><td>' + (dir.email || '-') + '</td><td>' + (dir.telefono || '-') + '</td></tr>';
+    if (filtered.length > 0) {
+      var groups = {};
+      for (var i = 0; i < filtered.length; i++) {
+        var dir = filtered[i];
+        var ga = dir.areas || 'Sin área';
+        if (!groups[ga]) groups[ga] = [];
+        groups[ga].push(dir);
+      }
+      var gKeys = Object.keys(groups).sort();
+      for (var g = 0; g < gKeys.length; g++) {
+        var gName = gKeys[g];
+        var list = groups[gName];
+        html += '<tr class="area-group"><td colspan="7"><strong>' + gName + '</strong> <span class="badge bg-secondary">' + list.length + '</span></td></tr>';
+        for (var j = 0; j < list.length; j++) {
+          var dr = list[j];
+          var areaBadge = '';
+          if (dr.areas) {
+            var aa = dr.areas.split(', ');
+            for (var ai = 0; ai < aa.length; ai++) {
+              areaBadge += '<span class="badge bg-secondary me-1" style="font-size:.7rem">' + aa[ai] + '</span>';
+            }
+          }
+          html += '<tr><td>' + (dr.nombre_completo || dr.nombre || '-') + '</td><td>' + (dr.dni || '-') + '</td><td>' + areaBadge + '</td><td>' + (dr.ie_nombre || '-') + '</td><td>' + (dr.email || '-') + '</td><td>' + (dr.telefono || '-') + '</td><td><button class="btn btn-xs btn-outline" onclick="editarDirector(' + dr.id + ')"><i class="fas fa-edit"></i></button></td></tr>';
+        }
       }
     } else {
-      html = '<tr class="empty"><td colspan="6">No hay directores</td></tr>';
+      html = '<tr class="empty"><td colspan="7">No hay directores</td></tr>';
     }
     document.getElementById('directores-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar directores', 'error'); }
@@ -1073,7 +1491,7 @@ async function loadNotificaciones() {
     if (rows.length > 0) {
       for (var i = 0; i < rows.length; i++) {
         var n = rows[i];
-        html += '<tr><td>' + (n.director_nombre || '-') + '</td><td>' + (n.titulo || '-') + '</td><td>' + (n.mensaje || '-').substring(0, 80) + ((n.mensaje || '').length > 80 ? '...' : '') + '</td><td>' + (n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-') + '</td><td><span class="badge ' + (n.leida ? 'bg-secondary' : 'bg-warning') + '">' + (n.leida ? 'Sí' : 'No') + '</span></td></tr>';
+        html += '<tr><td>' + (n.remitente_nombre || (n.tipo === 'respuesta' ? 'Director' : 'Supervisor') || '-') + '</td><td>' + (n.titulo || '-') + '</td><td>' + (n.mensaje || '-').substring(0, 80) + ((n.mensaje || '').length > 80 ? '...' : '') + '</td><td>' + (n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-') + '</td><td><span class="badge ' + (n.leida ? 'bg-secondary' : 'bg-warning') + '">' + (n.leida ? 'Sí' : 'No') + '</span></td></tr>';
       }
     } else {
       html = '<tr class="empty"><td colspan="5">No hay notificaciones</td></tr>';
@@ -1164,6 +1582,7 @@ async function savePerfil() {
 }
 
 // ===================== INIT =====================
+iniciarSelector();
 checkSession();
 </script>
 </body>

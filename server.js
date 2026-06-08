@@ -127,6 +127,12 @@ async function initDatabase() {
         );
     `);
 
+    try {
+        await pool.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS remitente_id INTEGER REFERENCES usuarios(id)");
+    } catch (e) {
+        // Ignorar si hay error al añadir la columna
+    }
+
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
     if (tipos.c == 0) {
         const tiposList = ['Tarea', 'Documento', 'Reunión', 'Informe'];
@@ -141,15 +147,7 @@ async function initDatabase() {
     dbInitialized = true;
 }
 
-app.use(async (req, res, next) => {
-    try {
-        await initDatabase();
-        next();
-    } catch (err) {
-        console.error('DB init error:', err);
-        return res.status(503).json({ error: 'Base de datos no disponible' });
-    }
-});
+initDatabase().catch(err => console.error('DB init error:', err));
 
 function normalizar(txt) {
     return String(txt || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -188,31 +186,30 @@ app.post('/api/login', async (req, res) => {
         for (const s of allSupervisors) {
             if (normalizar(s.nombre_completo) === cod) {
                 req.session.user = { id: s.id, nombre: s.nombre_completo, rol: 'supervisor' };
-                req.session.save(() => res.json({ ok: true, user: req.session.user }));
+                return req.session.save(() => res.json({ ok: true, user: req.session.user }));
             }
         }
 
         let ie = await db.prepare(
             "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
-        ).get(codigo);
+        ).get(cod);
 
         if (!ie) {
             const allIes = await db.prepare(
                 "SELECT * FROM instituciones_educativas WHERE activa = true"
             ).all();
             let bestMatch = null;
+            let bestScore = 0;
             for (const candidate of allIes) {
                 const nName = normalizar(candidate.nombre);
                 const nCod = normalizar(candidate.codigo);
-                if (nName === cod || nCod === cod) {
-                    bestMatch = candidate;
-                    break;
-                }
                 const firstToken = nName.split(' ')[0];
-                if (cod === firstToken || nName.includes(cod)) {
-                    bestMatch = candidate;
-                    break;
-                }
+                let score = 0;
+                if (nCod === cod || nName === cod) score = 4;
+                else if (cod === firstToken || nName.startsWith(cod + ' ')) score = 3;
+                else if (nName.includes(cod)) score = 2;
+                else if (nCod.includes(cod)) score = 1;
+                if (score > bestScore) { bestScore = score; bestMatch = candidate; }
             }
             ie = bestMatch;
         }
@@ -298,7 +295,8 @@ app.put('/api/ies/:id', authSupervisor, async (req, res) => {
 app.get('/api/directores', authSupervisor, async (req, res) => {
     try {
         const directores = await db.prepare(`
-            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod, ie.ruralidad
+            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod, ie.ruralidad,
+                (SELECT STRING_AGG(DISTINCT asignador.dependencia, ', ') FROM asignaciones ase2 INNER JOIN actividades a2 ON ase2.actividad_id = a2.id LEFT JOIN usuarios asignador ON a2.asignador_id = asignador.id WHERE ase2.director_id = u.id) as areas
             FROM usuarios u
             LEFT JOIN instituciones_educativas ie ON u.ie_codigo = ie.codigo
             WHERE u.rol = 'director' AND u.activo = true
@@ -421,9 +419,11 @@ app.get('/api/actividades', authDirector, async (req, res) => {
         } else {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
-                ase.fecha_completado, ase.notas_supervisor
+                ase.fecha_completado, ase.notas_supervisor,
+                u.nombre_completo as asignador_nombre
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
+                LEFT JOIN usuarios u ON a.asignador_id = u.id
                 INNER JOIN asignaciones ase ON a.id = ase.actividad_id
                 WHERE ase.director_id = ?
                 ORDER BY a.fecha_limite ASC
@@ -632,6 +632,20 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
             const total_directores = await db.prepare("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'director' AND activo = true").get();
 
+            const directores_por_area = await db.prepare(`
+                SELECT asignador.dependencia as area,
+                       d.id, d.nombre_completo, d.ie_codigo,
+                       ie.nombre as ie_nombre, ie.ruralidad
+                FROM usuarios d
+                INNER JOIN asignaciones ase ON d.id = ase.director_id
+                LEFT JOIN actividades a ON ase.actividad_id = a.id
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
+                LEFT JOIN instituciones_educativas ie ON d.ie_codigo = ie.codigo
+                WHERE d.rol = 'director' AND d.activo = true
+                GROUP BY asignador.dependencia, d.id, d.nombre_completo, d.ie_codigo, ie.nombre, ie.ruralidad
+                ORDER BY asignador.dependencia, d.nombre_completo
+            `).all();
+
             res.json({
                 total: total.c,
                 completadas: completadas.c,
@@ -643,7 +657,8 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 por_ie,
                 recientes,
                 total_ies: total_ies.c,
-                total_directores: total_directores.c
+                total_directores: total_directores.c,
+                directores_por_area
             });
         } else {
             const userId = req.session.user.id;
@@ -677,6 +692,20 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 LIMIT 10
             `).all(userId);
 
+            const por_area = await db.prepare(`
+                SELECT asignador.dependencia as area,
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
+                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
+                    COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
+                FROM asignaciones ase
+                INNER JOIN actividades a ON ase.actividad_id = a.id
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
+                WHERE ase.director_id = ?
+                GROUP BY asignador.dependencia
+                ORDER BY asignador.dependencia
+            `).all(userId);
+
             res.json({
                 total: total.c,
                 completadas: completadas.c,
@@ -684,7 +713,8 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 no_cumplidas: no_cumplidas.c,
                 vencidas: vencidas.c,
                 porcentaje_cumplimiento: total.c > 0 ? Math.round((completadas.c / total.c) * 100) : 0,
-                recientes
+                recientes,
+                por_area
             });
         }
     } catch (err) {
@@ -695,9 +725,13 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
 
 app.get('/api/notificaciones', authDirector, async (req, res) => {
     try {
-        const notifs = await db.prepare(
-            'SELECT * FROM notificaciones WHERE usuario_id = ? ORDER BY created_at DESC LIMIT 50'
-        ).all(req.session.user.id);
+        const notifs = await db.prepare(`
+            SELECT n.*, u.nombre_completo as remitente_nombre
+            FROM notificaciones n
+            LEFT JOIN usuarios u ON n.remitente_id = u.id
+            WHERE n.usuario_id = ?
+            ORDER BY n.created_at DESC LIMIT 50
+        `).all(req.session.user.id);
         res.json(notifs);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -730,8 +764,8 @@ app.post('/api/notificaciones', authSupervisor, async (req, res) => {
     try {
         const { usuario_id, titulo, mensaje, tipo } = req.body;
         const result = await db.prepare(
-            'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?) RETURNING id'
-        ).run(usuario_id, titulo, mensaje, tipo || 'manual');
+            'INSERT INTO notificaciones (usuario_id, remitente_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?, ?) RETURNING id'
+        ).run(usuario_id, req.session.user.id, titulo, mensaje, tipo || 'manual');
         res.json({ ok: true, id: result.lastInsertRowid });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -747,8 +781,8 @@ app.post('/api/responder', authDirector, async (req, res) => {
         ).get(actividad_id);
         if (!actividad || !actividad.asignador_id) return res.status(404).json({ error: 'Actividad no encontrada' });
         await db.prepare(
-            'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
-        ).run(actividad.asignador_id, 'Respuesta: ' + actividad.titulo, mensaje, 'respuesta');
+            'INSERT INTO notificaciones (usuario_id, remitente_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?, ?)'
+        ).run(actividad.asignador_id, req.session.user.id, 'Respuesta: ' + actividad.titulo, mensaje, 'respuesta');
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
