@@ -357,25 +357,6 @@ app.get('/api/directores/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.get('/api/directores/:id/historial', authSupervisor, async (req, res) => {
-    try {
-        const historial = await db.prepare(`
-            SELECT a.titulo, a.fecha_limite, a.hora_limite, ase.estado, ase.notas_supervisor, 
-                   ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre
-            FROM asignaciones ase
-            JOIN actividades a ON ase.actividad_id = a.id
-            LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
-            LEFT JOIN usuarios u ON a.asignador_id = u.id
-            WHERE ase.director_id = ?
-            ORDER BY a.fecha_limite DESC, a.hora_limite DESC
-        `).all(req.params.id);
-        res.json(historial);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-
 app.put('/api/directores/:id', authSupervisor, async (req, res) => {
     try {
         const { nombre, nombre_completo, dni, ie_codigo, email, telefono } = req.body;
