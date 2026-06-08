@@ -187,9 +187,15 @@ app.post('/api/login', async (req, res) => {
         ).get(codigo);
 
         if (!ie) {
-            ie = await db.prepare(
-                "SELECT * FROM instituciones_educativas WHERE activa = true AND (codigo LIKE ? OR normalizar(nombre) LIKE ?) LIMIT 1"
-            ).get(`%${codigo}%`, `%${cod}%`);
+            const allIes = await db.prepare(
+                "SELECT * FROM instituciones_educativas WHERE activa = true"
+            ).all();
+            for (const candidate of allIes) {
+                if (normalizar(candidate.nombre).includes(cod) || normalizar(candidate.codigo).includes(cod)) {
+                    ie = candidate;
+                    break;
+                }
+            }
         }
 
         if (!ie) return res.status(401).json({ error: 'Institución o nombre no encontrado' });
