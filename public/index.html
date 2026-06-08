@@ -967,10 +967,7 @@ async function login() {
 }
 async function logout() {
   try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
-  currentUser = null;
-  document.body.classList.remove('director-mode');
-  initDirectorApp();
-  initPublicDashboard();
+  window.location.reload();
 }
 async function checkSession() {
   try {
