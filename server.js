@@ -530,12 +530,14 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
-                       u.nombre_completo as director_nombre
+                       u.nombre_completo as director_nombre,
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
                 WHERE 1=1 ${nivelWhere}
                 ORDER BY a.fecha_limite ASC
             `).all();
@@ -543,11 +545,13 @@ app.get('/api/asignaciones', authDirector, async (req, res) => {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
                 WHERE ase.director_id = ? ${nivelWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(req.session.user.id);
@@ -648,11 +652,12 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
 
             const recientes = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
-                ase.fecha_completado, ase.notas_supervisor
+                ase.fecha_completado, ase.notas_supervisor,
+                asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 INNER JOIN asignaciones ase ON a.id = ase.actividad_id
-                ${nivelJoin ? `INNER JOIN instituciones_educativas ie2 ON ase.ie_id = ie2.id AND ie2.tiene_${nivel} = true` : ''}
+                LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
                 WHERE ase.director_id = ?
                 ORDER BY a.fecha_limite ASC
                 LIMIT 10
@@ -714,6 +719,23 @@ app.post('/api/notificaciones', authSupervisor, async (req, res) => {
             'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?) RETURNING id'
         ).run(usuario_id, titulo, mensaje, tipo || 'manual');
         res.json({ ok: true, id: result.lastInsertRowid });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/responder', authDirector, async (req, res) => {
+    try {
+        const { actividad_id, mensaje } = req.body;
+        if (!actividad_id || !mensaje) return res.status(400).json({ error: 'Faltan datos' });
+        const actividad = await db.prepare(
+            'SELECT asignador_id, titulo FROM actividades WHERE id = ?'
+        ).get(actividad_id);
+        if (!actividad || !actividad.asignador_id) return res.status(404).json({ error: 'Actividad no encontrada' });
+        await db.prepare(
+            'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
+        ).run(actividad.asignador_id, 'Respuesta: ' + actividad.titulo, mensaje, 'respuesta');
+        res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
