@@ -223,7 +223,7 @@ async function seedDatabase(db) {
         ["Hiber Miller Yalta Cubas", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "931828025", "47953187"],
         ["Jhoel Villacorta Salazar", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "949683852", "72927716"],
         ["Jheimmy Carmin Guevara Tafur", "AGI", "Especialista en Finanzas", "996640502", "45566260"],
-        ["Alfredo Silva Pisco", "ADMINISTRACION", "Servicio Profesional Especializado en Seguridad y Vigilancia", "", "42268073"]
+        ["Alfredo Silva Pisco", "ADMINISTRACION", "Servicio Profesional Especializado en Seguridad y Vigilancia", null, null]
     ];
 
     const checkSupervisor = db.prepare(

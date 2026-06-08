@@ -908,8 +908,8 @@ app.put('/api/perfil', authDirector, async (req, res) => {
         const params = [];
         if (nombre !== undefined) { updates.push('nombre_completo=?'); params.push(nombre); }
         if (email !== undefined) { updates.push('email=?'); params.push(email); }
-        if (telefono !== undefined) { updates.push('telefono=?'); params.push(telefono); }
-        if (dni !== undefined) { updates.push('dni=?'); params.push(dni); }
+        if (telefono !== undefined) { updates.push('telefono=?'); params.push(telefono || null); }
+        if (dni !== undefined) { updates.push('dni=?'); params.push(dni || null); }
         if (dependencia !== undefined) { updates.push('dependencia=?'); params.push(dependencia); }
         if (puesto !== undefined) { updates.push('puesto=?'); params.push(puesto); }
         if (updates.length > 0) {
