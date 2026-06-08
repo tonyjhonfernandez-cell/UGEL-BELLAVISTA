@@ -198,86 +198,50 @@ async function seedDatabase(db) {
     }
 
     const supervisores = [
-        ['Poel Rufino Herrera Bendezú','DIRECCION','Director'],
-        ['Margot Fonseca de Vera','DIRECCION','Secretaria de Dirección'],
-        ['Leydi Marín Quezada','ADMINISTRACION','Jefe de la Oficina de Administración'],
-        ['Tony Jhon Fernandez Díaz','AGI','Jefe del Área de Gestión Institucional'],
-        ['Oscar Enrique Ayay Sánchez','AGP','Jefe del Área de Gestión Pedagógica'],
-        ['Yolby Tapullima Tapullima','AGP','Servicio Profesional Especializado en Gestión Pedagógica'],
-        ['Karen Esther Vela Arirama','AGP','Servicio Profesional Especializado en Gestión Pedagógica'],
-        ['Sheily Say Huansi Vásquez','AGP','Especialista en Convivencia Escolar'],
-        ['Franklin Cárdenas Ruíz','AGP','Especialista en Educación Nivel Primaria'],
-        ['Antonio Wilmer Rojas Miranda','AGP','Especialista en Educación Nivel Secundaria'],
-        ['Gianmarco Panduro Mego','ADMINISTRACION','Especialista en Informática I'],
-        ['Yeny Judith Martínez Rafael','AGI','Especialista en Planificación y Presupuesto'],
-        ['Daniel Leonidas La Torre Rengifo','AGI','Especialista en Infraestructura'],
-        ['Jheimmy Carmin Guevara Tafur','AGI','Especialista en Finanzas'],
-        ['Ynes Paola Pérez Avila','AGI','Especialista en Racionalización y Estadística'],
-        ['Roxanita Carrasco Holguín','AGI','Especialista de SIAGIE'],
-        ['Gisela Yudith Vásquez Gonzales','AGI','Servicio Profesional Especializado en Gestión Institucional'],
-        ['Zack Kevin Alvarado Maldonado','AGI','Servicio Profesional Especializado en Infraestructura'],
-        ['Jhoy Lider Gonzales Pinedo','AGI','Servicio Profesional Especializado en Planificación y Presupuesto'],
-        ['Kevin Hafid Rojas Cubas','DIRECCION','Servicio Profesional Especializado en Asesoría Legal'],
-        ['Gianny Pezo Cumapa','DIRECCION','Asesora Legal'],
-        ['Zarita Isabel Mijahuanga Chumbe','AGP','Especialista en Educación Nivel Inicial'],
-        ['Silvia Janet Heredia Romero','AGP','Especialista en Educación Nivel Inicial'],
-        ['Salustiano Valdemar Salas Namay','AGP','Especialista en Educación Nivel Secundaria Matemática'],
-        ['Manuel Ramírez Ruíz','AGP','Especialista en Educación Nivel Secundaria Comunicación'],
-        ['Victor Vela Ramirez','AGP','Especialista en Educación Nivel Primaria'],
-        ['Antonio Angulo Ramírez','AGP','Coordinador de PRONOEI'],
-        ['Sonia Angulo Cabrera','AGP','Coordinador de PRONOEI'],
-        ['Pedro Antonio Rengifo Ramírez','AGP','Coordinador de PRONOEI'],
-        ['Ayrunedi Lopez Putpaña','AGP','Coordinador de PRONOEI'],
-        ['Rolita Sangama Del Aguila','AGP','Coordinador de PRONOEI'],
-        ['Hiber Miller Yalta Cubas','AGP','Profesional III Equipo Itinerante Convivencia Escolar'],
-        ['Jhoel Villacorta Salazar','AGP','Profesional III Equipo Itinerante Convivencia Escolar'],
-        ['Maria de los Angeles Nole Vargas de Merino','AGP','PREVAED'],
-        ['Ernesto Jimenez Chapoñan','AGP','Especialista en Educación Nivel Secundaria CC.SS.'],
-        ['Keyla Livany Vasquez Chuquilin','ADMINISTRACION','Analista de la CPPADD'],
-        ['Gerges Gabriel Isuiza Chanchari','ADMINISTRACION','Servicio Profesional Especializado en Imagen Institucional'],
-        ['Leidy Luz Cárdenas Vásquez','ADMINISTRACION','Servicio Profesional Especializado en Planilla y AIRHSP'],
-        ['Beroccio Ramirez Ríos','ADMINISTRACION','Especialista en Tesorería'],
-        ['Ketty Paola Alvarado Cárdenas','ADMINISTRACION','Servicio Profesional Especializado en PAD'],
-        ['Karen Janeth Flores Lanares','ADMINISTRACION','Especialista en Contabilidad'],
-        ['Veronica Salazar Castro','ADMINISTRACION','Especialista en Abastecimiento'],
-        ['Violeta Salazar García','ADMINISTRACION','Especialista en Bienestar'],
-        ['Fiorella Vela Vásquez','ADMINISTRACION','Proyectista'],
-        ['Sutkey Milagritos Ramirez Cabanillas','ADMINISTRACION','Especialista en Archivo'],
-        ['Segundo Hipólito Saldaña Pérez','ADMINISTRACION','Responsable de Gestión de Recursos Humanos'],
-        ['Yesenia Marisol Escobedo Vilchez','ADMINISTRACION','Secretaria de RR.HH.'],
-        ['Carlos Bendezú Ushiñahua Fasabi','ADMINISTRACION','Servicio Profesional Especializado en Archivo'],
-        ['Lleny Sangama Guerra','ADMINISTRACION','Secretaria de Administración'],
-        ['Diego Torres Rengifo','ADMINISTRACION','Analista en Nexus'],
-        ['Breidis Santiago Upiachihua Cárdenas','ADMINISTRACION','Servicio Profesional Especializado en Tesorería'],
-        ['Juan Carlos Campos Viera','ADMINISTRACION','Especialista en Planillas'],
-        ['Dayxs Bravo Bustamante','ADMINISTRACION','Especialista en Escalafón'],
-        ['Karen Tatiana Hidalgo Vásquez','ADMINISTRACION','Servicio Profesional Especializado en RR.HH.'],
-        ['Herberth Rivera Cabrera','ADMINISTRACION','Vigilante'],
-        ['Maryori Stephany Muñoz Gonzales','ADMINISTRACION','Técnico Administrativo de Mesa de Partes'],
-        ['Ricardo Saldaña Guevara','ADMINISTRACION','Servicio Profesional Especializado en Seguridad y Vigilancia'],
-        ['Rober Cachique Cachique','ADMINISTRACION','Servicio Profesional Especializado en Seguridad y Vigilancia'],
-        ['Ruber Cárdenas Ramirez','ADMINISTRACION','Servicio Profesional Especializado en Seguridad y Vigilancia'],
-        ['Hugo Ushiñahua Trigoso','ADMINISTRACION','Chofer'],
-        ['Gianfranco Nieto Cárdenas','ADMINISTRACION','Servicio Profesional Especializado en Almacén'],
-        ['Maria Leonor Revilla Guevara','ADMINISTRACION','Servicio Profesional Especializado en Limpieza'],
-        ['Maria Margarita Cubas Sanchéz','ADMINISTRACION','Especialista en Patrimonio y Almacén'],
-        ['Joel Gonza Peña','ADMINISTRACION','Servicio Profesional Especializado en RR.HH.'],
-        ['Gilma Veronica Gutierrez Vasquez','ADMINISTRACION','Servicio Profesional Especializado en Abastecimiento'],
-        ['Alfredo Silva Pisco','ADMINISTRACION','Servicio Profesional Especializado en Seguridad y Vigilancia'],
-        ['Lorena Diaz Diaz','AGI','Practicante Pre profesional'],
-        ['Mary Saavedra Taricuarima','DIRECCION','Servicio Profesional Especializado en la Oficina de Dirección']
+        ["Poel Rufino Herrera Bendezú", "DIRECCION", "Director", "942057671", "21876169"],
+        ["Margot Fonseca de Vera", "DIRECCION", "Secretaria de Dirección", "985166187", "00874080"],
+        ["Mary Saavedra Taricuarima", "DIRECCION", "Servicio profesional Especializado en la Oficina de Dirección", "931033476", "71506096"],
+        ["Keyla Livany Vasquez Chuquilin", "ADMINISTRACION", "Analista de la CPPADD", "918910957", "71776200"],
+        ["Gerges Gabriel Isuiza Chanchari", "ADMINISTRACION", "Servicio Profesional Especializado en Imagen Institucional", "910284730", "75913169"],
+        ["Leydi Marín Quezada", "ADMINISTRACION", "Jefe de la Oficina de Administración", "980039344", "42268073"],
+        ["Leidy Luz Cárdenas Vásquez", "ADMINISTRACION", "Servicio Profesional Especializado en Planilla y AIRHSP", "917087282", "42773099"],
+        ["Beroccio Ramirez Ríos", "ADMINISTRACION", "Especialista en Tesorería", "945729690", "40666029"],
+        ["Ketty Paola Alvarado Cárdenas", "ADMINISTRACION", "Servicio Profesional Especializado en PAD", "950448715", "41656645"],
+        ["Yeny Judith Martínez Rafael", "AGI", "Especialista en Planificación y Presupuesto", "917925497", "71848797"],
+        ["Karen Janeth Flores Lanares", "ADMINISTRACION", "Especialista en Contabilidad", "965282597", "71602492"],
+        ["Veronica Salazar Castro", "ADMINISTRACION", "Especialista en Abastecimiento", "910745623", "48024213"],
+        ["Violeta Salazar García", "ADMINISTRACION", "Especialista en Bienestar", "915204867", "71480435"],
+        ["Fiorella Vela Vásquez", "ADMINISTRACION", "Proyectista", "982864855", "73449707"],
+        ["Sutkey Milagritos Ramirez Cabanillas", "ADMINISTRACION", "Servicio Profesional Especializado en Limpieza", "952073717", "75752934"],
+        ["Maria Margarita Cubas Sanchéz", "ADMINISTRACION", "Especialista en Patrimonio y Almacén", "961172850", "47843680"],
+        ["Joel Gonza Peña", "ADMINISTRACION", "Servicio Profesional Especializado en RR.HH.", "921147616", "72024344"],
+        ["Zack Kevin Alvarado Maldonado", "AGI", "Servicio Profesional Especializado en Infraestructura", "999474811", "70780194"],
+        ["Kevin Hafid Rojas Cubas", "DIRECCION", "Servicio Profesional Especializado en Asesoría Legal", "935259037", "74148294"],
+        ["Gilma Veronica Gutierrez Vasquez", "ADMINISTRACION", "Servicio Profesional Especializado en Abastecimiento", "958688034", "46942973"],
+        ["Maria de los Angeles Nole Vargas de Merino", "AGP", "PREVAED", "932361827", "72160115"],
+        ["Rolita Sangama Del Aguila", "AGP", "Coordinador de PRONOEI", "943297382", "44324084"],
+        ["Hiber Miller Yalta Cubas", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "931828025", "47953187"],
+        ["Jhoel Villacorta Salazar", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "949683852", "72927716"],
+        ["Jheimmy Carmin Guevara Tafur", "AGI", "Especialista en Finanzas", "996640502", "45566260"],
+        ["Alfredo Silva Pisco", "ADMINISTRACION", "Servicio Profesional Especializado en Seguridad y Vigilancia", "", "42268073"]
     ];
 
     const checkSupervisor = db.prepare(
         "SELECT id FROM usuarios WHERE nombre_completo = ? AND rol = 'supervisor'"
     );
     const insertSupervisor = db.prepare(
-        "INSERT INTO usuarios (nombre_completo, rol, dependencia, puesto) VALUES (?, 'supervisor', ?, ?)"
+        "INSERT INTO usuarios (nombre_completo, rol, dependencia, puesto, telefono, dni) VALUES (?, 'supervisor', ?, ?, ?, ?)"
     );
+    const updateSupervisor = db.prepare(
+        "UPDATE usuarios SET dependencia = ?, puesto = ?, telefono = ?, dni = ? WHERE id = ?"
+    );
+
     for (const s of supervisores) {
         const existing = await checkSupervisor.get(s[0]);
         if (!existing) {
             await insertSupervisor.run(...s);
+        } else {
+            await updateSupervisor.run(s[1], s[2], s[3], s[4], existing.id);
         }
     }
 

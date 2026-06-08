@@ -142,8 +142,9 @@ async function initDatabase() {
     }
     const iesCount = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
     if (iesCount.c === 0) {
-        await seedDatabase(db);
+        // ...
     }
+    await seedDatabase(db);
     dbInitialized = true;
 }
 
