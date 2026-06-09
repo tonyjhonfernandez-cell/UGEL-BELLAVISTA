@@ -668,16 +668,24 @@ async function seedDatabase(db) {
     const insertSupervisor = db.prepare(
         "INSERT INTO usuarios (nombre_completo, rol, dependencia, puesto, telefono, dni) VALUES (?, 'supervisor', ?, ?, ?, ?)"
     );
-    const updateSupervisor = db.prepare(
-        "UPDATE usuarios SET dependencia = ?, puesto = ?, telefono = ?, dni = ? WHERE id = ?"
+    const checkSupervisorByDNI = db.prepare("SELECT id FROM usuarios WHERE dni = ?");
+    const updateSupervisorCompleto = db.prepare(
+        "UPDATE usuarios SET nombre_completo = ?, dependencia = ?, puesto = ?, telefono = ?, dni = ? WHERE id = ?"
     );
 
     for (const s of supervisores) {
-        const existing = await checkSupervisor.get(s[0]);
-        if (!existing) {
-            await insertSupervisor.run(...s);
-        } else {
-            await updateSupervisor.run(s[1], s[2], s[3], s[4], existing.id);
+        try {
+            let existing = null;
+            if (s[4]) existing = await checkSupervisorByDNI.get(s[4]);
+            if (!existing) existing = await checkSupervisor.get(s[0]);
+
+            if (!existing) {
+                await insertSupervisor.run(...s);
+            } else {
+                await updateSupervisorCompleto.run(s[0], s[1], s[2], s[3], s[4], existing.id);
+            }
+        } catch (err) {
+            console.error('Error insertando supervisor:', s[0], err.message);
         }
     }
 
