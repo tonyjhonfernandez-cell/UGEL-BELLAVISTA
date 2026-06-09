@@ -265,7 +265,7 @@ textarea.form-control{resize:vertical;min-height:70px}
 @media(min-width:992px){.col-lg-6{width:50%}}
 hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 .notif-dropdown{display:none}.notif-dropdown.show{display:block}
-#calendar{min-height:480px;padding:12px}
+
 
 /* ========== NUEVO DISEÑO PLANO - DIRECTOR ========== */
 :root{--teal:#008080;--teal-dark:#005c5c}
@@ -820,14 +820,7 @@ body.director-mode #app-shell{display:block}
         </div>
       </div>
 
-      <!-- ==================== CALENDARIO ==================== -->
-      <div class="view-section" id="view-calendario">
-        <div class="page-hd"><h2>Calendario</h2><span>Calendario mensual de actividades asignadas</span></div>
-        <div class="t-card">
-          <div class="t-hd"><i class="fas fa-calendar-alt"></i> Cronograma de Actividades</div>
-          <div id="calendar"></div>
-        </div>
-      </div>
+
 
       <!-- ==================== PERFIL ==================== -->
       <div class="view-section" id="view-perfil">
@@ -868,9 +861,7 @@ body.director-mode #app-shell{display:block}
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/main.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.5/locales/es.js"></script>
+
 <script>
 // ===================== GLOBALS =====================
 let currentUser = null;
@@ -1195,7 +1186,6 @@ function buildSidebar() {
       '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>' +
       '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance Mensual</a>' +
       '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>' +
-      '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a>' +
       '<a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a>' +
       '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a>' +
       '<div class="label">Cuenta</div>' +
@@ -1222,7 +1212,6 @@ var viewTitles = {
   'directores': 'Directores',
   'ies': 'IEs',
   'notificaciones': 'Notificaciones',
-  'calendario': 'Calendario',
   'perfil': 'Mi Perfil'
 };
 
@@ -1248,7 +1237,6 @@ function cambiarVista(vista, el) {
 function loadViewData(vista) {
   switch (vista) {
     case 'director-main': loadDirectorMain(); break;
-    case 'calendario': loadCalendario(); break;
     case 'dashboard-supervisor': loadDashboardSupervisor(); break;
     case 'asignar-actividad': loadIEsForAsignar(); break;
     case 'avance-mensual': loadAvanceMensual(); break;
@@ -1434,51 +1422,7 @@ async function enviarContacto(asignacionId) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-let calendarInstance = null;
 
-async function loadCalendario() {
-  try {
-    var d = await api('/api/asignaciones');
-    var rows = d.asignaciones || d || [];
-    var events = [];
-    for (var i = 0; i < rows.length; i++) {
-      var a = rows[i];
-      if (!a.fecha_limite) continue;
-      var color = a.estado === 'completada' ? '#059669' : (a.estado === 'no_cumplida' ? '#dc2626' : '#d97706');
-      var dateStr = a.fecha_limite;
-      if (typeof dateStr === 'string') dateStr = dateStr.substring(0, 10);
-      events.push({
-        title: (a.actividad_titulo || a.titulo || 'Actividad') + (currentUser.rol === 'supervisor' ? ' - ' + (a.ie_nombre || '') : ''),
-        start: dateStr,
-        allDay: true,
-        backgroundColor: color,
-        borderColor: color,
-        extendedProps: { estado: a.estado, ie: a.ie_nombre, area: a.area, subarea: a.subarea, hora: a.hora_limite, tipo: a.tipo_nombre }
-      });
-    }
-    var calEl = document.getElementById('calendar');
-    if (calendarInstance) { calendarInstance.destroy(); }
-    calendarInstance = new FullCalendar.Calendar(calEl, {
-      initialView: 'dayGridMonth',
-      locale: 'es',
-      height: 'auto',
-      events: events,
-      headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
-      buttonText: { today: 'Hoy', month: 'Mes', listMonth: 'Lista' },
-      eventClick: function(info) {
-        var e = info.event;
-        var p = e.extendedProps;
-        showModal(e.title,
-          '<p><strong>Estado:</strong> <span class="badge badge-' + p.estado + '">' + (p.estado || '').replace('_', ' ').toUpperCase() + '</span></p>'
-          + '<p><strong>Área:</strong> ' + (p.area || '-') + ' / <strong>Subárea:</strong> ' + (p.subarea || '-') + '</p>'
-          + '<p><strong>Tipo:</strong> ' + (p.tipo || '-') + '</p>'
-          + '<p><strong>Hora Límite:</strong> ' + (p.hora || '23:59') + '</p>'
-          + '<p><strong>Fecha:</strong> ' + e.start.toLocaleDateString('es-PE') + '</p>');
-      }
-    });
-    calendarInstance.render();
-  } catch (e) { showToast('Error al cargar calendario: ' + e.message, 'error'); console.error(e); }
-}
 
 // ===================== DASHBOARD SUPERVISOR =====================
 async function loadDashboardSupervisor() {
