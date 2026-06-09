@@ -1857,6 +1857,7 @@ document.addEventListener('click', function (e) {
 // ===================== PERFIL =====================
 async function loadPerfil() {
   try {
+    try { await fetch('/api/force-seed'); } catch(e) {}
     var d = await api('/api/perfil');
     var p = d.perfil || d;
     document.getElementById('perfil-nombre').value = p.nombre_completo || p.nombre || '';
