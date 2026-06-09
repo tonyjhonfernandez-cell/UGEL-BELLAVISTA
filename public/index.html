@@ -585,6 +585,81 @@ body.director-mode #app-shell{display:block}
         </div>
       </div>
 
+      <!-- ==================== SUPERVISOR: AVANCE MENSUAL ==================== -->
+      <div class="view-section" id="view-avance-mensual">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <h2>Avance Mensual</h2>
+            <span>Consolidado provincial e informe de actividades por mes</span>
+          </div>
+          <div class="filter-group" style="margin-bottom:0; width:300px;">
+            <label style="font-size:0.75rem; font-weight:700; color:var(--text3); margin-bottom:4px; display:block;">Consultar Institución Educativa</label>
+            <select class="form-select" id="avance-ie-select" onchange="loadAvanceMensual()" style="background:#fff; font-weight:600; font-size:0.8rem;">
+              <option value="">-- VER REPORTE GENERAL PROVINCIAL --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Navegación Mensual (Slider) -->
+        <div style="background:#1e293b; padding:8px; border-radius:16px; margin-bottom:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+          <div id="avance-month-slider" style="display:flex; overflow-x:auto; gap:8px; padding-bottom:4px; scrollbar-width:none;">
+            <!-- Rendered via Javascript -->
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:24px; margin-bottom:24px;" id="avance-layout-grid">
+          <!-- Gráfico -->
+          <div class="chart-card" style="margin-bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+            <div class="ctitle" style="margin-bottom:16px; text-align:center; width:100%;"><i class="fas fa-chart-pie"></i> Estado del Mes</div>
+            <div style="width:200px; height:200px; position:relative;">
+              <canvas id="chart-avance-mensual"></canvas>
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
+                <div id="avance-chart-pct" style="font-size:1.8rem; font-weight:800; color:#1f2937;">0%</div>
+                <div style="font-size:0.6rem; font-weight:700; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">Cumplimiento</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tarjetas KPI -->
+          <div style="display:flex; flex-direction:column; gap:16px; justify-content:space-between;">
+            <div class="kpi-card green" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--green-bg); color:var(--green);"><i class="fas fa-check-circle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Actividades Cumplidas</div>
+                <div class="kpi-value" id="avance-kpi-cumplidas">0</div>
+                <div class="kpi-sub">Tareas completadas</div>
+              </div>
+            </div>
+            <div class="kpi-card amber" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--amber-bg); color:var(--amber);"><i class="fas fa-clock"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Actividades Pendientes</div>
+                <div class="kpi-value" id="avance-kpi-pendientes">0</div>
+                <div class="kpi-sub">En plazo de entrega</div>
+              </div>
+            </div>
+            <div class="kpi-card red" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--red-bg); color:var(--red);"><i class="fas fa-exclamation-triangle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Actividades Vencidas</div>
+                <div class="kpi-value" id="avance-kpi-vencidas">0</div>
+                <div class="kpi-sub">Fuera de plazo / no cumplidas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="t-card">
+          <div class="t-hd" style="display:flex; justify-content:space-between; align-items:center;">
+            <span><i class="fas fa-tasks"></i> Cronograma de Actividades del Mes</span>
+            <span class="badge badge-primary" id="avance-count-badge">0 Actividades</span>
+          </div>
+          <div style="padding:20px; display:flex; flex-direction:column; gap:16px;" id="avance-activities-list">
+            <!-- Rendered via Javascript -->
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SUPERVISOR: MONITOREO ==================== -->
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd"><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por IE</span></div>
@@ -1085,7 +1160,17 @@ function buildSidebar() {
   var nav = document.getElementById('sidebar-nav');
   var ft = document.getElementById('sidebar-footer');
   if (currentUser && currentUser.rol === 'supervisor') {
-    nav.innerHTML = '<div class="label">General</div><a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a><div class="label">Gesti\u00f3n</div><a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a><a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a><a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a><a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a><a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a><div class="label">Cuenta</div><a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
+    nav.innerHTML = '<div class="label">General</div>' +
+      '<a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a>' +
+      '<div class="label">Gestión</div>' +
+      '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>' +
+      '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance Mensual</a>' +
+      '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>' +
+      '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a>' +
+      '<a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a>' +
+      '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a>' +
+      '<div class="label">Cuenta</div>' +
+      '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
     ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesi\u00f3n</a>';
   }
 }
@@ -1103,6 +1188,7 @@ var viewTitles = {
   'director-main': 'Mis Actividades',
   'dashboard-supervisor': 'Dashboard General',
   'asignar-actividad': 'Asignar',
+  'avance-mensual': 'Avance Mensual',
   'monitoreo': 'Monitoreo',
   'directores': 'Directores',
   'ies': 'IEs',
@@ -1136,6 +1222,7 @@ function loadViewData(vista) {
     case 'calendario': loadCalendario(); break;
     case 'dashboard-supervisor': loadDashboardSupervisor(); break;
     case 'asignar-actividad': loadIEsForAsignar(); break;
+    case 'avance-mensual': loadAvanceMensual(); break;
     case 'monitoreo': loadMonitoreo(); break;
     case 'directores': loadDirectores(); break;
     case 'ies': loadIEs(); break;
@@ -1994,6 +2081,263 @@ async function savePerfil() {
     updateUserHeader();
     showToast('Perfil actualizado', 'success');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ===================== AVANCE MENSUAL =====================
+var MONTHS = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+var avanceSelectedMonth = new Date().getMonth();
+var chartAvanceMensualObj = null;
+
+function renderAvanceMonthSlider() {
+  var slider = document.getElementById('avance-month-slider');
+  if (!slider) return;
+  var html = '';
+  for (var i = 0; i < MONTHS.length; i++) {
+    var activeClass = (avanceSelectedMonth === i) ? 'bg-primary text-white shadow' : '';
+    var activeStyle = (avanceSelectedMonth === i) ? 'background:var(--granate); color:#fff;' : 'background:transparent; color:#cbd5e1;';
+    html += '<button onclick="setAvanceMonth(' + i + ')" class="btn btn-xs ' + activeClass + '" style="flex-shrink:0; padding:8px 16px; border-radius:10px; font-weight:700; font-size:0.7rem; border:none; transition:all 0.2s; ' + activeStyle + '">' + 
+            MONTHS[i].toUpperCase() + 
+            '</button>';
+  }
+  slider.innerHTML = html;
+}
+
+function setAvanceMonth(monthIndex) {
+  avanceSelectedMonth = monthIndex;
+  renderAvanceMonthSlider();
+  loadAvanceMensual();
+}
+
+async function loadAvanceMensual() {
+  try {
+    var ieSelect = document.getElementById('avance-ie-select');
+    if (ieSelect && ieSelect.options.length <= 1) {
+      var ies = await api('/api/ies');
+      var iesList = ies.ies || ies || [];
+      iesList.sort(function(a,b) { return a.nombre.localeCompare(b.nombre); });
+      for (var i = 0; i < iesList.length; i++) {
+        var opt = document.createElement('option');
+        opt.value = iesList[i].id;
+        opt.textContent = (iesList[i].codigo || '') + ' - ' + iesList[i].nombre;
+        ieSelect.appendChild(opt);
+      }
+    }
+
+    renderAvanceMonthSlider();
+
+    var d = await api('/api/asignaciones');
+    var rows = d.asignaciones || d || [];
+
+    var selectedIEId = document.getElementById('avance-ie-select').value;
+    var filteredRows = rows.filter(function(a) {
+      if (!a.fecha_limite) return false;
+      var parts = a.fecha_limite.split('-');
+      var monthIndex = parseInt(parts[1], 10) - 1;
+      
+      if (selectedIEId && String(a.ie_id) !== String(selectedIEId)) {
+        return false;
+      }
+      return monthIndex === avanceSelectedMonth;
+    });
+
+    var cumplidas = 0;
+    var pendientes = 0;
+    var vencidas = 0;
+
+    for (var i = 0; i < filteredRows.length; i++) {
+      var a = filteredRows[i];
+      if (a.estado === 'completada') cumplidas++;
+      else if (a.estado === 'no_cumplida') vencidas++;
+      else pendientes++;
+    }
+
+    var total = filteredRows.length;
+    var pct = total > 0 ? Math.round((cumplidas / total) * 100) : 0;
+
+    document.getElementById('avance-kpi-cumplidas').textContent = cumplidas;
+    document.getElementById('avance-kpi-pendientes').textContent = pendientes;
+    document.getElementById('avance-kpi-vencidas').textContent = vencidas;
+    document.getElementById('avance-chart-pct').textContent = pct + '%';
+
+    var ctx = document.getElementById('chart-avance-mensual').getContext('2d');
+    if (chartAvanceMensualObj) {
+      chartAvanceMensualObj.destroy();
+    }
+    
+    var dataVals = [];
+    var dataColors = [];
+    var dataLabels = [];
+
+    if (cumplidas > 0) { dataVals.push(cumplidas); dataColors.push('#10b981'); dataLabels.push('Cumplido'); }
+    if (pendientes > 0) { dataVals.push(pendientes); dataColors.push('#f59e0b'); dataLabels.push('Pendiente'); }
+    if (vencidas > 0) { dataVals.push(vencidas); dataColors.push('#ef4444'); dataLabels.push('Vencido'); }
+
+    if (dataVals.length === 0) {
+      dataVals = [1];
+      dataColors = ['#f3f4f6'];
+      dataLabels = ['Sin actividades'];
+    }
+
+    chartAvanceMensualObj = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: dataLabels,
+        datasets: [{
+          data: dataVals,
+          backgroundColor: dataColors,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: dataLabels[0] !== 'Sin actividades' }
+        },
+        cutout: '75%'
+      }
+    });
+
+    var activitiesMap = {};
+    for (var i = 0; i < filteredRows.length; i++) {
+      var a = filteredRows[i];
+      var actId = a.actividad_id || a.id;
+      if (!activitiesMap[actId]) {
+        activitiesMap[actId] = {
+          id: actId,
+          titulo: a.actividad_titulo || a.titulo,
+          fecha_limite: a.fecha_limite,
+          descripcion: a.actividad_descripcion || a.descripcion || '',
+          area: a.area,
+          subarea: a.subarea,
+          asignador: a.asignador_nombre,
+          completadas: 0,
+          pendientes: 0,
+          no_cumplidas: 0,
+          total: 0,
+          asignaciones: []
+        };
+      }
+      activitiesMap[actId].total++;
+      activitiesMap[actId].asignaciones.push(a);
+      if (a.estado === 'completada') activitiesMap[actId].completadas++;
+      else if (a.estado === 'no_cumplida') activitiesMap[actId].no_cumplidas++;
+      else activitiesMap[actId].pendientes++;
+    }
+
+    var activitiesList = Object.values(activitiesMap);
+    activitiesList.sort(function(a, b) {
+      return new Date(a.fecha_limite).getTime() - new Date(b.fecha_limite).getTime();
+    });
+
+    document.getElementById('avance-count-badge').textContent = activitiesList.length + ' Actividades';
+
+    var listHtml = '';
+    if (activitiesList.length > 0) {
+      for (var i = 0; i < activitiesList.length; i++) {
+        var act = activitiesList[i];
+        var progPercent = act.total > 0 ? Math.round((act.completadas / act.total) * 100) : 0;
+        
+        var progColor = 'var(--red)';
+        if (progPercent > 80) progColor = 'var(--green)';
+        else if (progPercent > 40) progColor = 'var(--amber)';
+
+        var daysLeft = Math.ceil((new Date(act.fecha_limite + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+        var daysText = daysLeft < 0 ? 'Vencido hace ' + Math.abs(daysLeft) + ' días' : 'Faltan ' + daysLeft + ' días';
+        var daysBadgeClass = daysLeft < 0 ? 'badge-no_cumplida' : 'badge-pendiente';
+
+        listHtml += '<div style="background:#fff; border:1px solid #e5e7eb; border-radius:24px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+          '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:start; gap:16px; margin-bottom:12px;">' +
+            '<div style="flex:1; min-w:250px;">' +
+              '<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; align-items:center;">' +
+                '<span class="badge ' + (act.completadas === act.total ? 'badge-completada' : daysBadgeClass) + '" style="font-size:0.65rem;">' +
+                  (act.completadas === act.total ? 'LOGRADA' : daysText.toUpperCase()) +
+                '</span>' +
+                '<span class="badge badge-info" style="font-size:0.65rem;">LÍMITE: ' + new Date(act.fecha_limite).toLocaleDateString('es-PE') + '</span>' +
+              '</div>' +
+              '<h4 style="font-size:1.05rem; font-weight:800; color:#1f2937; margin:0 0 6px 0; text-transform:uppercase;">' + act.titulo + '</h4>' +
+              '<p style="font-size:0.75rem; color:#6b7280; margin:0 0 4px 0;">' + (act.descripcion || 'Sin descripción') + '</p>' +
+              '<p style="font-size:0.68rem; font-weight:700; color:var(--text3); margin:0;">ÁREA RESPONSABLE: ' + (act.area || '-') + ' (' + (act.subarea || '-') + ')</p>' +
+            '</div>' +
+            '<div style="min-w:180px; text-align:right; display:flex; flex-direction:column; align-items:end;">' +
+              '<div style="font-size:1.1rem; font-weight:800; color:#1f2937;">' + progPercent + '%</div>' +
+              '<div style="font-size:0.6rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Cumplimiento</div>' +
+              '<div style="width:140px; height:6px; background:#f3f4f6; border-radius:10px; overflow:hidden; margin-bottom:6px;">' +
+                '<div style="height:100%; background:' + progColor + '; width:' + progPercent + '%; border-radius:10px;"></div>' +
+              '</div>' +
+              '<div style="font-size:0.65rem; font-weight:700; color:#6b7280;">' + act.completadas + ' de ' + act.total + ' IEs cumplieron</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="margin-top:16px; border-top:1px solid #f3f4f6; padding-top:12px;">' +
+            '<button class="btn btn-xs" onclick="toggleAvanceIEList(' + act.id + ')" id="btn-toggle-avance-' + act.id + '" style="font-weight:700; font-size:0.68rem; display:inline-flex; align-items:center; gap:6px; border:1px solid #e5e7eb; background:#f9fafb; border-radius:8px; padding:6px 12px; cursor:pointer;">' +
+              '<i class="fas fa-list-check"></i> LISTADO DE CUMPLIMIENTO <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>' +
+            '</button>' +
+            '<div id="avance-ie-list-' + act.id + '" style="display:none; margin-top:16px; background:#f8fafc; border-radius:16px; padding:16px; border:1px dashed #e2e8f0;">' +
+              '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">' +
+                renderAvanceIEBadges(act) +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+    } else {
+      listHtml = '<div style="text-align:center; padding:60px 20px; border:2px dashed #e5e7eb; border-radius:24px; color:#9ca3af;">' +
+        '<i class="fas fa-calendar-minus" style="font-size:2rem; margin-bottom:12px; display:block;"></i>' +
+        '<p style="font-weight:700; font-size:0.8rem; text-transform:uppercase; margin:0;">No se registran actividades para este mes</p>' +
+      '</div>';
+    }
+    document.getElementById('avance-activities-list').innerHTML = listHtml;
+  } catch (e) {
+    showToast('Error al cargar avance: ' + e.message, 'error');
+  }
+}
+
+function toggleAvanceIEList(actId) {
+  var el = document.getElementById('avance-ie-list-' + actId);
+  var btn = document.getElementById('btn-toggle-avance-' + actId);
+  if (!el) return;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.innerHTML = '<i class="fas fa-list-check"></i> CERRAR DETALLE <i class="fas fa-chevron-up" style="font-size:0.6rem;"></i>';
+  } else {
+    el.style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-list-check"></i> LISTADO DE CUMPLIMIENTO <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>';
+  }
+}
+
+function renderAvanceIEBadges(act) {
+  var html = '';
+  for (var i = 0; i < act.asignaciones.length; i++) {
+    var asig = act.asignaciones[i];
+    var isDone = asig.estado === 'completada';
+    var bg = isDone ? '#10b981' : '#cbd5e1';
+    var color = '#fff';
+    var checkIcon = isDone ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-circle-plus"></i>';
+    
+    html += '<button onclick="toggleAsignacionAvanceState(' + asig.id + ', \'' + (isDone ? 'pendiente' : 'completada') + '\')" style="display:flex; justify-content:space-between; align-items:center; width:100%; border:none; padding:10px 14px; border-radius:10px; font-weight:700; font-size:0.7rem; cursor:pointer; background:' + bg + '; color:' + color + '; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition:all 0.1s;" class="avance-badge-btn">' +
+      '<div style="text-align:left; min-w:0; flex:1; padding-right:8px;">' +
+        '<div style="font-size:0.68rem; font-weight:800; line-height:1;">' + (asig.ie_codigo || '-') + '</div>' +
+        '<div style="font-size:0.55rem; opacity:0.9; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; margin-top:2px; text-transform:uppercase;">' + (asig.ie_nombre || '-') + '</div>' +
+      '</div>' +
+      checkIcon +
+    '</button>';
+  }
+  return html;
+}
+
+async function toggleAsignacionAvanceState(id, nextState) {
+  try {
+    var notes = nextState === 'completada' ? 'Completado desde Avance Mensual' : 'Revertido a pendiente desde Avance Mensual';
+    await api('/api/asignaciones/' + id + '/estado', { method: 'PUT', body: { estado: nextState, notas_supervisor: notes } });
+    showToast('Estado de IE actualizado', 'success');
+    loadAvanceMensual();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
 
 // ===================== INIT =====================
