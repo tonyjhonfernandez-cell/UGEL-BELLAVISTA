@@ -1738,6 +1738,12 @@ async function submitAsignar() {
     if (ids.length === 0) { showToast('No se encontraron IEs para el nivel seleccionado', 'error'); return; }
   }
   
+  var btnSubmit = document.querySelector('#asignar-form button[type="submit"]');
+  if (btnSubmit) {
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Asignando...';
+  }
+  
   try {
     await api('/api/actividades', { method: 'POST', body: { titulo: tit, tipo_id: ti, descripcion: desc, fecha_limite: fec, hora_limite: hor, ie_ids: ids } });
     showToast('Actividad asignada con éxito', 'success');
@@ -1750,7 +1756,14 @@ async function submitAsignar() {
     selectedSpecificIEIds.clear();
     renderSpecificIETags();
     onChangeAlcance('manual');
-  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { 
+    showToast('Error: ' + e.message, 'error'); 
+  } finally {
+    if (btnSubmit) {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = 'Asignar Actividad';
+    }
+  }
 }
 
 // ===================== MONITOREO =====================
@@ -2261,7 +2274,19 @@ async function loadAvanceMensual() {
     var selectedIEId = document.getElementById('avance-ie-select').value;
     var filteredRows = rows.filter(function(a) {
       if (!a.fecha_limite) return false;
-      var parts = a.fecha_limite.split('-');
+      var limitDate = a.fecha_limite;
+      var dateStr = '';
+      if (limitDate instanceof Date) {
+        var y = limitDate.getFullYear();
+        var m = limitDate.getMonth() + 1;
+        var d = limitDate.getDate();
+        dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+      } else if (typeof limitDate === 'string') {
+        dateStr = limitDate.substring(0, 10);
+      } else {
+        dateStr = String(limitDate || '').substring(0, 10);
+      }
+      var parts = dateStr.split('-');
       var monthIndex = parseInt(parts[1], 10) - 1;
       
       if (selectedIEId && String(a.ie_id) !== String(selectedIEId)) {
@@ -2269,6 +2294,31 @@ async function loadAvanceMensual() {
       }
       return monthIndex === avanceSelectedMonth;
     });
+
+    // Deduplicate assignments by ie_id + activity title + deadline, prioritizing completed status
+    var uniqueMap = {};
+    for (var i = 0; i < filteredRows.length; i++) {
+      var a = filteredRows[i];
+      var actTitle = a.actividad_titulo || a.titulo || '';
+      var actFecha = a.fecha_limite || '';
+      var dateStr = '';
+      if (actFecha instanceof Date) {
+        var y = actFecha.getFullYear();
+        var m = actFecha.getMonth() + 1;
+        var d = actFecha.getDate();
+        dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+      } else if (typeof actFecha === 'string') {
+        dateStr = actFecha.substring(0, 10);
+      } else {
+        dateStr = String(actFecha || '').substring(0, 10);
+      }
+      var key = a.ie_id + '_' + actTitle.trim().toLowerCase() + '_' + dateStr;
+      
+      if (!uniqueMap[key] || a.estado === 'completada') {
+        uniqueMap[key] = a;
+      }
+    }
+    filteredRows = Object.values(uniqueMap);
 
     var cumplidas = 0;
     var pendientes = 0;
@@ -2381,13 +2431,32 @@ async function loadAvanceMensual() {
         if (progPercent > 80) progColor = 'var(--green)';
         else if (progPercent > 40) progColor = 'var(--amber)';
 
-        var daysLeft = Math.ceil((new Date(act.fecha_limite + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
-        var daysText = daysLeft < 0 ? 'Vencido hace ' + Math.abs(daysLeft) + ' días' : 'Faltan ' + daysLeft + ' días';
+        var limitDate = act.fecha_limite;
+        var dateStr = '';
+        if (limitDate instanceof Date) {
+          var y = limitDate.getFullYear();
+          var m = limitDate.getMonth() + 1;
+          var d = limitDate.getDate();
+          dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+        } else if (typeof limitDate === 'string') {
+          dateStr = limitDate.substring(0, 10);
+        } else {
+          dateStr = String(limitDate || '').substring(0, 10);
+        }
+
+        var daysLeft = Math.ceil((new Date(dateStr + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+        var daysText = isNaN(daysLeft) ? '-' : (daysLeft < 0 ? 'Vencido hace ' + Math.abs(daysLeft) + ' días' : 'Faltan ' + daysLeft + ' días');
         var daysBadgeClass = daysLeft < 0 ? 'badge-no_cumplida' : 'badge-pendiente';
         var isExpanded = expandedAvanceActivityIds.has(act.id);
         var listDisplay = isExpanded ? 'block' : 'none';
         var listBtnText = isExpanded ? 'CERRAR DETALLE' : 'LISTADO DE CUMPLIMIENTO';
         var listBtnIcon = isExpanded ? 'fa-chevron-up' : 'fa-chevron-down';
+
+        var formattedDate = '-';
+        if (dateStr) {
+          var parts = dateStr.split('-');
+          formattedDate = parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
 
         listHtml += '<div style="background:#fff; border:1px solid #e5e7eb; border-radius:24px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
           '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:start; gap:16px; margin-bottom:12px;">' +
@@ -2396,7 +2465,7 @@ async function loadAvanceMensual() {
                 '<span class="badge ' + (act.completadas === act.total ? 'badge-completada' : daysBadgeClass) + '" style="font-size:0.65rem;">' +
                   (act.completadas === act.total ? 'LOGRADA' : daysText.toUpperCase()) +
                 '</span>' +
-                '<span class="badge badge-info" style="font-size:0.65rem;">LÍMITE: ' + new Date(act.fecha_limite).toLocaleDateString('es-PE') + '</span>' +
+                '<span class="badge badge-info" style="font-size:0.65rem;">LÍMITE: ' + formattedDate + '</span>' +
               '</div>' +
               '<h4 style="font-size:1.05rem; font-weight:800; color:#1f2937; margin:0 0 6px 0; text-transform:uppercase;">' + act.titulo + '</h4>' +
               '<p style="font-size:0.75rem; color:#6b7280; margin:0 0 4px 0;">' + (act.descripcion || 'Sin descripción') + '</p>' +
