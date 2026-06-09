@@ -624,15 +624,17 @@ app.get('/api/asignaciones', async (req, res) => {
         }
 
         const nivel = validarNivel(req.query.nivel || '');
-        const { ruralidad, estado, buscar } = req.query;
+        const { ruralidad, estado, buscar, actividad_id } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
         const ruralidadWhere = ruralidad ? 'AND ie.ruralidad = ?' : '';
         const estadoWhere = estado ? 'AND ase.estado = ?' : '';
         const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ?)' : '';
+        const actividadWhere = actividad_id ? 'AND ase.actividad_id = ?' : '';
         const params = [];
         if (ruralidad) params.push(ruralidad);
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q); }
+        if (actividad_id) params.push(actividad_id);
         let asignaciones;
         if (req.session.user.rol === 'supervisor') {
             asignaciones = await db.prepare(`
@@ -647,7 +649,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${ruralidadWhere} ${estadoWhere} ${buscarWhere}
+                WHERE 1=1 ${nivelWhere} ${ruralidadWhere} ${estadoWhere} ${buscarWhere} ${actividadWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {

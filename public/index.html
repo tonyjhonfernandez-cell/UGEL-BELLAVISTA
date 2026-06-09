@@ -731,6 +731,12 @@ body.director-mode #app-shell{display:block}
               <option value="no_cumplida">No Cumplida</option>
             </select>
           </div>
+          <div class="filter-group">
+            <label>Actividad</label>
+            <select class="form-select" id="mon-actividad" onchange="loadMonitoreo()">
+              <option value="">Todas</option>
+            </select>
+          </div>
         </div>
         <div class="t-card">
           <div class="t-hd" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
@@ -883,6 +889,7 @@ let allIEs = [];
 let allDirectores = [];
 let chartRuralidad = null;
 let chartCumplimiento = null;
+let refreshMonitoreoActivities = true;
 
 // ===================== API =====================
 async function api(url, opts = {}) {
@@ -1756,6 +1763,7 @@ async function submitAsignar() {
     selectedSpecificIEIds.clear();
     renderSpecificIETags();
     onChangeAlcance('manual');
+    refreshMonitoreoActivities = true;
   } catch (e) { 
     showToast('Error: ' + e.message, 'error'); 
   } finally {
@@ -1767,17 +1775,60 @@ async function submitAsignar() {
 }
 
 // ===================== MONITOREO =====================
+async function initMonitoreoFilters() {
+  try {
+    var select = document.getElementById('mon-actividad');
+    if (!select) return;
+    var currentVal = select.value;
+    
+    var activities = await api('/api/actividades');
+    var list = activities.actividades || activities || [];
+    
+    var html = '<option value="">Todas</option>';
+    for (var i = 0; i < list.length; i++) {
+      var act = list[i];
+      var title = act.titulo || '';
+      if (title.length > 50) {
+        title = title.substring(0, 47) + '...';
+      }
+      html += '<option value="' + act.id + '">' + title + '</option>';
+    }
+    select.innerHTML = html;
+    
+    if (currentVal) {
+      var exists = false;
+      for (var i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === currentVal) {
+          exists = true;
+          break;
+        }
+      }
+      if (exists) {
+        select.value = currentVal;
+      }
+    }
+  } catch (e) {
+    console.error('Error al cargar actividades para filtros:', e);
+  }
+}
+
 async function loadMonitoreo() {
   try {
+    if (typeof refreshMonitoreoActivities !== 'undefined' && refreshMonitoreoActivities) {
+      await initMonitoreoFilters();
+      refreshMonitoreoActivities = false;
+    }
     var r = document.getElementById('mon-ruralidad').value;
     var es = document.getElementById('mon-estado').value;
     var bu = document.getElementById('mon-buscar').value;
     var n = document.getElementById('mon-nivel').value;
+    var actId = document.getElementById('mon-actividad') ? document.getElementById('mon-actividad').value : '';
     var u = '/api/asignaciones?';
     if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
     if (es) u += 'estado=' + encodeURIComponent(es) + '&';
     if (bu) u += 'buscar=' + encodeURIComponent(bu) + '&';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
+    if (actId) u += 'actividad_id=' + encodeURIComponent(actId) + '&';
     var d = await api(u);
     var rows = d.asignaciones || d || [];
     var html = '';
@@ -1852,6 +1903,7 @@ async function confirmarEliminarActividad(id) {
     await api('/api/actividades/' + id, { method: 'DELETE' });
     showToast('Actividad eliminada', 'success');
     closeModal();
+    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
@@ -1920,6 +1972,7 @@ async function confirmarEliminarMultiplesActividades(ids) {
     closeModal();
     var masterCheckbox = document.getElementById('select-all-mon');
     if (masterCheckbox) masterCheckbox.checked = false;
+    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
@@ -1951,6 +2004,7 @@ async function guardarEdicionActividad(id) {
     await api('/api/actividades/' + id, { method: 'PUT', body: body });
     showToast('Actividad actualizada', 'success');
     closeModal();
+    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
