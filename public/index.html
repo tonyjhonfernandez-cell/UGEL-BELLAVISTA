@@ -545,32 +545,19 @@ body.director-mode #app-shell{display:block}
                 <div class="col-md-6"><label class="form-label">Hora Límite *</label><input type="time" class="form-control" id="as-hora" required></div>
               </div>
               <hr>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <label class="form-label mb-0">Instituciones Educativas *</label>
-                <div class="d-flex gap-2">
-                  <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(true)">Seleccionar todas</button>
-                  <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
-                </div>
-              </div>
+              <!-- Alcance de la asignación -->
               <div class="row mb-3">
-                <div class="col-md-4">
-                  <label class="form-label" style="font-size:.75rem">Buscar IE</label>
-                  <input type="text" class="form-control" id="ie-search" placeholder="Código, N° o Nombre..." oninput="filterIEList()">
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label" style="font-size:.75rem">Ruralidad</label>
-                  <select class="form-select" id="ie-filter-ruralidad" onchange="filterIEList()">
-                    <option value="">Todas</option>
-                    <option value="URBANO">Urbano</option>
-                    <option value="RURAL 1">Rural 1</option>
-                    <option value="RURAL 2">Rural 2</option>
-                    <option value="RURAL 3">Rural 3</option>
+                <div class="col-md-6">
+                  <label class="form-label">Alcance de Asignación *</label>
+                  <select class="form-select" id="as-alcance" onchange="onChangeAlcance(this.value)">
+                    <option value="manual">Selección Manual (Checklist)</option>
+                    <option value="nivel">Por Nivel Educativo</option>
+                    <option value="especifico">Por Instituciones Específicas</option>
                   </select>
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label" style="font-size:.75rem">Nivel</label>
-                  <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
-                    <option value="">Todos</option>
+                <div class="col-md-6" id="alcance-nivel-container" style="display:none;">
+                  <label class="form-label">Nivel Educativo *</label>
+                  <select class="form-select" id="as-alcance-nivel">
                     <option value="inicial">Inicial</option>
                     <option value="primaria">Primaria</option>
                     <option value="secundaria">Secundaria</option>
@@ -578,7 +565,54 @@ body.director-mode #app-shell{display:block}
                   </select>
                 </div>
               </div>
-              <div class="ie-list" id="ie-checkbox-list"></div>
+
+              <!-- Por instituciones específicas container -->
+              <div class="mb-3" id="alcance-especifico-container" style="display:none;">
+                <label class="form-label">Buscar y Agregar Instituciones *</label>
+                <div style="position:relative;">
+                  <input type="text" class="form-control" id="as-search-ie" placeholder="Escriba código modular o nombre de la IE..." oninput="onSearchIEAsignar(this.value)">
+                  <div id="as-search-autocomplete" class="autocomplete-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:10; background:#fff; border:1px solid #d1d5db; border-radius:8px; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
+                </div>
+                <div id="as-selected-ies-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+              </div>
+
+              <!-- Selección manual container -->
+              <div id="alcance-manual-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <label class="form-label mb-0">Instituciones Educativas *</label>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(true)">Seleccionar todas</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label" style="font-size:.75rem">Buscar IE</label>
+                    <input type="text" class="form-control" id="ie-search" placeholder="Código, N° o Nombre..." oninput="filterIEList()">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" style="font-size:.75rem">Ruralidad</label>
+                    <select class="form-select" id="ie-filter-ruralidad" onchange="filterIEList()">
+                      <option value="">Todas</option>
+                      <option value="URBANO">Urbano</option>
+                      <option value="RURAL 1">Rural 1</option>
+                      <option value="RURAL 2">Rural 2</option>
+                      <option value="RURAL 3">Rural 3</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" style="font-size:.75rem">Nivel</label>
+                    <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
+                      <option value="">Todos</option>
+                      <option value="inicial">Inicial</option>
+                      <option value="primaria">Primaria</option>
+                      <option value="secundaria">Secundaria</option>
+                      <option value="otros">Otros</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="ie-list" id="ie-checkbox-list"></div>
+              </div>
               <div class="mt-4 text-center"><button type="submit" class="btn btn-primary px-5">Asignar Actividad</button></div>
             </form>
           </div>
@@ -1606,25 +1640,116 @@ function toggleAllIEs(s) {
   }
 }
 
+var selectedSpecificIEIds = new Set();
+
+function onChangeAlcance(val) {
+  document.getElementById('alcance-nivel-container').style.display = (val === 'nivel') ? 'block' : 'none';
+  document.getElementById('alcance-especifico-container').style.display = (val === 'especifico') ? 'block' : 'none';
+  document.getElementById('alcance-manual-container').style.display = (val === 'manual') ? 'block' : 'none';
+}
+
+function onSearchIEAsignar(q) {
+  var container = document.getElementById('as-search-autocomplete');
+  if (!q || q.trim() === '') {
+    container.style.display = 'none';
+    return;
+  }
+  var query = normalizar(q);
+  var matches = allIEs.filter(function(ie) {
+    return normalizar(ie.codigo).indexOf(query) !== -1 || normalizar(ie.nombre).indexOf(query) !== -1;
+  });
+  
+  if (matches.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.8rem;text-align:center">No se encontraron resultados</div>';
+  } else {
+    var html = '';
+    var limit = Math.min(matches.length, 10);
+    for (var i = 0; i < limit; i++) {
+      var ie = matches[i];
+      if (selectedSpecificIEIds.has(ie.id)) continue;
+      
+      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
+      html += '<div class="as-autocomplete-item" onclick="addSpecificIE(' + ie.id + ', \'' + ie.codigo + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
+      html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + ie.codigo + '</span>';
+      html += '<span style="color:#333">' + ie.nombre + '</span>';
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  }
+  container.style.display = 'block';
+}
+
+function addSpecificIE(id, codigo, nombre) {
+  selectedSpecificIEIds.add(id);
+  document.getElementById('as-search-ie').value = '';
+  document.getElementById('as-search-autocomplete').style.display = 'none';
+  renderSpecificIETags();
+}
+
+function removeSpecificIE(id) {
+  selectedSpecificIEIds.delete(id);
+  renderSpecificIETags();
+}
+
+function renderSpecificIETags() {
+  var container = document.getElementById('as-selected-ies-tags');
+  var html = '';
+  selectedSpecificIEIds.forEach(function(id) {
+    var ie = allIEs.find(function(item) { return item.id === id; });
+    if (ie) {
+      html += '<span class="badge badge-info" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:0.75rem; border-radius:20px; background:var(--granate); color:#fff; font-weight:700; border:none; margin-right:4px; margin-bottom:4px;">' +
+        ie.codigo + ' - ' + ie.nombre +
+        '<i class="fas fa-times" onclick="removeSpecificIE(' + ie.id + ')" style="cursor:pointer; font-size:0.7rem; opacity:0.8; margin-left:6px;"></i>' +
+        '</span>';
+    }
+  });
+  container.innerHTML = html;
+}
+
 async function submitAsignar() {
-  syncSelectedIEs();
   var tit = document.getElementById('as-titulo').value.trim();
   var ti = document.getElementById('as-tipo').value;
   var desc = document.getElementById('as-descripcion').value.trim();
   var fec = document.getElementById('as-fecha').value;
   var hor = document.getElementById('as-hora').value;
-  var ids = Array.from(selectedIEIds);
+  
   if (!tit || !ti || !fec || !hor) { showToast('Complete campos obligatorios', 'error'); return; }
-  if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
+  
+  var alcance = document.getElementById('as-alcance').value;
+  var ids = [];
+  
+  if (alcance === 'manual') {
+    syncSelectedIEs();
+    ids = Array.from(selectedIEIds);
+    if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
+  } else if (alcance === 'especifico') {
+    ids = Array.from(selectedSpecificIEIds);
+    if (ids.length === 0) { showToast('Agregue al menos una IE específica', 'error'); return; }
+  } else if (alcance === 'nivel') {
+    var nivelVal = document.getElementById('as-alcance-nivel').value;
+    var matchingIEs = allIEs.filter(function(ie) {
+      if (nivelVal === 'inicial') return ie.tiene_inicial;
+      if (nivelVal === 'primaria') return ie.tiene_primaria;
+      if (nivelVal === 'secundaria') return ie.tiene_secundaria;
+      if (nivelVal === 'otros') return ie.tiene_otros;
+      return false;
+    });
+    ids = matchingIEs.map(function(ie) { return ie.id; });
+    if (ids.length === 0) { showToast('No se encontraron IEs para el nivel seleccionado', 'error'); return; }
+  }
+  
   try {
     await api('/api/actividades', { method: 'POST', body: { titulo: tit, tipo_id: ti, descripcion: desc, fecha_limite: fec, hora_limite: hor, ie_ids: ids } });
-    showToast('Actividad asignada', 'success');
+    showToast('Actividad asignada con éxito', 'success');
     document.getElementById('asignar-form').reset();
     document.getElementById('ie-filter-ruralidad').value = '';
     document.getElementById('ie-filter-nivel').value = '';
     document.getElementById('ie-search').value = '';
     selectedIEIds.clear();
     renderIECheckboxes(allIEs);
+    selectedSpecificIEIds.clear();
+    renderSpecificIETags();
+    onChangeAlcance('manual');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
