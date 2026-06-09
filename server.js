@@ -1246,6 +1246,15 @@ app.get('/api/status', async (req, res) => {
     }
 });
 
+app.get('/api/force-seed', async (req, res) => {
+    try {
+        await initDatabase();
+        res.json({ ok: true, message: 'Base de datos inicializada y seedeada correctamente.' });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
+    }
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Error no capturado:', err);
