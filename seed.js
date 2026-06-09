@@ -1,9 +1,4 @@
 async function seedDatabase(db) {
-    const existing = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
-    if (existing.c > 0) {
-        return { seeded: false, ies: existing.c };
-    }
-
     const iesData = [
         ['084429','0005 SAN JOSE OBRERO','RURAL 3',true,true,false,false,null],
         ['471255','001 MADRE TERESA DE CALCUTA','URBANO',true,false,false,false,null],
@@ -190,11 +185,14 @@ async function seedDatabase(db) {
         ['471910','AGROPECUARIO DOS UNIDOS','RURAL 3',true,false,false,false,null]
     ];
 
-    const insertIE = db.prepare(
-        'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO NOTHING'
-    );
-    for (const ie of iesData) {
-        await insertIE.run(...ie);
+    const existing = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
+    if (existing.c === 0) {
+        const insertIE = db.prepare(
+            'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO NOTHING'
+        );
+        for (const ie of iesData) {
+            await insertIE.run(...ie);
+        }
     }
 
     const supervisores = [
