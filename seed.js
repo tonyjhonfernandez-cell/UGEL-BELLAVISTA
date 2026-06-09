@@ -198,32 +198,468 @@ async function seedDatabase(db) {
     }
 
     const supervisores = [
-        ["Poel Rufino Herrera Bendezú", "DIRECCION", "Director", "942057671", "21876169"],
-        ["Margot Fonseca de Vera", "DIRECCION", "Secretaria de Dirección", "985166187", "00874080"],
-        ["Mary Saavedra Taricuarima", "DIRECCION", "Servicio profesional Especializado en la Oficina de Dirección", "931033476", "71506096"],
-        ["Keyla Livany Vasquez Chuquilin", "ADMINISTRACION", "Analista de la CPPADD", "918910957", "71776200"],
-        ["Gerges Gabriel Isuiza Chanchari", "ADMINISTRACION", "Servicio Profesional Especializado en Imagen Institucional", "910284730", "75913169"],
-        ["Leydi Marín Quezada", "ADMINISTRACION", "Jefe de la Oficina de Administración", "980039344", "42268073"],
-        ["Leidy Luz Cárdenas Vásquez", "ADMINISTRACION", "Servicio Profesional Especializado en Planilla y AIRHSP", "917087282", "42773099"],
-        ["Beroccio Ramirez Ríos", "ADMINISTRACION", "Especialista en Tesorería", "945729690", "40666029"],
-        ["Ketty Paola Alvarado Cárdenas", "ADMINISTRACION", "Servicio Profesional Especializado en PAD", "950448715", "41656645"],
-        ["Yeny Judith Martínez Rafael", "AGI", "Especialista en Planificación y Presupuesto", "917925497", "71848797"],
-        ["Karen Janeth Flores Lanares", "ADMINISTRACION", "Especialista en Contabilidad", "965282597", "71602492"],
-        ["Veronica Salazar Castro", "ADMINISTRACION", "Especialista en Abastecimiento", "910745623", "48024213"],
-        ["Violeta Salazar García", "ADMINISTRACION", "Especialista en Bienestar", "915204867", "71480435"],
-        ["Fiorella Vela Vásquez", "ADMINISTRACION", "Proyectista", "982864855", "73449707"],
-        ["Sutkey Milagritos Ramirez Cabanillas", "ADMINISTRACION", "Servicio Profesional Especializado en Limpieza", "952073717", "75752934"],
-        ["Maria Margarita Cubas Sanchéz", "ADMINISTRACION", "Especialista en Patrimonio y Almacén", "961172850", "47843680"],
-        ["Joel Gonza Peña", "ADMINISTRACION", "Servicio Profesional Especializado en RR.HH.", "921147616", "72024344"],
-        ["Zack Kevin Alvarado Maldonado", "AGI", "Servicio Profesional Especializado en Infraestructura", "999474811", "70780194"],
-        ["Kevin Hafid Rojas Cubas", "DIRECCION", "Servicio Profesional Especializado en Asesoría Legal", "935259037", "74148294"],
-        ["Gilma Veronica Gutierrez Vasquez", "ADMINISTRACION", "Servicio Profesional Especializado en Abastecimiento", "958688034", "46942973"],
-        ["Maria de los Angeles Nole Vargas de Merino", "AGP", "PREVAED", "932361827", "72160115"],
-        ["Rolita Sangama Del Aguila", "AGP", "Coordinador de PRONOEI", "943297382", "44324084"],
-        ["Hiber Miller Yalta Cubas", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "931828025", "47953187"],
-        ["Jhoel Villacorta Salazar", "AGP", "Profesional III Equipo Itinerante Convivencia Escolar", "949683852", "72927716"],
-        ["Jheimmy Carmin Guevara Tafur", "AGI", "Especialista en Finanzas", "996640502", "45566260"],
-        ["Alfredo Silva Pisco", "ADMINISTRACION", "Servicio Profesional Especializado en Seguridad y Vigilancia", null, null]
+            [
+                    "Poel Rufino Herrera Bendezú",
+                    "DIRECCION",
+                    "Director",
+                    "942057671",
+                    "21876169"
+            ],
+            [
+                    "Margot Fonseca de Vera",
+                    "DIRECCION",
+                    "Secretaria de Dirección",
+                    "985166187",
+                    "00874080"
+            ],
+            [
+                    "Mary Saavedra Taricuarima",
+                    "DIRECCION",
+                    "Servicio profesional Especializado en la Oficina de Dirección de la UGEL Bellavista",
+                    "931033476",
+                    "71506096"
+            ],
+            [
+                    "Keyla Livany Vasquez Chuquilin",
+                    "ADMINISTACION",
+                    "Analista de la CPPADD",
+                    "918910957",
+                    "71776200"
+            ],
+            [
+                    "Gerges Gabriel Isuiza Chanchari",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Imagen Institucional de la UGEL Bellavista",
+                    "910284730",
+                    "75913169"
+            ],
+            [
+                    "Leydi Marín Quezada",
+                    "ADMINISTACION",
+                    "Jefe de la Oficina de Administración",
+                    "980039344",
+                    "42268073"
+            ],
+            [
+                    "Leidy Luz Cárdenas Vásquez",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Planilla y AIRHSP de la UGEL Bellavista",
+                    "917087282",
+                    "42773099"
+            ],
+            [
+                    "Beroccio Ramirez Ríos",
+                    "ADMINISTACION",
+                    "Especialista en Tesorería",
+                    "945729690",
+                    "40666029"
+            ],
+            [
+                    "Ketty Paola Alvarado Cárdenas",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Procedimientos Administrativos Disciplinarios (PAD) de la UGEL Bellavista",
+                    "950448715",
+                    "41656645"
+            ],
+            [
+                    "Yeny Judith Martínez Rafael",
+                    "AGI",
+                    "Especialista en Planificacion y Presupuesto",
+                    "\"917925497/901759018\"",
+                    "71848797"
+            ],
+            [
+                    "Karen Janeth Flores Lanares",
+                    "ADMINISTACION",
+                    "Especialista en Contabilidad",
+                    "965282597",
+                    "71602492"
+            ],
+            [
+                    "Veronica Salazar Castro",
+                    "ADMINISTACION",
+                    "Especialista en Abastecimiento",
+                    "910745623",
+                    "48024213"
+            ],
+            [
+                    "Violeta Salazar García",
+                    "ADMINISTACION",
+                    "Especialista en Bienestar",
+                    "915204867",
+                    "71480435"
+            ],
+            [
+                    "Fiorella Vela Vásquez",
+                    "ADMINISTACION",
+                    "Proyectista",
+                    "982864855",
+                    "73449707"
+            ],
+            [
+                    "Sutkey Milagritos Ramirez Cabanillas",
+                    "ADMINISTACION",
+                    "Especialista en Archivo",
+                    "959785950",
+                    "74644880"
+            ],
+            [
+                    "Jhoy Lider Gonzales Pinedo",
+                    "AGI",
+                    "Servicio Profesional Especializado en el Área de Planificación y Presupuesto de la UGEL Bellavista",
+                    "939170499",
+                    "77297263"
+            ],
+            [
+                    "Segundo Hipólito Saldaña Pérez",
+                    "ADMINISTACION",
+                    "Responsable de la Oficina de Gestión de  Recursos Humanos",
+                    "983363956",
+                    "05373518"
+            ],
+            [
+                    "Yesenia Marisol Escobedo Vilchez",
+                    "ADMINISTACION",
+                    "Secretaria de la Oficina de RR.HH.",
+                    "969330029",
+                    "47109452"
+            ],
+            [
+                    "Carlos Bendezú Ushiñahua Fasabi",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Archivo de la UGEL Bellavista",
+                    "968662212",
+                    "72199076"
+            ],
+            [
+                    "Lleny Sangama Guerra",
+                    "ADMINISTACION",
+                    "Secretaria de la Oficina de Administracion",
+                    "939891317",
+                    "71928865"
+            ],
+            [
+                    "Gianny Pezo Cumapa",
+                    "DIRECCION",
+                    "Asesora Legal",
+                    "962103462",
+                    "70076501"
+            ],
+            [
+                    "Diego Torres Rengifo",
+                    "ADMINISTACION",
+                    "Analista en Nexus",
+                    "942931183",
+                    "72087286"
+            ],
+            [
+                    "Breidis Santiago Upiachihua Cárdenas",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Tesorería de la UGEL Bellavista",
+                    "989416693",
+                    "74765595"
+            ],
+            [
+                    "Juan Carlos Campos Viera",
+                    "ADMINISTACION",
+                    "Especialista en Planillas",
+                    "949874489",
+                    "41048864"
+            ],
+            [
+                    "Gianmarco Panduro Mego",
+                    "ADMINISTACION",
+                    "Especialista en Informática I",
+                    "960984221",
+                    "46864420"
+            ],
+            [
+                    "Dayxs Bravo Bustamante",
+                    "ADMINISTACION",
+                    "Especialista en Escalafón",
+                    "918215774",
+                    "47059094"
+            ],
+            [
+                    "Karen Tatiana Hidalgo Vásquez",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Recursos Humanos de la UGEL Bellavista",
+                    "925404681",
+                    "74657614"
+            ],
+            [
+                    "Herberth Rivera Cabrera",
+                    "ADMINISTACION",
+                    "Vigilante",
+                    "955700174",
+                    "27431208"
+            ],
+            [
+                    "Maryori Stephany Muñoz Gonzales",
+                    "ADMINISTACION",
+                    "Tecnico Administrativo de Mesa de Partes",
+                    "948281756",
+                    "74657864"
+            ],
+            [
+                    "Ricardo Saldaña Guevara",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Seguridad y Vigilancia de la UGEL Bellavista",
+                    "974901812",
+                    "00873189"
+            ],
+            [
+                    "Rober Cachique Cachique",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Seguridad y Vigilancia  de la UGEL Bellavista",
+                    "930415084",
+                    "43463743"
+            ],
+            [
+                    "Ruber Cárdenas Ramirez",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Seguridad y Vigilancia de la UGEL Bellavista",
+                    "951232179",
+                    "43296425"
+            ],
+            [
+                    "Ynes Paola Pérez Avila",
+                    "AGI",
+                    "Especialista en Racionalizacion y Estadistica",
+                    "931252534",
+                    "44072546"
+            ],
+            [
+                    "Tony Jhon Fernandez Díaz",
+                    "AGI",
+                    "Jefe del Area de Gestion Institucional",
+                    "940798299",
+                    "74223117"
+            ],
+            [
+                    "Gisela Yudith Vásquez Gonzales",
+                    "AGI",
+                    "Servicio Profesional Especializado en el Área de Gestión Institucional de la UGEL Bellavista",
+                    "942195403",
+                    "60294586"
+            ],
+            [
+                    "Roxanita Carrasco Holguín",
+                    "AGI",
+                    "Especialista de SIAGIE",
+                    "971991326",
+                    "76642285"
+            ],
+            [
+                    "Daniel Leonidas La Torre Rengifo",
+                    "AGI",
+                    "Especialista en Infraestructura",
+                    "947538971",
+                    "45849880"
+            ],
+            [
+                    "Hugo Ushiñahua Trigoso",
+                    "ADMINISTACION",
+                    "Chofer",
+                    "944478823",
+                    "00869906"
+            ],
+            [
+                    "Gianfranco Nieto Cárdenas",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Almacén de la UGEL Bellavista",
+                    "966589720",
+                    "74770324"
+            ],
+            [
+                    "Yolby Tapullima Tapullima",
+                    "AGP",
+                    "Servicio profesional Especializado en el Área de Gestión Pedagógica de la UGEL Bellavista",
+                    "990838961",
+                    "72120699"
+            ],
+            [
+                    "Karen Esther Vela Arirama",
+                    "AGP",
+                    "Servicio Profesional Especializado En El Área De Gestión Pedagógica De La UGEL Bellavista",
+                    "917790752",
+                    "74761394"
+            ],
+            [
+                    "Sheily Say Huansi Vásquez",
+                    "AGP",
+                    "Especialista en Convivencia Escolar",
+                    "943008206",
+                    "46864559"
+            ],
+            [
+                    "Franklin Cárdenas Ruíz",
+                    "AGP",
+                    "Especialista en Educacion Nivel Primaria",
+                    "975235462",
+                    "00885852"
+            ],
+            [
+                    "Antonio Wilmer Rojas Miranda",
+                    "AGP",
+                    "Especialista en Educacion Nivel  Secundaria",
+                    "942962839",
+                    "18229933"
+            ],
+            [
+                    "Antonio Angulo Ramírez",
+                    "AGP",
+                    "Coordinador de PRONOEI",
+                    "994459215",
+                    "00874983"
+            ],
+            [
+                    "Sonia Angulo Cabrera",
+                    "AGP",
+                    "Coordinador de PRONOEI",
+                    "972644125",
+                    "00840196"
+            ],
+            [
+                    "Pedro Antonio Rengifo Ramírez",
+                    "AGP",
+                    "Coordinador de PRONOEI",
+                    "942890476",
+                    "00874857"
+            ],
+            [
+                    "Ayrunedi Lopez Putpaña",
+                    "AGP",
+                    "Coordinador de PRONOEI",
+                    "968116742",
+                    "00878980"
+            ],
+            [
+                    "Oscar Enrique Ayay Sánchez",
+                    "AGP",
+                    "Jefe del Area de Gestión Pedagógica",
+                    "981726278",
+                    "19336148"
+            ],
+            [
+                    "Ernesto Jimenez Chapoñan",
+                    "AGP",
+                    "Especialista en Educacion Nivel Secundaria CC.SS.",
+                    "942980576",
+                    "27434297"
+            ],
+            [
+                    "Zarita Isabel Mijahuanga Chumbe",
+                    "AGP",
+                    "Especialista en Educacion Nivel Inicial",
+                    "966559895",
+                    "46429187"
+            ],
+            [
+                    "Silvia Janet Heredia Romero",
+                    "AGP",
+                    "Especialista en Educacion Nivel Inicial",
+                    "984607494",
+                    "43113056"
+            ],
+            [
+                    "Salustiano Valdemar Salas Namay",
+                    "AGP",
+                    "Especialista en Educacion Nivel Secundaria Matemática",
+                    "950914571",
+                    "19669881"
+            ],
+            [
+                    "Manuel Ramírez Ruíz",
+                    "AGP",
+                    "Especialista en Educacion Nivel Secundaria Comunicación",
+                    "943452869",
+                    "41980001"
+            ],
+            [
+                    "Victor Vela Ramirez",
+                    "AGP",
+                    "Especialista en Educacion Nivel Primaria",
+                    "938579012",
+                    "00868298"
+            ],
+            [
+                    "Maria Leonor Revilla Guevara",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Limpieza de la UGEL Bellavista",
+                    "952073717",
+                    "00868004"
+            ],
+            [
+                    "Maria Margarita Cubas Sanchéz",
+                    "ADMINISTRACION",
+                    "Especialista en el area de Patrimonio y Almacen",
+                    "961172850",
+                    "47843680"
+            ],
+            [
+                    "Joel Gonza Peña",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Recursos Humanos de la UGEL Bellavista",
+                    "921147616",
+                    "72024344"
+            ],
+            [
+                    "Zack Kevin Alvarado Maldonado",
+                    "AGI",
+                    "Servicio Profesional Especializado en la Oficina de Infraestructura de la UGEL Bellavista",
+                    "999474811",
+                    "70780194"
+            ],
+            [
+                    "Kevin Hafid Rojas Cubas",
+                    "DIRECCION",
+                    "Servicio Profesional Especializado en la Oficina de Asesoria Legal de la UGEL Bellavista",
+                    "935259037",
+                    "74148294"
+            ],
+            [
+                    "Gilma Veronica Gutierrez Vasquez",
+                    "ADMINISTACION",
+                    "Servicio Profesional Especializado en la Oficina de Abastecimiento de la UGEL Bellavista",
+                    "958688034",
+                    "46942973"
+            ],
+            [
+                    "Maria de los Angeles Noel Vargas de Merino",
+                    "AGP",
+                    "PREVAED",
+                    "932361827",
+                    "72160115"
+            ],
+            [
+                    "Rolita Sangama Del Aguila",
+                    "AGP",
+                    "Coordinador de PRONOEI",
+                    "943297382",
+                    "44324084"
+            ],
+            [
+                    "Hiber Miller Yalta Cubas",
+                    "AGP",
+                    "Profesional III para Equipo Itinerante de Convivencia Escolar",
+                    "931828025",
+                    "47953187"
+            ],
+            [
+                    "Jhoel Villacorta Salazar",
+                    "AGP",
+                    "Profesional III para Equipo Itinerante de Convivencia Escolar",
+                    "949683852",
+                    "72927716"
+            ],
+            [
+                    "Jheimmy Carmin Guevara Tafur",
+                    "AGI",
+                    "Especialista en Finanzas",
+                    "996640502",
+                    "45566260"
+            ]
     ];
 
     const checkSupervisor = db.prepare(
