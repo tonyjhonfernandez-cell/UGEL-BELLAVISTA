@@ -2412,6 +2412,11 @@ async function loadAvanceMensual() {
     var activitiesList = Object.values(activitiesMap);
     for (var i = 0; i < activitiesList.length; i++) {
       activitiesList[i].asignaciones.sort(function(x, y) {
+        var xDone = (x.estado === 'completada') ? 1 : 0;
+        var yDone = (y.estado === 'completada') ? 1 : 0;
+        if (xDone !== yDone) {
+          return xDone - yDone;
+        }
         return (x.ie_nombre || '').localeCompare(y.ie_nombre || '');
       });
     }
