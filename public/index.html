@@ -130,6 +130,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);-webk
 .t-card tr:last-child td{border-bottom:none}
 .t-card tr:hover td{background:#fafafa}
 .t-card .empty td{color:var(--text3);text-align:center;padding:32px}
+.scrollable-wrap{max-height:350px;overflow-y:auto;position:relative}
+.scrollable-wrap th{position:sticky;top:0;z-index:10;background:#fafafa!important}
 
 /* BADGES */
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:600;letter-spacing:.2px}
@@ -509,11 +511,11 @@ body.director-mode #app-shell{display:block}
         <div class="dash-grid">
           <div class="t-card">
             <div class="t-hd"><i class="fas fa-exclamation-triangle"></i> Top IEs con más vencidas</div>
-            <div class="t-wrap"><table><thead><tr><th>Institución Educativa</th><th style="width:70px">Vencidas</th></tr></thead><tbody id="top-vencidas-table"></tbody></table></div>
+            <div class="t-wrap scrollable-wrap"><table><thead><tr><th>Institución Educativa</th><th style="width:70px">Vencidas</th></tr></thead><tbody id="top-vencidas-table"></tbody></table></div>
           </div>
           <div class="t-card">
             <div class="t-hd"><i class="fas fa-trophy" style="color:var(--amber)"></i> Ranking de Colegios (Cumplimiento)</div>
-            <div class="t-wrap"><table><thead><tr><th>IE</th><th style="width:70px">Cumplidas</th><th style="width:70px">Venc.</th></tr></thead><tbody id="ranking-ies-table"></tbody></table></div>
+            <div class="t-wrap scrollable-wrap"><table><thead><tr><th>IE</th><th style="width:70px">Cumplidas</th><th style="width:70px">Venc.</th></tr></thead><tbody id="ranking-ies-table"></tbody></table></div>
           </div>
           <div class="t-card" style="grid-column: 1 / -1">
             <div class="t-hd"><i class="fas fa-clock"></i> Actividades Recientes</div>
