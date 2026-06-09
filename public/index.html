@@ -2258,7 +2258,8 @@ async function loadAvanceMensual() {
 
         var daysLeft = Math.ceil((new Date(act.fecha_limite + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
         var daysText = daysLeft < 0 ? 'Vencido hace ' + Math.abs(daysLeft) + ' días' : 'Faltan ' + daysLeft + ' días';
-         var isExpanded = expandedAvanceActivityIds.has(act.id);
+        var daysBadgeClass = daysLeft < 0 ? 'badge-no_cumplida' : 'badge-pendiente';
+        var isExpanded = expandedAvanceActivityIds.has(act.id);
         var listDisplay = isExpanded ? 'block' : 'none';
         var listBtnText = isExpanded ? 'CERRAR DETALLE' : 'LISTADO DE CUMPLIMIENTO';
         var listBtnIcon = isExpanded ? 'fa-chevron-up' : 'fa-chevron-down';
