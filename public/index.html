@@ -2205,12 +2205,15 @@ async function loadAvanceMensual() {
     var activitiesMap = {};
     for (var i = 0; i < filteredRows.length; i++) {
       var a = filteredRows[i];
-      var actId = a.actividad_id || a.id;
-      if (!activitiesMap[actId]) {
-        activitiesMap[actId] = {
-          id: actId,
-          titulo: a.actividad_titulo || a.titulo,
-          fecha_limite: a.fecha_limite,
+      var actTitle = a.actividad_titulo || a.titulo || '';
+      var actFecha = a.fecha_limite || '';
+      var actKey = actTitle.trim().toLowerCase() + '_' + actFecha;
+      
+      if (!activitiesMap[actKey]) {
+        activitiesMap[actKey] = {
+          id: a.actividad_id || a.id,
+          titulo: actTitle,
+          fecha_limite: actFecha,
           descripcion: a.actividad_descripcion || a.descripcion || '',
           area: a.area,
           subarea: a.subarea,
@@ -2222,14 +2225,19 @@ async function loadAvanceMensual() {
           asignaciones: []
         };
       }
-      activitiesMap[actId].total++;
-      activitiesMap[actId].asignaciones.push(a);
-      if (a.estado === 'completada') activitiesMap[actId].completadas++;
-      else if (a.estado === 'no_cumplida') activitiesMap[actId].no_cumplidas++;
-      else activitiesMap[actId].pendientes++;
+      activitiesMap[actKey].total++;
+      activitiesMap[actKey].asignaciones.push(a);
+      if (a.estado === 'completada') activitiesMap[actKey].completadas++;
+      else if (a.estado === 'no_cumplida') activitiesMap[actKey].no_cumplidas++;
+      else activitiesMap[actKey].pendientes++;
     }
 
     var activitiesList = Object.values(activitiesMap);
+    for (var i = 0; i < activitiesList.length; i++) {
+      activitiesList[i].asignaciones.sort(function(x, y) {
+        return (x.ie_nombre || '').localeCompare(y.ie_nombre || '');
+      });
+    }
     activitiesList.sort(function(a, b) {
       return new Date(a.fecha_limite).getTime() - new Date(b.fecha_limite).getTime();
     });
@@ -2277,9 +2285,7 @@ async function loadAvanceMensual() {
               '<i class="fas fa-list-check"></i> LISTADO DE CUMPLIMIENTO <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>' +
             '</button>' +
             '<div id="avance-ie-list-' + act.id + '" style="display:none; margin-top:16px; background:#f8fafc; border-radius:16px; padding:16px; border:1px dashed #e2e8f0;">' +
-              '<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:10px;">' +
-                renderAvanceIEBadges(act) +
-              '</div>' +
+              renderAvanceIEBadges(act) +
             '</div>' +
           '</div>' +
         '</div>';
@@ -2310,22 +2316,29 @@ function toggleAvanceIEList(actId) {
 }
 
 function renderAvanceIEBadges(act) {
-  var html = '';
+  var html = '<div style="display:flex; flex-direction:column; gap:8px; width:100%;">';
   for (var i = 0; i < act.asignaciones.length; i++) {
     var asig = act.asignaciones[i];
     var isDone = asig.estado === 'completada';
-    var bg = isDone ? '#10b981' : '#cbd5e1';
-    var color = '#fff';
-    var checkIcon = isDone ? '<i class="fas fa-check-double"></i>' : '<i class="fas fa-circle-plus"></i>';
+    var badgeClass = 'badge-' + asig.estado;
+    var btnClass = isDone ? 'btn-secondary' : 'btn-success';
+    var btnText = isDone ? 'Revertir a Pendiente' : 'Marcar Completado';
+    var nextState = isDone ? 'pendiente' : 'completada';
     
-    html += '<button onclick="toggleAsignacionAvanceState(' + asig.id + ', \'' + (isDone ? 'pendiente' : 'completada') + '\')" style="display:flex; justify-content:space-between; align-items:center; width:100%; border:none; padding:10px 14px; border-radius:10px; font-weight:700; font-size:0.7rem; cursor:pointer; background:' + bg + '; color:' + color + '; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition:all 0.1s;" class="avance-badge-btn">' +
-      '<div style="text-align:left; min-w:0; flex:1; padding-right:8px;">' +
-        '<div style="font-size:0.68rem; font-weight:800; line-height:1;">' + (asig.ie_codigo || '-') + '</div>' +
-        '<div style="font-size:0.55rem; opacity:0.9; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; margin-top:2px; text-transform:uppercase;">' + (asig.ie_nombre || '-') + '</div>' +
+    html += '<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#fff; border:1px solid #f1f5f9; border-radius:16px; box-shadow:0 1px 2px rgba(0,0,0,0.02);">' +
+      '<div style="text-align:left; min-width:0; flex:1; padding-right:16px;">' +
+        '<div style="font-size:0.8rem; font-weight:800; color:#1f2937; text-transform:uppercase;">' + (asig.ie_codigo || '-') + ' — ' + (asig.ie_nombre || '-') + '</div>' +
+        '<div style="font-size:0.7rem; color:#9ca3af; margin-top:2px; text-transform:uppercase;">DIRECTOR(A): ' + (asig.director_nombre || '-') + '</div>' +
       '</div>' +
-      checkIcon +
-    '</button>';
+      '<div style="display:flex; align-items:center; gap:16px; flex-shrink:0;">' +
+        '<span class="badge ' + badgeClass + '" style="font-size:0.65rem;">' + asig.estado.replace('_', ' ').toUpperCase() + '</span>' +
+        '<button onclick="toggleAsignacionAvanceState(' + asig.id + ', \'' + nextState + '\')" class="btn btn-xs ' + btnClass + '" style="font-weight:700; font-size:0.68rem; padding:6px 12px; border-radius:8px; cursor:pointer;">' +
+          btnText +
+        '</button>' +
+      '</div>' +
+    '</div>';
   }
+  html += '</div>';
   return html;
 }
 
