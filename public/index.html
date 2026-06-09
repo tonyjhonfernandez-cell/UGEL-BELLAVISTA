@@ -594,7 +594,7 @@ body.director-mode #app-shell{display:block}
           </div>
           <div class="filter-group" style="margin-bottom:0; width:300px;">
             <label style="font-size:0.75rem; font-weight:700; color:var(--text3); margin-bottom:4px; display:block;">Consultar Institución Educativa</label>
-            <select class="form-select" id="avance-ie-select" onchange="loadAvanceMensual()" style="background:#fff; font-weight:600; font-size:0.8rem;">
+            <select class="form-select" id="avance-ie-select" onchange="if(typeof expandedAvanceActivityIds!=='undefined')expandedAvanceActivityIds.clear(); loadAvanceMensual();" style="background:#fff; font-weight:600; font-size:0.8rem;">
               <option value="">-- VER REPORTE GENERAL PROVINCIAL --</option>
             </select>
           </div>
@@ -2090,6 +2090,7 @@ var MONTHS = [
 ];
 var avanceSelectedMonth = new Date().getMonth();
 var chartAvanceMensualObj = null;
+var expandedAvanceActivityIds = new Set();
 
 function renderAvanceMonthSlider() {
   var slider = document.getElementById('avance-month-slider');
@@ -2106,6 +2107,7 @@ function renderAvanceMonthSlider() {
 }
 
 function setAvanceMonth(monthIndex) {
+  if (typeof expandedAvanceActivityIds !== 'undefined') expandedAvanceActivityIds.clear();
   avanceSelectedMonth = monthIndex;
   renderAvanceMonthSlider();
   loadAvanceMensual();
@@ -2256,7 +2258,10 @@ async function loadAvanceMensual() {
 
         var daysLeft = Math.ceil((new Date(act.fecha_limite + 'T00:00:00').getTime() - new Date().setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
         var daysText = daysLeft < 0 ? 'Vencido hace ' + Math.abs(daysLeft) + ' días' : 'Faltan ' + daysLeft + ' días';
-        var daysBadgeClass = daysLeft < 0 ? 'badge-no_cumplida' : 'badge-pendiente';
+         var isExpanded = expandedAvanceActivityIds.has(act.id);
+        var listDisplay = isExpanded ? 'block' : 'none';
+        var listBtnText = isExpanded ? 'CERRAR DETALLE' : 'LISTADO DE CUMPLIMIENTO';
+        var listBtnIcon = isExpanded ? 'fa-chevron-up' : 'fa-chevron-down';
 
         listHtml += '<div style="background:#fff; border:1px solid #e5e7eb; border-radius:24px; padding:20px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
           '<div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:start; gap:16px; margin-bottom:12px;">' +
@@ -2282,9 +2287,9 @@ async function loadAvanceMensual() {
           '</div>' +
           '<div style="margin-top:16px; border-top:1px solid #f3f4f6; padding-top:12px;">' +
             '<button class="btn btn-xs" onclick="toggleAvanceIEList(' + act.id + ')" id="btn-toggle-avance-' + act.id + '" style="font-weight:700; font-size:0.68rem; display:inline-flex; align-items:center; gap:6px; border:1px solid #e5e7eb; background:#f9fafb; border-radius:8px; padding:6px 12px; cursor:pointer;">' +
-              '<i class="fas fa-list-check"></i> LISTADO DE CUMPLIMIENTO <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>' +
+              '<i class="fas fa-list-check"></i> ' + listBtnText + ' <i class="fas ' + listBtnIcon + '" style="font-size:0.6rem;"></i>' +
             '</button>' +
-            '<div id="avance-ie-list-' + act.id + '" style="display:none; margin-top:16px; background:#f8fafc; border-radius:16px; padding:16px; border:1px dashed #e2e8f0;">' +
+            '<div id="avance-ie-list-' + act.id + '" style="display:' + listDisplay + '; margin-top:16px; background:#f8fafc; border-radius:16px; padding:16px; border:1px dashed #e2e8f0;">' +
               renderAvanceIEBadges(act) +
             '</div>' +
           '</div>' +
@@ -2309,9 +2314,11 @@ function toggleAvanceIEList(actId) {
   if (el.style.display === 'none') {
     el.style.display = 'block';
     btn.innerHTML = '<i class="fas fa-list-check"></i> CERRAR DETALLE <i class="fas fa-chevron-up" style="font-size:0.6rem;"></i>';
+    expandedAvanceActivityIds.add(actId);
   } else {
     el.style.display = 'none';
     btn.innerHTML = '<i class="fas fa-list-check"></i> LISTADO DE CUMPLIMIENTO <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>';
+    expandedAvanceActivityIds.delete(actId);
   }
 }
 
