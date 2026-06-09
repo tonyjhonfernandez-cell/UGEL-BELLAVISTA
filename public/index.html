@@ -731,12 +731,6 @@ body.director-mode #app-shell{display:block}
               <option value="no_cumplida">No Cumplida</option>
             </select>
           </div>
-          <div class="filter-group">
-            <label>Actividad</label>
-            <select class="form-select" id="mon-actividad" onchange="loadMonitoreo()">
-              <option value="">Todas</option>
-            </select>
-          </div>
         </div>
         <div class="t-card">
           <div class="t-hd" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
@@ -750,17 +744,12 @@ body.director-mode #app-shell{display:block}
               <thead>
                 <tr>
                   <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all-mon" onchange="toggleSelectAllMonitoreo(this)"></th>
-                  <th>Código</th>
-                  <th>IE</th>
-                  <th>Ruralidad</th>
-                  <th>Director</th>
-                  <th>Asignador</th>
-                  <th>Actividad</th>
-                  <th>Área</th>
-                  <th>Subárea</th>
-                  <th>Fecha Límite</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
+                  <th>Institución Educativa</th>
+                  <th>Director(a)</th>
+                  <th>Actividad / Área</th>
+                  <th style="width: 120px; text-align: center;">Fecha Límite</th>
+                  <th style="width: 120px; text-align: center;">Estado</th>
+                  <th style="width: 140px; text-align: center;">Acciones</th>
                 </tr>
               </thead>
               <tbody id="monitoreo-table"></tbody>
@@ -889,7 +878,6 @@ let allIEs = [];
 let allDirectores = [];
 let chartRuralidad = null;
 let chartCumplimiento = null;
-let refreshMonitoreoActivities = true;
 
 // ===================== API =====================
 async function api(url, opts = {}) {
@@ -1763,7 +1751,6 @@ async function submitAsignar() {
     selectedSpecificIEIds.clear();
     renderSpecificIETags();
     onChangeAlcance('manual');
-    refreshMonitoreoActivities = true;
   } catch (e) { 
     showToast('Error: ' + e.message, 'error'); 
   } finally {
@@ -1775,60 +1762,17 @@ async function submitAsignar() {
 }
 
 // ===================== MONITOREO =====================
-async function initMonitoreoFilters() {
-  try {
-    var select = document.getElementById('mon-actividad');
-    if (!select) return;
-    var currentVal = select.value;
-    
-    var activities = await api('/api/actividades');
-    var list = activities.actividades || activities || [];
-    
-    var html = '<option value="">Todas</option>';
-    for (var i = 0; i < list.length; i++) {
-      var act = list[i];
-      var title = act.titulo || '';
-      if (title.length > 50) {
-        title = title.substring(0, 47) + '...';
-      }
-      html += '<option value="' + act.id + '">' + title + '</option>';
-    }
-    select.innerHTML = html;
-    
-    if (currentVal) {
-      var exists = false;
-      for (var i = 0; i < select.options.length; i++) {
-        if (select.options[i].value === currentVal) {
-          exists = true;
-          break;
-        }
-      }
-      if (exists) {
-        select.value = currentVal;
-      }
-    }
-  } catch (e) {
-    console.error('Error al cargar actividades para filtros:', e);
-  }
-}
-
 async function loadMonitoreo() {
   try {
-    if (typeof refreshMonitoreoActivities !== 'undefined' && refreshMonitoreoActivities) {
-      await initMonitoreoFilters();
-      refreshMonitoreoActivities = false;
-    }
     var r = document.getElementById('mon-ruralidad').value;
     var es = document.getElementById('mon-estado').value;
     var bu = document.getElementById('mon-buscar').value;
     var n = document.getElementById('mon-nivel').value;
-    var actId = document.getElementById('mon-actividad') ? document.getElementById('mon-actividad').value : '';
     var u = '/api/asignaciones?';
     if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
     if (es) u += 'estado=' + encodeURIComponent(es) + '&';
     if (bu) u += 'buscar=' + encodeURIComponent(bu) + '&';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
-    if (actId) u += 'actividad_id=' + encodeURIComponent(actId) + '&';
     var d = await api(u);
     var rows = d.asignaciones || d || [];
     var html = '';
@@ -1843,16 +1787,43 @@ async function loadMonitoreo() {
         if (a.estado !== 'no_cumplida') {
           actionBtns += '<button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')" title="Marcar vencida"><i class="fas fa-times"></i></button>';
         }
-        html += '<tr><td style="text-align: center;"><input type="checkbox" class="mon-row-checkbox" value="' + act + '" onchange="updateBulkDeleteButtonState()"></td><td>' + (a.ie_codigo || '-') + '</td><td>' + (a.ie_nombre || '-') + '</td><td>' + (a.ruralidad || '-') + '</td><td>' + (a.director_nombre || '-') + '</td><td>' + (a.asignador_nombre || '-') + '</td><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.area || '-') + '</td><td>' + (a.subarea || '-') + '</td><td>' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</td><td><span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></td><td nowrap>' + actionBtns + '<button class="btn btn-xs btn-info me-1" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button><button class="btn btn-xs btn-warning me-1" onclick="editarActividadModal(' + act + ')"><i class="fas fa-edit"></i></button><button class="btn btn-xs btn-danger" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        
+        var ieCell = '<div style="font-weight:700; color:#1f2937; text-transform:uppercase; font-size:0.78rem;">' + (a.ie_nombre || '-') + '</div>' +
+          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">CÓDIGO: ' + (a.ie_codigo || '-') + ' | <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-weight:700; color:#4b5563; font-size:0.6rem;">' + (a.ruralidad || '-') + '</span></div>';
+        
+        var dirCell = '<div style="font-weight:600; color:#374151; font-size:0.75rem;">' + (a.director_nombre || '-') + '</div>';
+        
+        var actCell = '<div style="font-weight:800; color:#1e1e2f; font-size:0.78rem; text-transform:uppercase;">' + (a.actividad_titulo || a.titulo || '-') + '</div>' +
+          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">ASIGNADO POR: ' + (a.asignador_nombre || '-') + ' (' + (a.area || '-') + ' - ' + (a.subarea || '-') + ')</div>';
+        
+        var dateText = a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-';
+        var dateCell = '<div style="font-weight:700; color:#4b5563; font-size:0.72rem; text-align:center;">' + dateText + '</div>';
+        
+        var stateCell = '<div style="text-align:center;"><span class="badge badge-' + a.estado + '" style="font-size:0.65rem;">' + a.estado.replace('_', ' ').toUpperCase() + '</span></div>';
+        
+        var actionsCell = '<div style="text-align:center;" nowrap>' + actionBtns + 
+          '<button class="btn btn-xs btn-info me-1" onclick="verDetalleAsignacion(' + a.id + ')"><i class="fas fa-eye"></i></button>' +
+          '<button class="btn btn-xs btn-warning me-1" onclick="editarActividadModal(' + act + ')"><i class="fas fa-edit"></i></button>' +
+          '<button class="btn btn-xs btn-danger" onclick="eliminarActividad(' + act + ')"><i class="fas fa-trash"></i></button></div>';
+
+        html += '<tr>' +
+          '<td style="text-align: center;"><input type="checkbox" class="mon-row-checkbox" value="' + act + '" onchange="updateBulkDeleteButtonState()"></td>' +
+          '<td>' + ieCell + '</td>' +
+          '<td>' + dirCell + '</td>' +
+          '<td>' + actCell + '</td>' +
+          '<td>' + dateCell + '</td>' +
+          '<td>' + stateCell + '</td>' +
+          '<td>' + actionsCell + '</td>' +
+          '</tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="12">No se encontraron asignaciones</td></tr>';
+      html = '<tr class="empty"><td colspan="7">No se encontraron asignaciones</td></tr>';
     }
     document.getElementById('monitoreo-table').innerHTML = html;
     var masterCheckbox = document.getElementById('select-all-mon');
     if (masterCheckbox) masterCheckbox.checked = false;
     updateBulkDeleteButtonState();
-  } catch (e) { showToast('Error al cargar monitoreo', 'error'); }
+  } catch (e) { showToast('Error al cargar monitoreo: ' + e.message, 'error'); }
 }
 
 function cambiarEstadoAsignacion(id, est) {
@@ -1903,7 +1874,6 @@ async function confirmarEliminarActividad(id) {
     await api('/api/actividades/' + id, { method: 'DELETE' });
     showToast('Actividad eliminada', 'success');
     closeModal();
-    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
@@ -1972,7 +1942,6 @@ async function confirmarEliminarMultiplesActividades(ids) {
     closeModal();
     var masterCheckbox = document.getElementById('select-all-mon');
     if (masterCheckbox) masterCheckbox.checked = false;
-    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
@@ -2004,7 +1973,6 @@ async function guardarEdicionActividad(id) {
     await api('/api/actividades/' + id, { method: 'PUT', body: body });
     showToast('Actividad actualizada', 'success');
     closeModal();
-    refreshMonitoreoActivities = true;
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
