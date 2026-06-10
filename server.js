@@ -352,13 +352,9 @@ app.get('/api/check-session', (req, res) => {
 
 app.get('/api/ies', async (req, res) => {
     try {
-        const { ruralidad, nivel, buscar } = req.query;
+        const { nivel, buscar } = req.query;
         let sql = 'SELECT * FROM instituciones_educativas WHERE activa = true';
         const params = [];
-        if (ruralidad) {
-            sql += ' AND ruralidad = ?';
-            params.push(ruralidad);
-        }
         if (nivel) {
             const nv = (['inicial', 'primaria', 'secundaria', 'otros'].includes(nivel)) ? nivel : '';
             if (nv) {
@@ -391,13 +387,13 @@ app.get('/api/ies/:id', async (req, res) => {
 
 app.post('/api/ies', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
+        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
         if (!codigo || !nombre) {
             return res.status(400).json({ error: 'Código y nombre son requeridos' });
         }
         const result = await db.prepare(
-            'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, true)'
-        ).run(codigo, nombre, ruralidad || 'URBANO', tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null);
+            'INSERT INTO instituciones_educativas (codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, activa) VALUES (?, ?, ?, ?, ?, ?, ?, true)'
+        ).run(codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null);
         res.json({ ok: true, id: result.lastInsertRowid });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -406,10 +402,10 @@ app.post('/api/ies', authAdmin, async (req, res) => {
 
 app.put('/api/ies/:id', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
+        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
         await db.prepare(
-            'UPDATE instituciones_educativas SET codigo=?, nombre=?, ruralidad=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=? WHERE id=?'
-        ).run(codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, req.params.id);
+            'UPDATE instituciones_educativas SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=? WHERE id=?'
+        ).run(codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -429,7 +425,7 @@ app.delete('/api/ies/:id', authAdmin, async (req, res) => {
 app.get('/api/directores', authSupervisor, async (req, res) => {
     try {
         const directores = await db.prepare(`
-            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod, ie.ruralidad,
+            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod,
                 (SELECT STRING_AGG(DISTINCT asignador.dependencia, ', ') FROM asignaciones ase2 INNER JOIN actividades a2 ON ase2.actividad_id = a2.id LEFT JOIN usuarios asignador ON a2.asignador_id = asignador.id WHERE ase2.director_id = u.id) as areas
             FROM usuarios u
             LEFT JOIN instituciones_educativas ie ON u.ie_codigo = ie.codigo
@@ -445,7 +441,7 @@ app.get('/api/directores', authSupervisor, async (req, res) => {
 app.get('/api/directores/:id', authSupervisor, async (req, res) => {
     try {
         const director = await db.prepare(`
-            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod, ie.ruralidad
+            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod
             FROM usuarios u
             LEFT JOIN instituciones_educativas ie ON u.ie_codigo = ie.codigo
             WHERE u.id = ?
@@ -602,7 +598,7 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
         if (!act) return res.status(404).json({ error: 'Actividad no encontrada' });
 
         const asignaciones = await db.prepare(`
-            SELECT ase.*, ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+            SELECT ase.*, ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                    u.nombre_completo as director_nombre
             FROM asignaciones ase
             LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
@@ -647,7 +643,7 @@ app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
         const asignacion = await db.prepare(`
             SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
                    ta.nombre as tipo_nombre,
-                   ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+                   ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                    u.nombre_completo as director_nombre,
                    asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
             FROM asignaciones ase
@@ -729,9 +725,9 @@ app.get('/api/asignaciones', async (req, res) => {
             const asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
-                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
@@ -750,13 +746,11 @@ app.get('/api/asignaciones', async (req, res) => {
         }
 
         const nivel = validarNivel(req.query.nivel || '');
-        const { ruralidad, estado, buscar } = req.query;
+        const { estado, buscar } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
-        const ruralidadWhere = ruralidad ? 'AND ie.ruralidad = ?' : '';
         const estadoWhere = estado ? 'AND ase.estado = ?' : '';
         const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)' : '';
         const params = [];
-        if (ruralidad) params.push(ruralidad);
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q, q); }
         let asignaciones;
@@ -764,7 +758,7 @@ app.get('/api/asignaciones', async (req, res) => {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
                 FROM asignaciones ase
@@ -773,7 +767,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${ruralidadWhere} ${estadoWhere} ${buscarWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
@@ -801,20 +795,17 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();
         const nivel = validarNivel(req.query.nivel || '');
-        const ruralidad = req.query.ruralidad || '';
         const estado = req.query.estado || '';
 
         function buildWhere(extra) {
             let w = 'WHERE 1=1';
             if (nivel) w += ` AND ie.tiene_${nivel} = true`;
-            if (ruralidad) w += ' AND ie.ruralidad = ?';
             if (estado) w += ' AND ase.estado = ?';
             if (extra) w += ' ' + extra;
             return w;
         }
         function buildParams(extra) {
             const p = [];
-            if (ruralidad) p.push(ruralidad);
             if (estado) p.push(estado);
             if (extra) p.push(...extra);
             return p;
@@ -834,24 +825,14 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 ${buildWhere("AND ase.estado = 'pendiente' AND a.fecha_limite < ?")}
             `).get(...buildParams([hoy]));
 
-            const por_ruralidad = await db.prepare(`
-                SELECT ie.ruralidad,
-                    COUNT(*) as total,
-                    COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
-                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
-                    COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
-                ${baseJoin} ${buildWhere()}
-                GROUP BY ie.ruralidad ORDER BY ie.ruralidad
-            `).all(...buildParams());
-
             const por_ie = await db.prepare(`
-                SELECT ie.codigo, ie.nombre, ie.ruralidad,
+                SELECT ie.codigo, ie.nombre,
                     COUNT(*) as total,
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
                 ${baseJoin} ${buildWhere()}
-                GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
+                GROUP BY ie.id, ie.codigo, ie.nombre
                 HAVING COUNT(*) > 0
                 ORDER BY COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) DESC
                 LIMIT 10
@@ -874,25 +855,25 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const directores_por_area = await db.prepare(`
                 SELECT asignador.dependencia as area,
                        d.id, d.nombre_completo, d.ie_codigo,
-                       ie.nombre as ie_nombre, ie.ruralidad
+                       ie.nombre as ie_nombre
                 FROM usuarios d
                 INNER JOIN asignaciones ase ON d.id = ase.director_id
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
                 LEFT JOIN instituciones_educativas ie ON d.ie_codigo = ie.codigo
                 WHERE d.rol = 'director' AND d.activo = true
-                GROUP BY asignador.dependencia, d.id, d.nombre_completo, d.ie_codigo, ie.nombre, ie.ruralidad
+                GROUP BY asignador.dependencia, d.id, d.nombre_completo, d.ie_codigo, ie.nombre
                 ORDER BY asignador.dependencia, d.nombre_completo
             `).all();
 
             const ranking_ies = await db.prepare(`
-                SELECT ie.codigo, ie.nombre, ie.ruralidad,
+                SELECT ie.codigo, ie.nombre,
                     COUNT(*) as total,
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
                     COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
                 ${baseJoin} ${buildWhere()}
-                GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
+                GROUP BY ie.id, ie.codigo, ie.nombre
                 HAVING COUNT(*) > 0
                 ORDER BY COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) DESC, COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) ASC
                 LIMIT 15
@@ -905,7 +886,6 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 no_cumplidas: no_cumplidas.c,
                 vencidas: vencidas.c,
                 porcentaje_cumplimiento: total.c > 0 ? Math.round((completadas.c / total.c) * 100) : 0,
-                por_ruralidad,
                 por_ie,
                 ranking_ies,
                 recientes,
@@ -1045,7 +1025,7 @@ app.post('/api/responder', authDirector, async (req, res) => {
 app.get('/api/perfil', authDirector, async (req, res) => {
     try {
         const user = await db.prepare(`
-            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod, ie.ruralidad
+            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod
             FROM usuarios u
             LEFT JOIN instituciones_educativas ie ON u.ie_codigo = ie.codigo
             WHERE u.id = ?

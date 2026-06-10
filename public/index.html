@@ -216,7 +216,7 @@ textarea.form-control{resize:vertical;min-height:70px}
 .ie-item:hover{background:#f9fafb}
 .ie-item .ie-codigo{font-weight:600;color:var(--granate);font-size:.8rem;flex-shrink:0}
 .ie-item .ie-nombre{font-size:.8rem}
-.ie-item .ie-ruralidad{font-size:.7rem;color:var(--text3)}
+
 
 /* TOAST */
 #toast-container{position:fixed;top:20px;right:20px;z-index:3000}
@@ -284,7 +284,7 @@ hr{border:none;border-top:1px solid #f3f4f6;margin:14px 0}
 .sel-list .sel-item:hover{background:#e8f4f4}
 .sel-list .sel-item .sel-cod{font-weight:600;color:#008080;font-size:.8rem;flex-shrink:0}
 .sel-list .sel-item .sel-nom{font-size:.82rem;color:#444;flex:1}
-.sel-list .sel-item .sel-rur{font-size:.7rem;color:#999}
+
 .sel-list .sel-empty{padding:24px;text-align:center;color:#999;font-size:.8rem}
 
 /* Flat Director View */
@@ -571,16 +571,7 @@ body.director-mode #app-shell{display:block}
                     <label class="form-label" style="font-size:.75rem">Buscar IE</label>
                     <input type="text" class="form-control" id="ie-search" placeholder="Código, N° o Nombre..." oninput="filterIEList()">
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label" style="font-size:.75rem">Ruralidad</label>
-                    <select class="form-select" id="ie-filter-ruralidad" onchange="filterIEList()">
-                      <option value="">Todas</option>
-                      <option value="URBANO">Urbano</option>
-                      <option value="RURAL 1">Rural 1</option>
-                      <option value="RURAL 2">Rural 2</option>
-                      <option value="RURAL 3">Rural 3</option>
-                    </select>
-                  </div>
+
                   <div class="col-md-4">
                     <label class="form-label" style="font-size:.75rem">Nivel</label>
                     <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
@@ -896,7 +887,7 @@ body.director-mode #app-shell{display:block}
 let currentUser = null;
 let allIEs = [];
 let allDirectores = [];
-let chartRuralidad = null;
+
 let chartCumplimiento = null;
 let chartAvanceMensualObj = null;
 let chartAvanceHistoricoObj = null;
@@ -964,7 +955,7 @@ function renderList(list) {
   var h = '';
   if (list.length > 0) {
     for (var i = 0; i < list.length; i++) {
-      h += '<div class="sel-item" onclick="loginComoDirector(' + list[i].id + ')"><span class="sel-cod">' + list[i].codigo + '</span><span class="sel-nom">' + list[i].nombre + '</span><span class="sel-rur">' + (list[i].ruralidad || '') + '</span></div>';
+      h += '<div class="sel-item" onclick="loginComoDirector(' + list[i].id + ')"><span class="sel-cod">' + list[i].codigo + '</span><span class="sel-nom">' + list[i].nombre + '</span></div>';
     }
   } else {
     h = '<div class="sel-empty">No se encontraron instituciones</div>';
@@ -1338,10 +1329,8 @@ function getNivelFilter() {
 function getFilterParams() {
   var p = new URLSearchParams();
   var n = document.getElementById('filter-nivel').value;
-  var r = document.getElementById('filter-ruralidad').value;
   var e = document.getElementById('filter-estado').value;
   if (n) p.set('nivel', n);
-  if (r) p.set('ruralidad', r);
   if (e) p.set('estado', e);
   return p.toString();
 }
@@ -1615,30 +1604,10 @@ async function loadDashboardSupervisor() {
       htmlR = '<tr class="empty"><td colspan="3">Sin datos</td></tr>';
     }
     document.getElementById('supervisor-recent-table').innerHTML = htmlR;
-    renderChartRuralidad(d.por_ruralidad || []);
     renderChartCumplimiento(c, p, v);
   } catch (e) {
     showToast('Error al cargar dashboard: ' + e.message, 'error');
   }
-}
-
-function renderChartRuralidad(pr) {
-  var ctx = document.getElementById('chart-ruralidad');
-  if (!ctx) return;
-  if (chartRuralidad) chartRuralidad.destroy();
-  var labels = [];
-  var comps = [];
-  var pends = [];
-  for (var i = 0; i < pr.length; i++) {
-    labels.push(pr[i].ruralidad || pr[i].nombre || '-');
-    comps.push(pr[i].completadas || 0);
-    pends.push(pr[i].pendientes || 0);
-  }
-  chartRuralidad = new Chart(ctx, {
-    type: 'bar',
-    data: { labels: labels, datasets: [{ label: 'Completadas', data: comps, backgroundColor: '#059669', borderRadius: 4 }, { label: 'Pendientes', data: pends, backgroundColor: '#d97706', borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 12, font: { family: 'Inter' } } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Inter' } } }, x: { ticks: { font: { family: 'Inter' } } } } }
-  });
 }
 
 function renderChartCumplimiento(c, p, v) {
@@ -1680,7 +1649,7 @@ function renderIECheckboxes(ies) {
   var html = '';
   for (var i = 0; i < ies.length; i++) {
     var isChecked = selectedIEIds.has(ies[i].id) ? 'checked' : '';
-    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + ies[i].id + '" ' + isChecked + '><span class="ie-codigo">' + ies[i].codigo + '</span><span class="ie-nombre">' + ies[i].nombre + '</span><span class="ie-ruralidad">(' + (ies[i].ruralidad || '-') + ')</span></label>';
+    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + ies[i].id + '" ' + isChecked + '><span class="ie-codigo">' + ies[i].codigo + '</span><span class="ie-nombre">' + ies[i].nombre + '</span></label>';
   }
   document.getElementById('ie-checkbox-list').innerHTML = html;
 }
@@ -1688,18 +1657,16 @@ function renderIECheckboxes(ies) {
 function filterIEList() {
   syncSelectedIEs();
   var q = document.getElementById('ie-search').value.toLowerCase();
-  var r = document.getElementById('ie-filter-ruralidad').value;
   var n = document.getElementById('ie-filter-nivel').value;
   
   var filtered = allIEs.filter(function(ie) {
     var matchSearch = ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
-    var matchRural = !r || ie.ruralidad === r;
     var matchNivel = true;
     if (n === 'inicial') matchNivel = ie.tiene_inicial;
     else if (n === 'primaria') matchNivel = ie.tiene_primaria;
     else if (n === 'secundaria') matchNivel = ie.tiene_secundaria;
     else if (n === 'otros') matchNivel = ie.tiene_otros;
-    return matchSearch && matchRural && matchNivel;
+    return matchSearch && matchNivel;
   });
   
   renderIECheckboxes(filtered);
@@ -1826,7 +1793,6 @@ async function submitAsignar() {
     await api('/api/actividades', { method: 'POST', body: { titulo: tit, tipo_id: ti, descripcion: desc, fecha_limite: fec, hora_limite: hor, ie_ids: ids } });
     showToast('Actividad asignada con éxito', 'success');
     document.getElementById('asignar-form').reset();
-    document.getElementById('ie-filter-ruralidad').value = '';
     document.getElementById('ie-filter-nivel').value = '';
     document.getElementById('ie-search').value = '';
     selectedIEIds.clear();
@@ -1929,7 +1895,7 @@ async function verDetalleAsignacion(id) {
     var html = '<div class="row">' +
       '<div class="col-6"><strong>IE:</strong> ' + (a.ie_nombre || '-') + '</div>' +
       '<div class="col-6"><strong>Código:</strong> ' + (a.ie_codigo || '-') + '</div>' +
-      '<div class="col-6"><strong>Ruralidad:</strong> ' + (a.ruralidad || '-') + '</div>' +
+
       '<div class="col-6"><strong>Director:</strong> ' + (a.director_nombre || '-') + '</div>' +
       '<div class="col-6"><strong>Área:</strong> ' + (a.area || '-') + '</div>' +
       '<div class="col-6"><strong>Subárea:</strong> ' + (a.subarea || '-') + '</div>' +
