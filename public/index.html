@@ -359,39 +359,47 @@ body.director-mode #app-shell{display:block}
 .autocomplete-item:hover {
   background: #e8f4f4 !important;
 }
+.dir-kpi {
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 2px solid transparent !important;
+}
+.dir-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+.dir-kpi.active-kpi-filter {
+  transform: scale(1.03);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.dir-kpi.total.active-kpi-filter { border-color: #1e3a8a !important; }
+.dir-kpi.pendientes.active-kpi-filter { border-color: #d97706 !important; }
+.dir-kpi.cumplidas.active-kpi-filter { border-color: #059669 !important; }
+.dir-kpi.vencidas.active-kpi-filter { border-color: #dc2626 !important; }
 </style>
 </head>
 <body>
 
-<!-- ==================== IE SELECTOR (DIRECTOR) ==================== -->
-<div id="sel-screen" style="display:none">
-  <div class="sel-card">
-    <div class="sel-logo">UGEL<br>BELLAVISTA</div>
-    <h2>Sistema de Monitoreo de Actividades</h2>
-    <p>Seleccione su Institución Educativa</p>
-    <div class="sel-search-wrap">
-      <i class="fas fa-search"></i>
-      <input type="text" id="sel-buscar" placeholder="Buscar por código o nombre..." autocomplete="off">
-    </div>
-    <div class="sel-list" id="sel-ie-list"></div>
-    <p style="margin-top:16px;text-align:center;font-size:.8rem;color:#888">¿Es supervisor? <a href="#" onclick="event.preventDefault();showSupervisorLogin()" style="color:#008080;font-weight:600;text-decoration:none">Ingrese aquí</a></p>
-  </div>
-</div>
+<!-- ==================== IE SELECTOR (DEPRECATED) ==================== -->
+<div id="sel-screen" style="display:none"></div>
 
-<!-- ==================== LOGIN (SUPERVISOR) ==================== -->
+<!-- ==================== LOGIN UNIFICADO ==================== -->
 <div id="login-screen" style="display:none">
   <div class="login-card">
     <div class="login-logo"><img src="logo.png" alt="UGEL Bellavista"></div>
-    <h2>UGEL Bellavista</h2>
-    <p>Ingreso para Supervisores</p>
-    <div id="login-error"></div>
+    <h2 style="color: var(--granate)">UGEL Bellavista</h2>
+    <p>Ingreso al Sistema</p>
+    <div id="login-error" style="color: var(--red); background: var(--red-bg); padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-bottom: 16px; border: 1px solid rgba(220,38,38,0.15); display: none;"></div>
     <form onsubmit="event.preventDefault();login()">
       <div style="margin-bottom:16px">
-        <input type="text" id="login-codigo" class="login-field" placeholder="Nombre del supervisor" required autocomplete="off">
+        <input type="text" id="login-usuario" class="login-field" placeholder="Usuario / DNI / Código Modular" required autocomplete="off">
       </div>
-      <button type="submit" class="btn-login">Ingresar</button>
+      <div style="margin-bottom:16px">
+        <input type="password" id="login-password" class="login-field" placeholder="Contraseña" required autocomplete="off">
+      </div>
+      <button type="submit" class="btn-login" style="background: var(--granate-grad);">Ingresar</button>
     </form>
-    <p style="margin-top:12px;text-align:center;font-size:.75rem;color:var(--text3)">¿Desea ver las actividades? <a href="#" onclick="event.preventDefault();showPublicDashboardFromLogin()" style="color:var(--granate)">Volver al panel público</a></p>
+    <p style="margin-top:16px;text-align:center;font-size:.75rem;color:var(--text3)">¿Desea ver las actividades? <a href="#" onclick="event.preventDefault();showPublicDashboardFromLogin()" style="color:var(--granate); font-weight: 700; text-decoration: none;">Volver al panel público</a></p>
   </div>
 </div>
 
@@ -443,9 +451,9 @@ body.director-mode #app-shell{display:block}
               <div style="font-weight:800;font-size:0.85rem;color:#008080;line-height:1.15;letter-spacing:0.5px">UGEL<br>BELLAVISTA</div>
             </div>
             <h1 style="font-size:1.6rem;font-weight:800;color:#0d5257;letter-spacing:0.5px;text-align:center;margin:0;flex:1">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
-            <div class="dh-right" style="display:flex;align-items:center">
+            <div class="dh-right" style="display:flex;align-items:center;gap:10px" id="dir-auth-buttons">
               <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:#008080;color:#008080;font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
-                <i class="fas fa-user-shield"></i> Acceso Supervisor
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
               </button>
             </div>
           </div>
@@ -498,35 +506,8 @@ body.director-mode #app-shell{display:block}
         </div>
       </div>
 
-      <!-- ==================== SUPERVISOR: DASHBOARD ==================== -->
-      <div class="view-section" id="view-dashboard-supervisor">
-        <div class="page-hd"><h2>Dashboard General</h2><span>UGEL Bellavista · Panel de Supervisión</span></div>
-        <div id="global-filter-bar" class="filter-bar" style="margin-bottom: 16px;">
-          <div class="filter-group"><label>Nivel</label><select id="filter-nivel" onchange="onFilterChange()"><option value="">Todos</option><option value="inicial">Inicial</option><option value="primaria">Primaria</option><option value="secundaria">Secundaria</option></select></div>
-          <div class="filter-group"><label>Ruralidad</label><select id="filter-ruralidad" onchange="onFilterChange()"><option value="">Todas</option><option value="URBANO">Urbano</option><option value="RURAL 1">Rural 1</option><option value="RURAL 2">Rural 2</option><option value="RURAL 3">Rural 3</option></select></div>
-          <div class="filter-group"><label>Estado</label><select id="filter-estado" onchange="onFilterChange()"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="completada">Completada</option><option value="no_cumplida">No Cumplida</option></select></div>
-        </div>
-        <div class="kpi-grid" id="supervisor-stats"></div>
-        <div id="supervisor-compliance-bar"></div>
-        <div class="dash-grid">
-          <div class="t-card">
-            <div class="t-hd"><i class="fas fa-exclamation-triangle"></i> Top IEs con más vencidas</div>
-            <div class="t-wrap scrollable-wrap"><table><thead><tr><th>Institución Educativa</th><th style="width:70px">Vencidas</th></tr></thead><tbody id="top-vencidas-table"></tbody></table></div>
-          </div>
-          <div class="t-card">
-            <div class="t-hd"><i class="fas fa-trophy" style="color:var(--amber)"></i> Ranking de Colegios (Cumplimiento)</div>
-            <div class="t-wrap scrollable-wrap"><table><thead><tr><th>IE</th><th style="width:70px">Cumplidas</th><th style="width:70px">Venc.</th></tr></thead><tbody id="ranking-ies-table"></tbody></table></div>
-          </div>
-          <div class="t-card" style="grid-column: 1 / -1">
-            <div class="t-hd"><i class="fas fa-clock"></i> Actividades Recientes</div>
-            <div class="t-wrap"><table><thead><tr><th>IE</th><th>Actividad</th><th style="width:110px">Estado</th></tr></thead><tbody id="supervisor-recent-table"></tbody></table></div>
-          </div>
-        </div>
-        <div class="two-col" style="margin-bottom:0">
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-bar"></i> Asignaciones por Ruralidad</div><div class="chart-wrap"><canvas id="chart-ruralidad"></canvas></div></div>
-          <div class="chart-card"><div class="ctitle"><i class="fas fa-chart-doughnut"></i> Cumplimiento General</div><div class="chart-wrap"><canvas id="chart-cumplimiento"></canvas></div></div>
-        </div>
-      </div>
+      <!-- ==================== SUPERVISOR: DASHBOARD (DEPRECATED) ==================== -->
+      <div class="view-section" id="view-dashboard-supervisor" style="display:none"></div>
 
       <!-- ==================== SUPERVISOR: ASIGNAR ==================== -->
       <div class="view-section" id="view-asignar-actividad">
@@ -626,11 +607,13 @@ body.director-mode #app-shell{display:block}
             <h2>Avance Mensual</h2>
             <span>Consolidado provincial e informe de actividades por mes</span>
           </div>
-          <div class="filter-group" style="margin-bottom:0; width:300px;">
+          <div class="filter-group" style="margin-bottom:0; width:300px; position:relative;">
             <label style="font-size:0.75rem; font-weight:700; color:var(--text3); margin-bottom:4px; display:block;">Consultar Institución Educativa</label>
-            <select class="form-select" id="avance-ie-select" onchange="if(typeof expandedAvanceActivityIds!=='undefined')expandedAvanceActivityIds.clear(); loadAvanceMensual();" style="background:#fff; font-weight:600; font-size:0.8rem;">
-              <option value="">-- VER REPORTE GENERAL PROVINCIAL --</option>
-            </select>
+            <div style="position:relative; display:flex; align-items:center; width:100%;">
+              <input type="text" class="form-control" id="avance-ie-search" placeholder="Escriba código modular o nombre..." style="background:#fff; font-weight:600; font-size:0.8rem; padding-right:30px; margin:0;" oninput="filterAvanceIESearch(this.value)">
+              <i class="fas fa-times" id="btn-clear-avance-ie" onclick="clearAvanceIESelection()" style="position:absolute; right:10px; cursor:pointer; color:#9ca3af; display:none;"></i>
+            </div>
+            <div id="avance-ie-autocomplete" class="autocomplete-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:99; background:#fff; border:1px solid #d1d5db; border-radius:8px; max-height:220px; overflow-y:auto; box-shadow:0 10px 15px -3px rgba(0,0,0,0.1);"></div>
           </div>
         </div>
 
@@ -683,6 +666,19 @@ body.director-mode #app-shell{display:block}
           </div>
         </div>
 
+        <!-- Tarjeta del Histórico Anual (solo visible al seleccionar IE) -->
+        <div class="chart-card" id="avance-historico-card" style="display:none; margin-bottom:24px; padding:24px;">
+          <div class="ctitle" style="margin-bottom:16px;"><i class="fas fa-history"></i> Avance Histórico Anual de Cumplimiento</div>
+          <div class="row" style="align-items: center; display: flex; flex-wrap: wrap;">
+            <div class="col-lg-8 col-12" style="height:250px; position:relative; min-height: 250px;">
+              <canvas id="chart-avance-historico"></canvas>
+            </div>
+            <div class="col-lg-4 col-12" id="avance-historico-stats" style="padding: 10px 20px;">
+              <!-- Overall stats for the school -->
+            </div>
+          </div>
+        </div>
+
         <div class="t-card">
           <div class="t-hd" style="display:flex; justify-content:space-between; align-items:center;">
             <span><i class="fas fa-tasks"></i> Cronograma de Actividades del Mes</span>
@@ -702,16 +698,7 @@ body.director-mode #app-shell{display:block}
             <label>Buscar IE</label>
             <input type="text" class="form-control" id="mon-buscar" placeholder="Código, N° o Nombre..." oninput="loadMonitoreo()">
           </div>
-          <div class="filter-group">
-            <label>Ruralidad</label>
-            <select class="form-select" id="mon-ruralidad" onchange="loadMonitoreo()">
-              <option value="">Todas</option>
-              <option value="URBANO">Urbano</option>
-              <option value="RURAL 1">Rural 1</option>
-              <option value="RURAL 2">Rural 2</option>
-              <option value="RURAL 3">Rural 3</option>
-            </select>
-          </div>
+
           <div class="filter-group">
             <label>Nivel</label>
             <select class="form-select" id="mon-nivel" onchange="loadMonitoreo()">
@@ -768,25 +755,49 @@ body.director-mode #app-shell{display:block}
         <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Área</th><th>IE</th><th>Email</th><th>Teléfono</th><th style="width:70px">Acción</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
       </div>
 
+      <!-- ==================== ADMIN: USUARIOS ==================== -->
+      <div class="view-section" id="view-admin-usuarios" style="display:none;">
+        <div class="page-hd"><h2>Administración de Usuarios</h2><span>Gestión de credenciales, cambio de contraseñas e impersonación</span></div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group" style="width: 100%;">
+            <label>Buscar Usuario</label>
+            <input type="text" class="form-control" id="admin-user-buscar" placeholder="Buscar por nombre, usuario, DNI o IE..." oninput="loadAdminUsuarios()">
+          </div>
+        </div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre Completo</th>
+                  <th>Rol</th>
+                  <th>Nombre de Usuario</th>
+                  <th>DNI / IE</th>
+                  <th>Email / Teléfono</th>
+                  <th style="width:240px; text-align:center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="admin-usuarios-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SUPERVISOR: IEs ==================== -->
       <div class="view-section" id="view-ies">
-        <div class="page-hd"><h2>Instituciones Educativas</h2><span>Registro de IEs de UGEL Bellavista</span></div>
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Instituciones Educativas</h2>
+            <span>Registro de IEs de UGEL Bellavista</span>
+          </div>
+          <button class="btn btn-primary btn-sm admin-only" id="btn-nueva-ie" onclick="abrirModalIE()" style="display:none;"><i class="fas fa-plus-circle"></i> Nueva IE</button>
+        </div>
         <div class="filter-bar" style="margin-bottom:16px">
-          <div class="filter-group">
+          <div class="filter-group" style="flex:1;">
             <label>Buscar</label>
             <input type="text" class="form-control" id="ie-search-text" placeholder="Código, N° o Nombre..." oninput="loadIEs()">
           </div>
-          <div class="filter-group">
-            <label>Ruralidad</label>
-            <select class="form-select" id="ie-ruralidad-filter" onchange="loadIEs()">
-              <option value="">Todas</option>
-              <option value="URBANO">Urbano</option>
-              <option value="RURAL 1">Rural 1</option>
-              <option value="RURAL 2">Rural 2</option>
-              <option value="RURAL 3">Rural 3</option>
-            </select>
-          </div>
-          <div class="filter-group">
+          <div class="filter-group" style="width: 200px;">
             <label>Nivel</label>
             <select class="form-select" id="ie-nivel-filter" onchange="loadIEs()">
               <option value="">Todos</option>
@@ -797,7 +808,21 @@ body.director-mode #app-shell{display:block}
             </select>
           </div>
         </div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Código Modular</th><th>Nombre de IE</th><th>Ruralidad</th><th>Niveles</th></tr></thead><tbody id="ies-table"></tbody></table></div></div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código Modular</th>
+                  <th>Nombre de IE</th>
+                  <th>Niveles</th>
+                  <th class="admin-only" style="width:120px; text-align:center; display:none;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="ies-table"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ==================== SUPERVISOR: NOTIFICACIONES ==================== -->
@@ -840,8 +865,12 @@ body.director-mode #app-shell{display:block}
               <div class="col-md-6" id="perfil-puesto-container"><label class="form-label">Cargo / Puesto</label><input type="text" class="form-control" id="perfil-puesto"></div>
               <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="perfil-email"></div>
               <div class="col-md-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="perfil-telefono"></div>
+              <div class="col-md-6"><label class="form-label">Nueva Contraseña</label><input type="password" class="form-control" id="perfil-password" placeholder="Dejar en blanco para no cambiar"></div>
             </div>
-            <div class="mt-4"><button type="submit" class="btn btn-primary px-4">Guardar Cambios</button></div>
+            <div class="mt-4" style="display:flex; gap:12px; align-items:center;">
+              <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
+              <button type="button" class="btn btn-secondary px-4" id="btn-perfil-volver" onclick="volverDePerfil()" style="display:none;">Volver</button>
+            </div>
           </form>
         </div></div>
       </div>
@@ -869,6 +898,11 @@ let allIEs = [];
 let allDirectores = [];
 let chartRuralidad = null;
 let chartCumplimiento = null;
+let chartAvanceMensualObj = null;
+let chartAvanceHistoricoObj = null;
+let selectedAvanceIEId = null;
+let currentDirectorFilter = 'active_tasks';
+let currentDirectorRows = [];
 
 // ===================== API =====================
 async function api(url, opts = {}) {
@@ -937,14 +971,6 @@ function renderList(list) {
   }
   document.getElementById('sel-ie-list').innerHTML = h;
 }
-function showSelector() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('sel-screen').style.display = 'flex';
-}
-function showSupervisorLogin() {
-  document.getElementById('sel-screen').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-}
 async function goToSupervisorLogin() {
   try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
   currentUser = null;
@@ -952,7 +978,8 @@ async function goToSupervisorLogin() {
   document.getElementById('app-shell').style.display = 'none';
   document.getElementById('sel-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-codigo').value = '';
+  document.getElementById('login-usuario').value = '';
+  document.getElementById('login-password').value = '';
 }
 function showPublicDashboardFromLogin() {
   document.getElementById('login-screen').style.display = 'none';
@@ -1074,34 +1101,37 @@ async function loginComoDirector(ieId) {
     var ie = null;
     for (var i = 0; i < allIEs.length; i++) { if (allIEs[i].id === ieId) { ie = allIEs[i]; break; } }
     if (!ie) { showToast('Error: IE no encontrada', 'error'); return; }
-    var data = await api('/api/login', { method: 'POST', body: { codigo: ie.codigo } });
+    var data = await api('/api/login', { method: 'POST', body: { usuario: 'director.' + ie.codigo, password: ie.codigo } });
     currentUser = data.usuario || data.user;
     document.getElementById('sel-screen').style.display = 'none';
     document.body.classList.add('director-mode');
     document.getElementById('app-shell').style.display = 'block';
-    document.getElementById('dir-user-name').textContent = currentUser.nombre;
-    document.getElementById('dir-filter-codigo').value = ie.codigo;
-    document.getElementById('dir-filter-iename').textContent = ie.nombre;
     initDirectorApp();
+    selectSchoolForDashboard(ie.codigo, ie.nombre);
     showToast('Bienvenido, ' + currentUser.nombre, 'success');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 async function login() {
-  const cod = document.getElementById('login-codigo').value.trim();
+  const usuario = document.getElementById('login-usuario').value.trim();
+  const password = document.getElementById('login-password').value.trim();
   const err = document.getElementById('login-error');
-  if (!cod) {
-    err.textContent = 'Ingrese su nombre.';
+  if (!usuario || !password) {
+    err.textContent = 'Ingrese usuario y contraseña.';
     err.style.display = 'block';
     return;
   }
   try {
     err.style.display = 'none';
-    const data = await api('/api/login', { method: 'POST', body: { codigo: cod } });
+    const data = await api('/api/login', { method: 'POST', body: { usuario, password } });
     currentUser = data.usuario || data.user;
-    document.getElementById('sel-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-shell').style.display = 'block';
-    initSupervisorApp();
+    if (currentUser.rol === 'director') {
+      initDirectorApp();
+      selectSchoolForDashboard(currentUser.ie_codigo || '', currentUser.ie_nombre || '');
+    } else {
+      initSupervisorApp();
+    }
     showToast('Bienvenido, ' + (currentUser.nombre || ''), 'success');
   } catch (e) {
     err.textContent = e.message || 'Credenciales incorrectas';
@@ -1117,21 +1147,25 @@ async function checkSession() {
     const data = await api('/api/check-session');
     if (data.usuario || data.user) {
       currentUser = data.usuario || data.user;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app-shell').style.display = 'block';
       if (currentUser.rol === 'director') {
         initDirectorApp();
         selectSchoolForDashboard(currentUser.ie_codigo || '', currentUser.ie_nombre || '');
       } else {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('app-shell').style.display = 'block';
         initSupervisorApp();
       }
     } else {
-      initDirectorApp();
-      initPublicDashboard();
+      currentUser = null;
+      document.body.classList.remove('director-mode');
+      document.getElementById('app-shell').style.display = 'none';
+      document.getElementById('login-screen').style.display = 'flex';
     }
   } catch (e) {
-    initDirectorApp();
-    initPublicDashboard();
+    currentUser = null;
+    document.body.classList.remove('director-mode');
+    document.getElementById('app-shell').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
   }
 }
 
@@ -1155,6 +1189,22 @@ function initDirectorApp() {
   var sec = document.getElementById('view-director-main');
   if (sec) sec.classList.add('active');
 
+  const authBtnContainer = document.getElementById('dir-auth-buttons');
+  if (currentUser) {
+    let html = '';
+    if (currentUser.impersonated) {
+      html += '<span style="font-size: 0.8rem; font-weight: 700; color: #dc2626; background: #fee2e2; padding: 4px 10px; border-radius: 20px; margin-right: 8px;"><i class="fas fa-user-secret"></i> Simulación</span>';
+      html += '<button class="btn btn-outline btn-sm" onclick="logout()" style="border-color:#dc2626; color:#dc2626; font-weight:700; border-radius:20px; padding:6px 12px; background:#fff; font-size: 0.75rem;"><i class="fas fa-undo"></i> Volver a Admin</button>';
+    } else {
+      html += '<span style="font-size: 0.8rem; font-weight: 700; color: #008080; margin-right: 8px;" id="dir-user-name"><i class="fas fa-user-circle"></i> ' + currentUser.nombre + '</span>';
+      html += '<button class="btn btn-outline btn-sm" onclick="cambiarVista(\'perfil\')" style="border-color:#008080; color:#008080; font-weight:700; border-radius:20px; padding:6px 12px; background:#fff; font-size: 0.75rem;"><i class="fas fa-cog"></i> Perfil</button>';
+      html += '<button class="btn btn-outline btn-sm" onclick="logout()" style="border-color:#dc2626; color:#dc2626; font-weight:700; border-radius:20px; padding:6px 12px; background:#fff; font-size: 0.75rem; margin-left: 6px;"><i class="fas fa-sign-out-alt"></i> Salir</button>';
+    }
+    authBtnContainer.innerHTML = html;
+  } else {
+    authBtnContainer.innerHTML = '<button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:#008080;color:#008080;font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</button>';
+  }
+
   loadDirectorMain();
 }
 function initSupervisorApp() {
@@ -1172,26 +1222,39 @@ function initSupervisorApp() {
   updateUserHeader();
   cargarTiposActividad();
   loadNotifBadge();
-  cambiarVista('dashboard-supervisor');
+  
+  if (currentUser.rol === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
+    cambiarVista('admin-usuarios');
+  } else {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    cambiarVista('avance-mensual');
+  }
 }
 
 // ===================== SIDEBAR =====================
 function buildSidebar() {
   var nav = document.getElementById('sidebar-nav');
   var ft = document.getElementById('sidebar-footer');
-  if (currentUser && currentUser.rol === 'supervisor') {
-    nav.innerHTML = '<div class="label">General</div>' +
-      '<a href="#" data-view="dashboard-supervisor" class="active" onclick="cambiarVista(\'dashboard-supervisor\',this)"><i class="fas fa-chart-pie"></i> Dashboard</a>' +
-      '<div class="label">Gestión</div>' +
-      '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>' +
-      '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance Mensual</a>' +
-      '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>' +
-      '<a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a>' +
-      '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a>' +
-      '<div class="label">Cuenta</div>' +
-      '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
-    ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesi\u00f3n</a>';
+  if (!currentUser) return;
+  
+  let html = '';
+  if (currentUser.rol === 'admin') {
+    html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
   }
+  
+  if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
+    html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance / Dashboard</a>';
+    html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>';
+    html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>';
+    html += '<a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a>';
+    html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a>';
+  }
+  
+  html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
+  
+  nav.innerHTML = html;
+  ft.innerHTML = '<a href="#" onclick="event.preventDefault();logout()"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>';
 }
 
 // ===================== USER HEADER =====================
@@ -1199,7 +1262,7 @@ function updateUserHeader() {
   var inits = currentUser.nombre.split(' ').map(function (w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
   document.getElementById('user-avatar').textContent = inits;
   document.getElementById('user-name').textContent = currentUser.nombre;
-  document.getElementById('user-role').textContent = currentUser.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';
+  document.getElementById('user-role').textContent = currentUser.rol === 'admin' ? 'Administrador(a)' : (currentUser.rol === 'director' ? 'Director(a)' : 'Supervisor(a)');
 }
 
 // ===================== NAVIGATION =====================
@@ -1342,6 +1405,7 @@ async function loadDirectorMain(ieCodigo) {
     if (!codigo) return;
     var d = await api('/api/asignaciones?ie_codigo=' + encodeURIComponent(codigo));
     var rows = d.asignaciones || d || [];
+    currentDirectorRows = rows;
     var hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
     var total = rows.length;
     var pendientes = 0, completadas = 0, vencidas = 0;
@@ -1380,31 +1444,103 @@ async function loadDirectorMain(ieCodigo) {
       });
     }
 
-    var html = '';
-    if (rows.length > 0) {
-      for (var i = 0; i < rows.length; i++) {
-        var a = rows[i];
-        var est = a.estado || 'pendiente';
-        var badgeClass = 'green', badgeText = 'Cumplido';
-        if (est === 'pendiente') { badgeClass = 'yellow'; badgeText = 'Pendiente'; }
-        else if (est === 'no_cumplida') { badgeClass = 'red'; badgeText = 'Vencido'; }
-        else if (a.fecha_limite && a.fecha_limite < hoy && est !== 'completada') { badgeClass = 'red'; badgeText = 'Vencido'; }
-        var resp = '-';
-        if (a.asignador_nombre && a.area && a.subarea) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ' - ' + a.subarea + ')</small>';
-        else if (a.asignador_nombre && a.area) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ')</small>';
-        else if (a.asignador_nombre) resp = a.asignador_nombre;
-        else if (a.area) resp = a.area;
-
-        const waLink = a.asignador_telefono ? `<div>${a.asignador_telefono}<br><a href="https://wa.me/51${a.asignador_telefono}" target="_blank" style="color: #25D366; text-decoration: none; font-size: 13px;"><i class="fab fa-whatsapp"></i> wa.me/${a.asignador_telefono}</a></div>` : '-';
-        html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? formatFechaMock(a.fecha_limite) : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + resp + '</td><td>' + waLink + '</td></tr>';
+    document.querySelectorAll('.dir-kpi').forEach(el => {
+      el.classList.remove('active-kpi-filter');
+    });
+    
+    const cards = [
+      { class: 'total', type: 'all' },
+      { class: 'pendientes', type: 'pendiente' },
+      { class: 'cumplidas', type: 'completada' },
+      { class: 'vencidas', type: 'vencida' }
+    ];
+    cards.forEach(c => {
+      const el = document.querySelector('.dir-kpi.' + c.class);
+      if (el && !el.dataset.hasListener) {
+        el.dataset.hasListener = 'true';
+        el.addEventListener('click', () => setDirectorFilter(c.type));
       }
-    } else {
-      html = '<tr><td class="dir-empty" colspan="5">No tiene actividades asignadas</td></tr>';
-    }
-    document.getElementById('director-actividades-table').innerHTML = html;
+    });
+
+    renderDirectorActividadesTable();
   } catch (e) {
     showToast('Error al cargar actividades: ' + e.message, 'error');
   }
+}
+
+function setDirectorFilter(filterType) {
+  if (currentDirectorFilter === filterType) {
+    currentDirectorFilter = 'active_tasks';
+  } else {
+    currentDirectorFilter = filterType;
+  }
+  
+  document.querySelectorAll('.dir-kpi').forEach(el => {
+    el.classList.remove('active-kpi-filter');
+  });
+  
+  if (currentDirectorFilter === 'completada') {
+    document.querySelector('.dir-kpi.cumplidas')?.classList.add('active-kpi-filter');
+  } else if (currentDirectorFilter === 'pendiente') {
+    document.querySelector('.dir-kpi.pendientes')?.classList.add('active-kpi-filter');
+  } else if (currentDirectorFilter === 'vencida') {
+    document.querySelector('.dir-kpi.vencidas')?.classList.add('active-kpi-filter');
+  } else if (currentDirectorFilter === 'all') {
+    document.querySelector('.dir-kpi.total')?.classList.add('active-kpi-filter');
+  }
+  
+  renderDirectorActividadesTable();
+}
+
+function renderDirectorActividadesTable() {
+  const hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
+  let filtered = currentDirectorRows;
+  
+  if (currentDirectorFilter === 'active_tasks') {
+    filtered = currentDirectorRows.filter(r => r.estado !== 'completada');
+  } else if (currentDirectorFilter === 'completada') {
+    filtered = currentDirectorRows.filter(r => r.estado === 'completada');
+  } else if (currentDirectorFilter === 'pendiente') {
+    filtered = currentDirectorRows.filter(r => {
+      const isOverdue = r.fecha_limite && r.fecha_limite < hoy;
+      return r.estado === 'pendiente' && !isOverdue;
+    });
+  } else if (currentDirectorFilter === 'vencida') {
+    filtered = currentDirectorRows.filter(r => {
+      const isOverdue = r.fecha_limite && r.fecha_limite < hoy;
+      return r.estado === 'no_cumplida' || (r.estado === 'pendiente' && isOverdue);
+    });
+  }
+  
+  var html = '';
+  if (filtered.length > 0) {
+    for (var i = 0; i < filtered.length; i++) {
+      var a = filtered[i];
+      var est = a.estado || 'pendiente';
+      var badgeClass = 'green', badgeText = 'Cumplido';
+      if (est === 'pendiente') { 
+        var isOverdue = a.fecha_limite && a.fecha_limite < hoy;
+        if (isOverdue) {
+          badgeClass = 'red'; badgeText = 'Vencido';
+        } else {
+          badgeClass = 'yellow'; badgeText = 'Pendiente';
+        }
+      }
+      else if (est === 'no_cumplida') { badgeClass = 'red'; badgeText = 'Vencido'; }
+      
+      var resp = '-';
+      if (a.asignador_nombre && a.area && a.subarea) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ' - ' + a.subarea + ')</small>';
+      else if (a.asignador_nombre && a.area) resp = a.asignador_nombre + ' <br><small class="text-muted">(' + a.area + ')</small>';
+      else if (a.asignador_nombre) resp = a.asignador_nombre;
+      else if (a.area) resp = a.area;
+
+      const waLink = a.asignador_telefono ? `<div>${a.asignador_telefono}<br><a href="https://wa.me/51${a.asignador_telefono}" target="_blank" style="color: #25D366; text-decoration: none; font-size: 13px;"><i class="fab fa-whatsapp"></i> wa.me/${a.asignador_telefono}</a></div>` : '-';
+      html += '<tr><td>' + (a.actividad_titulo || a.titulo || '-') + '</td><td>' + (a.fecha_limite ? formatFechaMock(a.fecha_limite) : '-') + '</td><td><span class="dir-badge ' + badgeClass + '">' + badgeText + '</span></td><td>' + resp + '</td><td>' + waLink + '</td></tr>';
+    }
+  } else {
+    html = '<tr><td class="dir-empty" colspan="5">No se encontraron actividades</td></tr>';
+  }
+  document.getElementById('director-actividades-table').innerHTML = html;
 }
 
 function contactarSupervisor(asignacionId, nombre) {
@@ -1708,12 +1844,10 @@ async function submitAsignar() {
 // ===================== MONITOREO =====================
 async function loadMonitoreo() {
   try {
-    var r = document.getElementById('mon-ruralidad').value;
     var es = document.getElementById('mon-estado').value;
     var bu = document.getElementById('mon-buscar').value;
     var n = document.getElementById('mon-nivel').value;
     var u = '/api/asignaciones?';
-    if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
     if (es) u += 'estado=' + encodeURIComponent(es) + '&';
     if (bu) u += 'buscar=' + encodeURIComponent(bu) + '&';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
@@ -1733,7 +1867,7 @@ async function loadMonitoreo() {
         }
         
         var ieCell = '<div style="font-weight:700; color:#1f2937; text-transform:uppercase; font-size:0.78rem;">' + (a.ie_nombre || '-') + '</div>' +
-          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">CÓDIGO: ' + (a.ie_codigo || '-') + ' | <span style="background:#e5e7eb; padding:2px 6px; border-radius:4px; font-weight:700; color:#4b5563; font-size:0.6rem;">' + (a.ruralidad || '-') + '</span></div>';
+          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">CÓDIGO: ' + (a.ie_codigo || '-') + '</div>';
         
         var dirCell = '<div style="font-weight:600; color:#374151; font-size:0.75rem;">' + (a.director_nombre || '-') + '</div>';
         
@@ -2045,16 +2179,22 @@ async function loadDirectores() {
 // ===================== IEs =====================
 async function loadIEs() {
   try {
-    var r = document.getElementById('ie-ruralidad-filter').value;
     var n = document.getElementById('ie-nivel-filter').value;
     var b = document.getElementById('ie-search-text').value;
     var u = '/api/ies?';
-    if (r) u += 'ruralidad=' + encodeURIComponent(r) + '&';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
     if (b) u += 'buscar=' + encodeURIComponent(b) + '&';
     var d = await api(u);
     var ies = d.ies || d || [];
     var html = '';
+    
+    const adminHeaders = document.querySelectorAll('.admin-only');
+    if (currentUser && currentUser.rol === 'admin') {
+      adminHeaders.forEach(el => el.style.display = '');
+    } else {
+      adminHeaders.forEach(el => el.style.display = 'none');
+    }
+    
     if (ies.length > 0) {
       for (var i = 0; i < ies.length; i++) {
         var ie = ies[i];
@@ -2064,10 +2204,20 @@ async function loadIEs() {
         if (ie.tiene_secundaria) niveles += '<span class="badge bg-success me-1">Secundaria</span>';
         if (ie.tiene_otros) niveles += '<span class="badge bg-secondary me-1" title="' + (ie.tipo_otros || 'Otros') + '">' + (ie.tipo_otros || 'Otros') + '</span>';
         if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria && !ie.tiene_otros) niveles = '<span class="text-muted">-</span>';
-        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + (ie.ruralidad || '-') + '</td><td>' + niveles + '</td></tr>';
+        
+        let actionCell = '';
+        if (currentUser && currentUser.rol === 'admin') {
+          actionCell = `<td style="text-align:center;">
+            <button class="btn btn-xs btn-outline me-1" onclick="abrirModalIE(${ie.id})"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-xs btn-outline text-danger" onclick="eliminarIE(${ie.id}, '${ie.nombre.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+          </td>`;
+        }
+        
+        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + niveles + '</td>' + actionCell + '</tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="4">No hay IEs</td></tr>';
+      const colSpan = (currentUser && currentUser.rol === 'admin') ? 4 : 3;
+      html = '<tr class="empty"><td colspan="' + colSpan + '">No hay IEs</td></tr>';
     }
     document.getElementById('ies-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar IEs', 'error'); }
@@ -2146,19 +2296,19 @@ document.addEventListener('click', function (e) {
 // ===================== PERFIL =====================
 async function loadPerfil() {
   try {
-    try { await fetch('/api/force-seed'); } catch(e) {}
     var d = await api('/api/perfil');
     var p = d.perfil || d;
     document.getElementById('perfil-nombre').value = p.nombre_completo || p.nombre || '';
     document.getElementById('perfil-dni').value = p.dni || '';
     document.getElementById('perfil-ie').value = p.ie_nombre || p.institucion || '';
-    document.getElementById('perfil-rol').value = p.rol === 'director' ? 'Director(a)' : 'Supervisor(a)';
+    document.getElementById('perfil-rol').value = p.rol === 'admin' ? 'Administrador(a)' : (p.rol === 'director' ? 'Director(a)' : 'Supervisor(a)');
     document.getElementById('perfil-dependencia').value = p.dependencia || '';
     document.getElementById('perfil-puesto').value = p.puesto || '';
     document.getElementById('perfil-email').value = p.email || '';
     document.getElementById('perfil-telefono').value = p.telefono || '';
+    document.getElementById('perfil-password').value = '';
 
-    if (p.rol === 'supervisor') {
+    if (p.rol === 'supervisor' || p.rol === 'admin') {
       document.getElementById('perfil-ie-container').style.display = 'none';
       document.getElementById('perfil-dependencia-container').style.display = 'block';
       document.getElementById('perfil-puesto-container').style.display = 'block';
@@ -2167,10 +2317,18 @@ async function loadPerfil() {
       document.getElementById('perfil-dependencia-container').style.display = 'none';
       document.getElementById('perfil-puesto-container').style.display = 'none';
     }
+    
+    const volverBtn = document.getElementById('btn-perfil-volver');
+    if (p.rol === 'director') {
+      volverBtn.style.display = 'inline-block';
+    } else {
+      volverBtn.style.display = 'none';
+    }
   } catch (e) { showToast('Error al cargar perfil', 'error'); }
 }
 async function savePerfil() {
   var nombre = document.getElementById('perfil-nombre').value.trim();
+  const password = document.getElementById('perfil-password').value.trim();
   var body = {
     nombre: nombre,
     email: document.getElementById('perfil-email').value.trim(),
@@ -2179,12 +2337,21 @@ async function savePerfil() {
     dependencia: document.getElementById('perfil-dependencia').value.trim(),
     puesto: document.getElementById('perfil-puesto').value.trim()
   };
+  if (password) {
+    body.password = password;
+  }
   try {
     await api('/api/perfil', { method: 'PUT', body: body });
     if (currentUser) currentUser.nombre = nombre;
     updateUserHeader();
-    showToast('Perfil actualizado', 'success');
+    showToast('Perfil actualizado con éxito', 'success');
+    document.getElementById('perfil-password').value = '';
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+function volverDePerfil() {
+  if (currentUser && currentUser.rol === 'director') {
+    initDirectorApp();
+  }
 }
 
 // ===================== AVANCE MENSUAL =====================
@@ -2217,27 +2384,102 @@ function setAvanceMonth(monthIndex) {
   loadAvanceMensual();
 }
 
+// Autocomplete search for Avance
+async function filterAvanceIESearch(q) {
+  var container = document.getElementById('avance-ie-autocomplete');
+  var clearBtn = document.getElementById('btn-clear-avance-ie');
+  
+  if (!q || q.trim() === '') {
+    container.style.display = 'none';
+    clearBtn.style.display = 'none';
+    return;
+  }
+  
+  clearBtn.style.display = 'inline-block';
+  
+  if (allIEs.length === 0) {
+    try {
+      const d = await api('/api/ies');
+      allIEs = d.ies || d || [];
+    } catch(err) {}
+  }
+  
+  var query = normalizar(q);
+  var matches = allIEs.filter(function(ie) {
+    return normalizar(ie.codigo).indexOf(query) !== -1 || normalizar(ie.nombre).indexOf(query) !== -1;
+  });
+  
+  if (matches.length === 0) {
+    container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.8rem;text-align:center">No se encontraron resultados</div>';
+  } else {
+    var html = '';
+    var limit = Math.min(matches.length, 10);
+    for (var i = 0; i < limit; i++) {
+      var ie = matches[i];
+      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
+      html += '<div class="autocomplete-item" onclick="selectAvanceIE(' + ie.id + ', \'' + ie.codigo + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
+      html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + ie.codigo + '</span>';
+      html += '<span style="color:#333">' + ie.nombre + '</span>';
+      html += '</div>';
+    }
+    container.innerHTML = html;
+  }
+  container.style.display = 'block';
+}
+
+function selectAvanceIE(id, codigo, nombre) {
+  selectedAvanceIEId = id;
+  document.getElementById('avance-ie-search').value = codigo + ' - ' + nombre;
+  document.getElementById('avance-ie-autocomplete').style.display = 'none';
+  document.getElementById('btn-clear-avance-ie').style.display = 'inline-block';
+  if (typeof expandedAvanceActivityIds !== 'undefined') expandedAvanceActivityIds.clear();
+  loadAvanceMensual();
+}
+
+function clearAvanceIESelection() {
+  selectedAvanceIEId = null;
+  document.getElementById('avance-ie-search').value = '';
+  document.getElementById('avance-ie-autocomplete').style.display = 'none';
+  document.getElementById('btn-clear-avance-ie').style.display = 'none';
+  if (typeof expandedAvanceActivityIds !== 'undefined') expandedAvanceActivityIds.clear();
+  loadAvanceMensual();
+}
+
+// Click outside to close autocomplete
+document.addEventListener('click', function(e) {
+  var container = document.getElementById('avance-ie-autocomplete');
+  var input = document.getElementById('avance-ie-search');
+  if (container && !container.contains(e.target) && e.target !== input) {
+    container.style.display = 'none';
+  }
+});
+
 async function loadAvanceMensual() {
   try {
-    var ieSelect = document.getElementById('avance-ie-select');
-    if (ieSelect && ieSelect.options.length <= 1) {
-      var ies = await api('/api/ies');
-      var iesList = ies.ies || ies || [];
-      iesList.sort(function(a,b) { return a.nombre.localeCompare(b.nombre); });
-      for (var i = 0; i < iesList.length; i++) {
-        var opt = document.createElement('option');
-        opt.value = iesList[i].id;
-        opt.textContent = (iesList[i].codigo || '') + ' - ' + iesList[i].nombre;
-        ieSelect.appendChild(opt);
-      }
-    }
-
     renderAvanceMonthSlider();
+
+    var inputAvance = document.getElementById('avance-ie-search');
+    if (inputAvance && !inputAvance.dataset.hasListener) {
+      inputAvance.dataset.hasListener = 'true';
+      inputAvance.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          var q = this.value;
+          if (!q || q.trim() === '') return;
+          var query = normalizar(q);
+          var match = allIEs.find(function(ie) {
+            return normalizar(ie.codigo) === query || normalizar(ie.nombre).indexOf(query) !== -1;
+          });
+          if (match) {
+            selectAvanceIE(match.id, match.codigo, match.nombre);
+          }
+        }
+      });
+    }
 
     var d = await api('/api/asignaciones');
     var rows = d.asignaciones || d || [];
 
-    var selectedIEId = document.getElementById('avance-ie-select').value;
+    var selectedIEId = selectedAvanceIEId;
     var filteredRows = rows.filter(function(a) {
       if (!a.fecha_limite) return false;
       var limitDate = a.fecha_limite;
@@ -2344,6 +2586,158 @@ async function loadAvanceMensual() {
         cutout: '75%'
       }
     });
+
+    // Historical Chart rendering (only when an IE is selected)
+    var historicoCard = document.getElementById('avance-historico-card');
+    if (selectedIEId) {
+      historicoCard.style.display = 'block';
+      
+      // Filter all rows for this IE (regardless of month)
+      var ieRows = rows.filter(function(a) {
+        return String(a.ie_id) === String(selectedIEId) && a.fecha_limite;
+      });
+      
+      // Group by month
+      var monthlyCumplidas = new Array(12).fill(0);
+      var monthlyPendientes = new Array(12).fill(0);
+      var monthlyVencidas = new Array(12).fill(0);
+      
+      // Deduplicate ieRows by activity title + deadline
+      var uniqueIEMap = {};
+      for (var i = 0; i < ieRows.length; i++) {
+        var a = ieRows[i];
+        var actTitle = a.actividad_titulo || a.titulo || '';
+        var actFecha = a.fecha_limite || '';
+        var dateStr = '';
+        if (actFecha instanceof Date) {
+          var y = actFecha.getFullYear();
+          var m = actFecha.getMonth() + 1;
+          var d = actFecha.getDate();
+          dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+        } else if (typeof actFecha === 'string') {
+          dateStr = actFecha.substring(0, 10);
+        } else {
+          dateStr = String(actFecha || '').substring(0, 10);
+        }
+        var key = actTitle.trim().toLowerCase() + '_' + dateStr;
+        if (!uniqueIEMap[key] || a.estado === 'completada') {
+          uniqueIEMap[key] = a;
+        }
+      }
+      var uniqueIERows = Object.values(uniqueIEMap);
+      
+      for (var i = 0; i < uniqueIERows.length; i++) {
+        var a = uniqueIERows[i];
+        var limitDate = a.fecha_limite;
+        var dateStr = '';
+        if (limitDate instanceof Date) {
+          var y = limitDate.getFullYear();
+          var m = limitDate.getMonth() + 1;
+          var d = limitDate.getDate();
+          dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
+        } else if (typeof limitDate === 'string') {
+          dateStr = limitDate.substring(0, 10);
+        } else {
+          dateStr = String(limitDate || '').substring(0, 10);
+        }
+        var parts = dateStr.split('-');
+        var monthIndex = parseInt(parts[1], 10) - 1;
+        if (monthIndex >= 0 && monthIndex < 12) {
+          if (a.estado === 'completada') {
+            monthlyCumplidas[monthIndex]++;
+          } else if (a.estado === 'no_cumplida') {
+            monthlyVencidas[monthIndex]++;
+          } else {
+            monthlyPendientes[monthIndex]++;
+          }
+        }
+      }
+      
+      
+      var totalIEAllTime = uniqueIERows.length;
+      var cumplidasIEAllTime = 0;
+      var pendientesIEAllTime = 0;
+      var vencidasIEAllTime = 0;
+      for (var i = 0; i < uniqueIERows.length; i++) {
+        if (uniqueIERows[i].estado === 'completada') {
+          cumplidasIEAllTime++;
+        } else if (uniqueIERows[i].estado === 'no_cumplida') {
+          vencidasIEAllTime++;
+        } else {
+          pendientesIEAllTime++;
+        }
+      }
+
+      var statsContainer = document.getElementById('avance-historico-stats');
+      if (statsContainer) {
+        var pctIE = totalIEAllTime > 0 ? Math.round((cumplidasIEAllTime / totalIEAllTime) * 100) : 0;
+        statsContainer.innerHTML = `
+          <h4 style="font-size: 0.72rem; font-weight: 800; color: #475569; margin: 0 0 12px 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px;">Resumen Histórico</h4>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 8px 12px; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.65rem; font-weight: 700; color: #047857; text-transform: uppercase;">Cumplidas</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #065f46;">${cumplidasIEAllTime} <span style="font-size: 0.72rem; font-weight: 600; color: #047857;">(${pctIE}%)</span></div>
+            </div>
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.65rem; font-weight: 700; color: #b45309; text-transform: uppercase;">Pendientes</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #92400e;">${pendientesIEAllTime}</div>
+            </div>
+            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 8px 12px; border-radius: var(--radius-sm);">
+              <div style="font-size: 0.65rem; font-weight: 700; color: #b91c1c; text-transform: uppercase;">Vencidas</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #991b1b;">${vencidasIEAllTime}</div>
+            </div>
+            <div style="background: #f1f5f9; padding: 8px 12px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+              <span style="font-size: 0.7rem; font-weight: 700; color: #475569;">TOTAL TAREAS:</span>
+              <span style="font-size: 0.95rem; font-weight: 800; color: #1f2937;">${totalIEAllTime}</span>
+            </div>
+          </div>
+        `;
+      }
+      
+      var ctxH = document.getElementById('chart-avance-historico').getContext('2d');
+      if (window.chartAvanceHistoricoObj) {
+        window.chartAvanceHistoricoObj.destroy();
+      }
+      window.chartAvanceHistoricoObj = new Chart(ctxH, {
+        type: 'bar',
+        data: {
+          labels: MONTHS,
+          datasets: [
+            {
+              label: 'Cumplidas',
+              data: monthlyCumplidas,
+              backgroundColor: '#10b981',
+              borderRadius: 4
+            },
+            {
+              label: 'Pendientes',
+              data: monthlyPendientes,
+              backgroundColor: '#f59e0b',
+              borderRadius: 4
+            },
+            {
+              label: 'Vencidas',
+              data: monthlyVencidas,
+              backgroundColor: '#ef4444',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true, ticks: { font: { family: 'Inter', weight: 'bold' } } },
+            y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1, font: { family: 'Inter' } } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: 'Inter' } } }
+          }
+        }
+      });
+    } else {
+      historicoCard.style.display = 'none';
+    }
 
     var activitiesMap = {};
     for (var i = 0; i < filteredRows.length; i++) {
@@ -2526,8 +2920,191 @@ async function toggleAsignacionAvanceState(id, nextState) {
   }
 }
 
+// ===================== ADMIN HANDLERS =====================
+async function loadAdminUsuarios() {
+  try {
+    const list = await api('/api/admin/users');
+    const q = normalizar(document.getElementById('admin-user-buscar').value);
+    const filtered = list.filter(u => {
+      return normalizar(u.nombre_completo).indexOf(q) !== -1 ||
+             normalizar(u.usuario).indexOf(q) !== -1 ||
+             normalizar(u.dni).indexOf(q) !== -1 ||
+             normalizar(u.ie_codigo).indexOf(q) !== -1;
+    });
+    
+    let html = '';
+    if (filtered.length > 0) {
+      for (const u of filtered) {
+        const dniOrIe = u.rol === 'director' ? `IE: ${u.ie_codigo || '-'}` : `DNI: ${u.dni || '-'}`;
+        const emailOrTel = `${u.email || '-'}<br><small class="text-muted">${u.telefono || '-'}</small>`;
+        const impersonateBtn = u.id !== currentUser.id ? `<button class="btn btn-xs btn-outline" onclick="impersonarUsuario(${u.id})" title="Entrar como"><i class="fas fa-user-secret"></i> Entrar como</button>` : '';
+        const passwordBtn = `<button class="btn btn-xs btn-outline" onclick="abrirModalCambiarPassword(${u.id}, '${u.nombre_completo.replace(/'/g, "\\'")}')" title="Cambiar Contraseña"><i class="fas fa-key"></i> Pass</button>`;
+        
+        html += `<tr>
+          <td><strong>${u.nombre_completo}</strong></td>
+          <td><span class="badge ${u.rol === 'admin' ? 'bg-danger' : (u.rol === 'supervisor' ? 'bg-primary' : 'bg-success')}">${u.rol.toUpperCase()}</span></td>
+          <td><code>${u.usuario || '-'}</code></td>
+          <td>${dniOrIe}</td>
+          <td>${emailOrTel}</td>
+          <td style="text-align:center;">
+            <div style="display:flex; gap:6px; justify-content:center;">
+              ${passwordBtn}
+              ${impersonateBtn}
+            </div>
+          </td>
+        </tr>`;
+      }
+    } else {
+      html = '<tr><td colspan="6" class="text-center text-muted">No se encontraron usuarios</td></tr>';
+    }
+    document.getElementById('admin-usuarios-table').innerHTML = html;
+  } catch (err) {
+    showToast('Error al cargar usuarios: ' + err.message, 'error');
+  }
+}
+
+function abrirModalCambiarPassword(id, nombre) {
+  showModal(
+    'Cambiar Contraseña de ' + nombre,
+    `<div class="mb-3">
+      <label class="form-label">Nueva Contraseña</label>
+      <input type="password" class="form-control" id="new-user-password" placeholder="Escriba la nueva contraseña..." required>
+     </div>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-primary" onclick="guardarPasswordUsuario(${id})">Guardar Contraseña</button>`
+  );
+}
+
+async function guardarPasswordUsuario(id) {
+  const newPass = document.getElementById('new-user-password').value.trim();
+  if (!newPass) {
+    showToast('Ingrese una contraseña', 'error');
+    return;
+  }
+  try {
+    await api('/api/admin/users/' + id + '/password', {
+      method: 'POST',
+      body: { password: newPass }
+    });
+    showToast('Contraseña actualizada con éxito', 'success');
+    closeModal();
+    loadAdminUsuarios();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+async function impersonarUsuario(id) {
+  try {
+    const data = await api('/api/admin/impersonate', {
+      method: 'POST',
+      body: { userId: id }
+    });
+    showToast('Simulando sesión de usuario...', 'success');
+    window.location.reload();
+  } catch (err) {
+    showToast('Error al simular usuario: ' + err.message, 'error');
+  }
+}
+
+async function abrirModalIE(ieId = null) {
+  let ie = { codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false, tiene_otros: false, tipo_otros: '' };
+  let title = 'Nueva Institución Educativa';
+  
+  if (ieId) {
+    title = 'Editar Institución Educativa';
+    try {
+      const data = await api('/api/ies/' + ieId);
+      ie = data.ie || data;
+    } catch (err) {
+      showToast('Error al cargar IE: ' + err.message, 'error');
+      return;
+    }
+  }
+  
+  const body = `
+    <form id="ie-form" onsubmit="event.preventDefault()">
+      <div class="mb-3">
+        <label class="form-label">Código Modular *</label>
+        <input type="text" class="form-control" id="form-ie-codigo" value="${ie.codigo}" required ${ieId ? 'readonly' : ''}>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Nombre de la IE *</label>
+        <input type="text" class="form-control" id="form-ie-nombre" value="${ie.nombre}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Niveles Educativos</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <label><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''}> Inicial</label>
+          <label><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''}> Primaria</label>
+          <label><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''}> Secundaria</label>
+          <label><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
+        </div>
+      </div>
+      <div class="mb-3" id="form-ie-tipo-otros-group" style="display: ${ie.tiene_otros ? 'block' : 'none'};">
+        <label class="form-label">Especificar Otros Niveles</label>
+        <input type="text" class="form-control" id="form-ie-tipo-otros" value="${ie.tipo_otros || ''}">
+      </div>
+    </form>
+  `;
+  
+  const footer = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    <button class="btn btn-primary" onclick="guardarIE(${ieId})">Guardar</button>
+  `;
+  
+  showModal(title, body, footer);
+}
+
+async function guardarIE(ieId = null) {
+  const codigo = document.getElementById('form-ie-codigo').value.trim();
+  const nombre = document.getElementById('form-ie-nombre').value.trim();
+  const tiene_inicial = document.getElementById('form-ie-inicial').checked;
+  const tiene_primaria = document.getElementById('form-ie-primaria').checked;
+  const tiene_secundaria = document.getElementById('form-ie-secundaria').checked;
+  const tiene_otros = document.getElementById('form-ie-otros').checked;
+  const tipo_otros = document.getElementById('form-ie-tipo-otros').value.trim();
+  
+  if (!codigo || !nombre) {
+    showToast('Código y Nombre son obligatorios', 'error');
+    return;
+  }
+  
+  const body = { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros };
+  
+  try {
+    const url = ieId ? '/api/ies/' + ieId : '/api/ies';
+    const method = ieId ? 'PUT' : 'POST';
+    await api(url, { method, body });
+    showToast(ieId ? 'IE actualizada con éxito' : 'IE creada con éxito', 'success');
+    closeModal();
+    loadIEs();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function eliminarIE(id, nombre) {
+  showModal(
+    'Eliminar Institución Educativa',
+    `<p>¿Está seguro de eliminar la IE <strong>${nombre}</strong>? Esta acción no se puede deshacer.</p>`,
+    `<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+     <button class="btn btn-danger" onclick="confirmarEliminarIE(${id})">Eliminar</button>`
+  );
+}
+
+async function confirmarEliminarIE(id) {
+  try {
+    await api('/api/ies/' + id, { method: 'DELETE' });
+    showToast('IE de alta eliminada con éxito', 'success');
+    closeModal();
+    loadIEs();
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
 // ===================== INIT =====================
-iniciarSelector();
 checkSession();
 </script>
 </body>

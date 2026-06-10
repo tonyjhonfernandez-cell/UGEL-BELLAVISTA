@@ -133,6 +133,13 @@ async function initDatabase() {
         // Ignorar si hay error al añadir la columna
     }
 
+    try {
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) UNIQUE");
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
+    } catch (e) {
+        // Ignorar si ya existen
+    }
+
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
     if (tipos.c == 0) {
         const tiposList = ['Tarea', 'Documento', 'Reunión', 'Informe'];
@@ -145,6 +152,62 @@ async function initDatabase() {
         // ...
     }
     await seedDatabase(db);
+
+    try {
+        const users = await db.prepare("SELECT * FROM usuarios").all();
+        for (const u of users) {
+            let updated = false;
+            let userVal = u.usuario;
+            let passVal = u.password;
+            
+            if (!userVal) {
+                if (u.rol === 'admin') {
+                    userVal = 'admin';
+                } else if (u.rol === 'supervisor') {
+                    const parts = (u.nombre_completo || '').trim().toLowerCase()
+                        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                        .replace(/[^a-z0-9\s]/g, '')
+                        .split(/\s+/);
+                    if (parts.length >= 2) {
+                        userVal = parts[0] + '.' + parts[parts.length - 2];
+                    } else {
+                        userVal = parts[0] || 'supervisor';
+                    }
+                } else {
+                    userVal = 'director.' + (u.ie_codigo || u.id);
+                }
+                updated = true;
+            }
+            
+            if (!passVal || passVal === '12345678' || passVal === u.ie_codigo) {
+                const targetPass = u.dni || u.ie_codigo || '12345678';
+                if (passVal !== targetPass) {
+                    passVal = targetPass;
+                    updated = true;
+                }
+            }
+            
+            if (updated) {
+                let uniqueUser = userVal;
+                let count = 1;
+                while (true) {
+                    const check = await db.prepare("SELECT id FROM usuarios WHERE usuario = ? AND id != ?").get(uniqueUser, u.id);
+                    if (!check) break;
+                    uniqueUser = userVal + count;
+                    count++;
+                }
+                await db.prepare("UPDATE usuarios SET usuario = ?, password = ? WHERE id = ?").run(uniqueUser, passVal, u.id);
+            }
+        }
+
+        const adminCheck = await db.prepare("SELECT id FROM usuarios WHERE rol = 'admin'").get();
+        if (!adminCheck) {
+            await db.prepare("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES (?, ?, ?, ?, true)").run('Administrador', 'admin', 'admin', 'admin');
+            console.log('Usuario admin creado exitosamente.');
+        }
+    } catch (migrationErr) {
+        console.error('Error en migración de usuarios:', migrationErr);
+    }
     dbInitialized = true;
 }
 
@@ -180,8 +243,15 @@ function validarNivel(nivel) {
 }
 
 const authSupervisor = (req, res, next) => {
-    if (!req.session.user || req.session.user.rol !== 'supervisor') {
+    if (!req.session.user || (req.session.user.rol !== 'supervisor' && req.session.user.rol !== 'admin')) {
         return res.status(403).json({ error: 'Acceso denegado' });
+    }
+    next();
+};
+
+const authAdmin = (req, res, next) => {
+    if (!req.session.user || req.session.user.rol !== 'admin') {
+        return res.status(403).json({ error: 'Acceso denegado (solo administradores)' });
     }
     next();
 };
@@ -195,67 +265,39 @@ const authDirector = (req, res, next) => {
 
 app.post('/api/login', async (req, res) => {
     try {
-        const { codigo } = req.body;
-        if (!codigo) return res.status(400).json({ error: 'Ingrese un código o nombre' });
-
-        const cod = normalizar(codigo);
-
-        const allSupervisors = await db.prepare(
-            "SELECT * FROM usuarios WHERE rol = 'supervisor' AND activo = true"
-        ).all();
-
-        for (const s of allSupervisors) {
-            if (normalizar(s.nombre_completo) === cod) {
-                req.session.user = { id: s.id, nombre: s.nombre_completo, rol: 'supervisor' };
-                return req.session.save(() => res.json({ ok: true, user: req.session.user }));
-            }
+        const { usuario, password } = req.body;
+        if (!usuario || !password) {
+            return res.status(400).json({ error: 'Ingrese usuario y contraseña' });
         }
 
-        let ie = await db.prepare(
-            "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
-        ).get(cod);
+        const user = await db.prepare(
+            "SELECT * FROM usuarios WHERE (usuario = ? OR dni = ? OR ie_codigo = ?) AND activo = true LIMIT 1"
+        ).get(usuario, usuario, usuario);
 
-        if (!ie) {
-            const allIes = await db.prepare(
-                "SELECT * FROM instituciones_educativas WHERE activa = true"
-            ).all();
-            let bestMatch = null;
-            let bestScore = 0;
-            for (const candidate of allIes) {
-                const nName = normalizar(candidate.nombre);
-                const nCod = normalizar(candidate.codigo);
-                const firstToken = nName.split(' ')[0];
-                let score = 0;
-                if (nCod === cod || nName === cod) score = 4;
-                else if (cod === firstToken || nName.startsWith(cod + ' ')) score = 3;
-                else if (nName.includes(cod)) score = 2;
-                else if (nCod.includes(cod)) score = 1;
-                if (score > bestScore) { bestScore = score; bestMatch = candidate; }
-            }
-            ie = bestMatch;
+        if (!user) {
+            return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
         }
 
-        if (!ie) return res.status(401).json({ error: 'Institución o nombre no encontrado' });
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Contraseña incorrecta' });
+        }
 
-        let director = await db.prepare(
-            "SELECT * FROM usuarios WHERE ie_codigo = ? AND rol = 'director' AND activo = true LIMIT 1"
-        ).get(ie.codigo);
-
-        if (!director) {
-            const result = await db.prepare(
-                "INSERT INTO usuarios (nombre_completo, ie_codigo, rol) VALUES (?, ?, 'director') RETURNING id"
-            ).run(ie.nombre, ie.codigo);
-            director = { id: result.lastInsertRowid, nombre_completo: ie.nombre, rol: 'director', ie_codigo: ie.codigo };
+        let ie = null;
+        if (user.rol === 'director' && user.ie_codigo) {
+            ie = await db.prepare(
+                "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
+            ).get(user.ie_codigo);
         }
 
         req.session.user = {
-            id: director.id,
-            nombre: director.nombre_completo,
-            rol: 'director',
-            ie_codigo: ie.codigo,
-            ie_nombre: ie.nombre,
-            ie_id: ie.id
+            id: user.id,
+            nombre: user.nombre_completo,
+            rol: user.rol,
+            ie_codigo: user.ie_codigo || null,
+            ie_nombre: ie ? ie.nombre : null,
+            ie_id: ie ? ie.id : null
         };
+
         req.session.save(() => res.json({ ok: true, user: req.session.user }));
     } catch (err) {
         console.error('Login error:', err);
@@ -314,12 +356,36 @@ app.get('/api/ies/:id', async (req, res) => {
 });
 
 
-app.put('/api/ies/:id', authSupervisor, async (req, res) => {
+app.post('/api/ies', authAdmin, async (req, res) => {
+    try {
+        const { codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
+        if (!codigo || !nombre) {
+            return res.status(400).json({ error: 'Código y nombre son requeridos' });
+        }
+        const result = await db.prepare(
+            'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, true)'
+        ).run(codigo, nombre, ruralidad || 'URBANO', tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null);
+        res.json({ ok: true, id: result.lastInsertRowid });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/ies/:id', authAdmin, async (req, res) => {
     try {
         const { codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
         await db.prepare(
             'UPDATE instituciones_educativas SET codigo=?, nombre=?, ruralidad=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=? WHERE id=?'
         ).run(codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, req.params.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/ies/:id', authAdmin, async (req, res) => {
+    try {
+        await db.prepare('UPDATE instituciones_educativas SET activa = false WHERE id = ?').run(req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -428,8 +494,8 @@ app.post('/api/actividades', authSupervisor, async (req, res) => {
 
                     if (!director) {
                         const dirResult = await db.prepare(
-                            "INSERT INTO usuarios (nombre_completo, ie_codigo, rol) VALUES (?, ?, 'director') RETURNING id"
-                        ).run(ie.nombre, ie.codigo);
+                            "INSERT INTO usuarios (nombre_completo, ie_codigo, rol, usuario, password) VALUES (?, ?, 'director', ?, ?) RETURNING id"
+                        ).run(ie.nombre, ie.codigo, 'director.' + ie.codigo, ie.codigo);
                         director = { id: dirResult.lastInsertRowid };
                     }
 
@@ -460,7 +526,7 @@ app.get('/api/actividades', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();
         let actividades;
-        if (req.session.user.rol === 'supervisor') {
+        if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre,
                 (SELECT COUNT(*) FROM asignaciones WHERE actividad_id = a.id) as total_asignaciones,
@@ -661,7 +727,7 @@ app.get('/api/asignaciones', async (req, res) => {
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q, q); }
         let asignaciones;
-        if (req.session.user.rol === 'supervisor') {
+        if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
                        ta.nombre as tipo_nombre,
@@ -721,7 +787,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             return p;
         }
 
-        if (req.session.user.rol === 'supervisor') {
+        if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             const baseJoin = 'FROM asignaciones ase INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id';
             const total = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere()}`).get(...buildParams());
             const completadas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'completada'")}`).get(...buildParams());
@@ -959,7 +1025,7 @@ app.get('/api/perfil', authDirector, async (req, res) => {
 
 app.put('/api/perfil', authDirector, async (req, res) => {
     try {
-        const { nombre, email, telefono, dni, dependencia, puesto } = req.body;
+        const { nombre, email, telefono, dni, dependencia, puesto, password } = req.body;
         const updates = [];
         const params = [];
         if (nombre !== undefined) { updates.push('nombre_completo=?'); params.push(nombre); }
@@ -968,12 +1034,69 @@ app.put('/api/perfil', authDirector, async (req, res) => {
         if (dni !== undefined) { updates.push('dni=?'); params.push(dni || null); }
         if (dependencia !== undefined) { updates.push('dependencia=?'); params.push(dependencia); }
         if (puesto !== undefined) { updates.push('puesto=?'); params.push(puesto); }
+        if (password !== undefined && password !== '') { updates.push('password=?'); params.push(password); }
         if (updates.length > 0) {
             params.push(req.session.user.id);
             await db.prepare(`UPDATE usuarios SET ${updates.join(',')} WHERE id=?`).run(...params);
             if (nombre) req.session.user.nombre = nombre;
         }
         res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Endpoints de Administración (para rol admin)
+app.get('/api/admin/users', authAdmin, async (req, res) => {
+    try {
+        const users = await db.prepare("SELECT id, nombre_completo, dni, ie_codigo, rol, dependencia, puesto, email, telefono, activo, usuario FROM usuarios ORDER BY rol, nombre_completo").all();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/users/:id/password', authAdmin, async (req, res) => {
+    try {
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({ error: 'La contraseña es requerida' });
+        }
+        await db.prepare("UPDATE usuarios SET password = ? WHERE id = ?").run(password, req.params.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/impersonate', authAdmin, async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            return res.status(400).json({ error: 'ID de usuario es requerido' });
+        }
+        const targetUser = await db.prepare("SELECT * FROM usuarios WHERE id = ? AND activo = true").get(userId);
+        if (!targetUser) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        let ie = null;
+        if (targetUser.rol === 'director' && targetUser.ie_codigo) {
+            ie = await db.prepare(
+                "SELECT * FROM instituciones_educativas WHERE codigo = ? AND activa = true"
+            ).get(targetUser.ie_codigo);
+        }
+        
+        req.session.user = {
+            id: targetUser.id,
+            nombre: targetUser.nombre_completo,
+            rol: targetUser.rol,
+            ie_codigo: targetUser.ie_codigo || null,
+            ie_nombre: ie ? ie.nombre : null,
+            ie_id: ie ? ie.id : null,
+            impersonated: true
+        };
+        req.session.save(() => res.json({ ok: true, user: req.session.user }));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
