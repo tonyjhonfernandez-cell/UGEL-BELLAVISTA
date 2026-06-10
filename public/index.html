@@ -909,7 +909,7 @@ let chartCumplimiento = null;
 let chartAvanceMensualObj = null;
 let chartAvanceHistoricoObj = null;
 let selectedAvanceIEId = null;
-let currentDirectorFilter = 'active_tasks';
+let currentDirectorFilter = 'pendiente';
 let currentDirectorRows = [];
 
 // ===================== API =====================
@@ -1477,6 +1477,7 @@ async function loadDirectorMain(ieCodigo) {
     document.querySelectorAll('.dir-kpi').forEach(el => {
       el.classList.remove('active-kpi-filter');
     });
+    document.querySelector('.dir-kpi.pendientes')?.classList.add('active-kpi-filter');
     
     const cards = [
       { class: 'total', type: 'all' },
