@@ -60,21 +60,61 @@ app.use(session({
 
 // En Vercel (serverless) no hay estado global persistente.
 // Usamos la BD misma para saber si ya se migró.
-async function initDatabase() {
-    // Verificar rápido si la migración ya se hizo
+async function runUserMigration() {
     try {
-        const check = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='usuarios' AND column_name='usuario' LIMIT 1");
-        if (check.rows.length > 0) {
-            // Columnas ya existen, solo verificar admin
-            const adminCheck = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
-            if (adminCheck.rows.length === 0) {
-                await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
+        // Añadir columnas si no existen
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100)");
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
+
+        // Asignar password = DNI donde falta (supervisores y directores)
+        await pool.query(`
+            UPDATE usuarios
+            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
+        `);
+
+        // Asignar usuario para directores donde falta
+        await pool.query(`
+            UPDATE usuarios
+            SET usuario = 'director.' || COALESCE(ie_codigo, id::text)
+            WHERE (usuario IS NULL OR usuario = '') AND rol = 'director'
+        `);
+
+        // Asignar usuario para supervisores: primer_nombre.primer_apellido
+        const sups = await pool.query(
+            "SELECT id, nombre_completo FROM usuarios WHERE (usuario IS NULL OR usuario = '') AND rol = 'supervisor'"
+        );
+        for (const u of sups.rows) {
+            const parts = (u.nombre_completo || '').trim().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+            // usuario = primer_nombre.primer_apellido (ej: "juan.garcia")
+            let base = parts.length >= 2 ? parts[0] + '.' + parts[1] : (parts[0] || 'supervisor');
+            let uname = base, cnt = 2;
+            while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
+                uname = base + cnt++;
             }
-            return; // Ya migrado, salir rápido
+            await pool.query('UPDATE usuarios SET usuario = $1 WHERE id = $2', [uname, u.id]);
+        }
+
+        // Crear/verificar admin
+        const adminR = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
+        if (adminR.rows.length === 0) {
+            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
+        } else {
+            await pool.query("UPDATE usuarios SET usuario = COALESCE(NULLIF(usuario,''), 'admin'), password = COALESCE(NULLIF(password,''), 'admin') WHERE rol = 'admin'");
         }
     } catch(e) {
-        // Tabla no existe aún, continuar con init completo
+        console.error('Error en runUserMigration:', e.message);
     }
+}
+
+async function initDatabase() {
+    // Si ya hay usuarios migrados, salir rápido
+    try {
+        const r = await pool.query("SELECT COUNT(*) as c FROM usuarios WHERE usuario IS NOT NULL AND usuario != ''");
+        if (parseInt(r.rows[0].c) > 0) return;
+    } catch(e) { /* tabla no existe aún */ }
     await db.exec(`
         CREATE TABLE IF NOT EXISTS instituciones_educativas (
             id SERIAL PRIMARY KEY,
@@ -170,49 +210,7 @@ async function initDatabase() {
     }
     await seedDatabase(db);
 
-    try {
-        // Migración masiva en SQL para evitar timeout en Vercel
-        // Asignar password = dni (supervisores) o ie_codigo (directores) donde falta
-        await pool.query(`
-            UPDATE usuarios
-            SET password = COALESCE(dni, ie_codigo, '12345678')
-            WHERE (password IS NULL OR password = '' OR password = '12345678')
-              AND rol != 'admin'
-        `);
-
-        // Asignar usuario para directores donde falta
-        await pool.query(`
-            UPDATE usuarios
-            SET usuario = 'director.' || COALESCE(ie_codigo::text, id::text)
-            WHERE usuario IS NULL AND rol = 'director'
-        `);
-
-        // Para supervisores: usuario = primera_palabra.penultima_palabra del nombre
-        // Lo hacemos en JS porque necesitamos normalizar tildes
-        const supervisores = await pool.query(
-            "SELECT id, nombre_completo FROM usuarios WHERE usuario IS NULL AND rol = 'supervisor'"
-        );
-        for (const u of supervisores.rows) {
-            const parts = (u.nombre_completo || '').trim().toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            let base = parts.length >= 2 ? parts[0] + '.' + parts[parts.length - 2] : (parts[0] || 'supervisor');
-            let uname = base, cnt = 1;
-            while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
-                uname = base + cnt++;
-            }
-            await pool.query('UPDATE usuarios SET usuario = $1 WHERE id = $2', [uname, u.id]);
-        }
-
-        // Crear admin si no existe
-        const adminCheck = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
-        if (adminCheck.rows.length === 0) {
-            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
-            console.log('Usuario admin creado.');
-        }
-    } catch (migrationErr) {
-        console.error('Error en migración de usuarios:', migrationErr);
-    }
+    await runUserMigration();
 }
 
 // Middleware: asegurar que la BD esté lista antes de cada petición a /api
@@ -232,53 +230,14 @@ initDatabase().catch(err => console.error('DB init error:', err));
 // Endpoint para forzar migración manual (útil en Vercel después de deploy)
 app.get('/api/migrate', async (req, res) => {
     try {
-        // Añadir columnas si no existen
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100)");
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
-
-        // Asignar passwords donde faltan
-        await pool.query(`
-            UPDATE usuarios
-            SET password = COALESCE(NULLIF(dni,''), NULLIF(ie_codigo,''), '12345678')
-            WHERE (password IS NULL OR password = '') AND rol != 'admin'
-        `);
-
-        // Asignar usuario para directores
-        await pool.query(`
-            UPDATE usuarios
-            SET usuario = 'director.' || COALESCE(ie_codigo, id::text)
-            WHERE (usuario IS NULL OR usuario = '') AND rol = 'director'
-        `);
-
-        // Asignar usuario para supervisores (JS para normalizar tildes)
-        const sups = await pool.query("SELECT id, nombre_completo FROM usuarios WHERE (usuario IS NULL OR usuario = '') AND rol = 'supervisor'");
-        for (const u of sups.rows) {
-            const parts = (u.nombre_completo || '').trim().toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            let base = parts.length >= 2 ? parts[0] + '.' + parts[parts.length - 2] : (parts[0] || 'supervisor');
-            let uname = base, cnt = 1;
-            while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
-                uname = base + cnt++;
-            }
-            await pool.query('UPDATE usuarios SET usuario = $1 WHERE id = $2', [uname, u.id]);
-        }
-
-        // Crear admin si no existe
-        const adminR = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
-        if (adminR.rows.length === 0) {
-            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
-        } else {
-            // Asegurar que admin tenga usuario y password
-            await pool.query("UPDATE usuarios SET usuario = 'admin', password = COALESCE(NULLIF(password,''), 'admin') WHERE rol = 'admin'");
-        }
-
-        // Contar resultados
+        await runUserMigration();
         const stats = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE usuario IS NOT NULL AND usuario != '') AS con_usuario,
                 COUNT(*) FILTER (WHERE password IS NOT NULL AND password != '') AS con_password,
-                COUNT(*) AS total
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE rol='supervisor') AS supervisores,
+                COUNT(*) FILTER (WHERE rol='director') AS directores
             FROM usuarios
         `);
         res.json({ ok: true, mensaje: 'Migración completada', stats: stats.rows[0] });
