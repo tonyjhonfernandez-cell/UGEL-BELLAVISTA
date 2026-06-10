@@ -56,3 +56,5 @@
 ## Comandos útiles
 - `node server.js` (iniciar servidor, requiere DATABASE_URL en .env con PostgreSQL)
 - `rg "palabra" --glob '*.{js,html}'` (búsqueda rápida)
+
+<!-- Deployment check: 2026-06-10T21:56:00Z -->
