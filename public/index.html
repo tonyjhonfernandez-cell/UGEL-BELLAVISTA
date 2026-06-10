@@ -735,7 +735,6 @@ body.director-mode #app-shell{display:block}
                 <tr>
                   <th style="width: 40px; text-align: center;"><input type="checkbox" id="select-all-mon" onchange="toggleSelectAllMonitoreo(this)"></th>
                   <th>Institución Educativa</th>
-                  <th>Director(a)</th>
                   <th>Actividad / Área</th>
                   <th style="width: 120px; text-align: center;">Fecha Límite</th>
                   <th style="width: 120px; text-align: center;">Estado</th>
@@ -1877,8 +1876,6 @@ async function loadMonitoreo() {
         var ieCell = '<div style="font-weight:700; color:#1f2937; text-transform:uppercase; font-size:0.78rem;">' + (a.ie_nombre || '-') + '</div>' +
           '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">CÓDIGO: ' + (a.ie_codigo || '-') + '</div>';
         
-        var dirCell = '<div style="font-weight:600; color:#374151; font-size:0.75rem;">' + (a.director_nombre || '-') + '</div>';
-        
         var actCell = '<div style="font-weight:800; color:#1e1e2f; font-size:0.78rem; text-transform:uppercase;">' + (a.actividad_titulo || a.titulo || '-') + '</div>' +
           '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">ASIGNADO POR: ' + (a.asignador_nombre || '-') + ' (' + (a.area || '-') + ' - ' + (a.subarea || '-') + ')</div>';
         
@@ -1893,7 +1890,6 @@ async function loadMonitoreo() {
         html += '<tr>' +
           '<td style="text-align: center;"><input type="checkbox" class="mon-row-checkbox" value="' + act + '" onchange="updateBulkDeleteButtonState()"></td>' +
           '<td>' + ieCell + '</td>' +
-          '<td>' + dirCell + '</td>' +
           '<td>' + actCell + '</td>' +
           '<td>' + dateCell + '</td>' +
           '<td>' + stateCell + '</td>' +
@@ -1901,7 +1897,7 @@ async function loadMonitoreo() {
           '</tr>';
       }
     } else {
-      html = '<tr class="empty"><td colspan="7">No se encontraron asignaciones</td></tr>';
+      html = '<tr class="empty"><td colspan="6">No se encontraron asignaciones</td></tr>';
     }
     document.getElementById('monitoreo-table').innerHTML = html;
     var masterCheckbox = document.getElementById('select-all-mon');
