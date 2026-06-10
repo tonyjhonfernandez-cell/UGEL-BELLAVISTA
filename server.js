@@ -1081,7 +1081,7 @@ app.put('/api/perfil', authDirector, async (req, res) => {
 // Endpoints de Administración (para rol admin)
 app.get('/api/admin/users', authAdmin, async (req, res) => {
     try {
-        const users = await db.prepare("SELECT id, nombre_completo, dni, ie_codigo, rol, dependencia, puesto, email, telefono, activo, usuario FROM usuarios ORDER BY rol, nombre_completo").all();
+        const users = await db.prepare("SELECT id, nombre_completo, dni, ie_codigo, rol, dependencia, puesto, email, telefono, activo, usuario FROM usuarios WHERE rol != 'director' ORDER BY rol, nombre_completo").all();
         res.json(users);
     } catch (err) {
         res.status(500).json({ error: err.message });
