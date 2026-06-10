@@ -1118,14 +1118,15 @@ async function login() {
     err.style.display = 'none';
     const data = await api('/api/login', { method: 'POST', body: { usuario, password } });
     currentUser = data.usuario || data.user;
+    if (currentUser.rol === 'director') {
+      err.textContent = 'Acceso denegado: los directores no pueden iniciar sesión aquí. Use el panel público.';
+      err.style.display = 'block';
+      currentUser = null;
+      return;
+    }
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-shell').style.display = 'block';
-    if (currentUser.rol === 'director') {
-      initDirectorApp();
-      selectSchoolForDashboard(currentUser.ie_codigo || '', currentUser.ie_nombre || '');
-    } else {
-      initSupervisorApp();
-    }
+    initSupervisorApp();
     showToast('Bienvenido, ' + (currentUser.nombre || ''), 'success');
   } catch (e) {
     err.textContent = e.message || 'Credenciales incorrectas';
@@ -1151,15 +1152,11 @@ async function checkSession() {
       }
     } else {
       currentUser = null;
-      document.body.classList.remove('director-mode');
-      document.getElementById('app-shell').style.display = 'none';
-      document.getElementById('login-screen').style.display = 'flex';
+      showPublicDashboardFromLogin();
     }
   } catch (e) {
     currentUser = null;
-    document.body.classList.remove('director-mode');
-    document.getElementById('app-shell').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
+    showPublicDashboardFromLogin();
   }
 }
 

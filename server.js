@@ -311,6 +311,10 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Usuario no encontrado o inactivo' });
         }
 
+        if (user.rol === 'director') {
+            return res.status(403).json({ error: 'Los directores no pueden iniciar sesión aquí. Use el panel público.' });
+        }
+
         if (user.password !== password) {
             return res.status(401).json({ error: 'Contraseña incorrecta' });
         }
