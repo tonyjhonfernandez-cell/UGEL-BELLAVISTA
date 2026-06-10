@@ -1213,6 +1213,148 @@ app.get('/api/force-seed', async (req, res) => {
     }
 });
 
+// ===================== EXPORT EXCEL =====================
+app.get('/api/export/asignaciones', async (req, res) => {
+    try {
+        const { nivel, estado, buscar } = req.query;
+        const params = [];
+        let where = 'WHERE 1=1';
+        if (nivel && NIVELES_VALIDOS.includes(nivel)) {
+            where += ' AND ie.tiene_' + nivel + ' = true';
+        }
+        if (estado) {
+            where += ' AND ase.estado = ?';
+            params.push(estado);
+        }
+        if (buscar) {
+            where += ' AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)';
+            const p = '%' + buscar + '%';
+            params.push(p, p, p);
+        }
+
+        const rows = await db.prepare(`
+            SELECT ase.estado,
+                   a.titulo as actividad,
+                   a.fecha_limite,
+                   a.descripcion,
+                   ta.nombre as tipo,
+                   ie.codigo as ie_codigo,
+                   ie.nombre as ie_nombre,
+                   u.nombre_completo as director,
+                   u.dni as director_dni,
+                   u.telefono as director_telefono,
+                   asignador.nombre_completo as asignador,
+                   asignador.dependencia as area
+            FROM asignaciones ase
+            LEFT JOIN actividades a ON ase.actividad_id = a.id
+            LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
+            LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
+            ${where}
+            ORDER BY ie.nombre, a.fecha_limite
+        `).all(...params);
+
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Asignaciones');
+
+        // Columnas
+        ws.columns = [
+            { header: '#', key: 'num', width: 5 },
+            { header: 'IE CÓDIGO', key: 'ie_codigo', width: 14 },
+            { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie_nombre', width: 42 },
+            { header: 'ACTIVIDAD', key: 'actividad', width: 38 },
+            { header: 'TIPO', key: 'tipo', width: 16 },
+            { header: 'FECHA LÍMITE', key: 'fecha_limite', width: 16 },
+            { header: 'ESTADO', key: 'estado', width: 16 },
+            { header: 'DIRECTOR', key: 'director', width: 32 },
+            { header: 'DNI DIRECTOR', key: 'director_dni', width: 14 },
+            { header: 'TELÉFONO', key: 'director_telefono', width: 16 },
+            { header: 'ASIGNADO POR', key: 'asignador', width: 28 },
+            { header: 'ÁREA', key: 'area', width: 20 },
+            { header: 'DESCRIPCIÓN', key: 'descripcion', width: 48 }
+        ];
+
+        // Estilo header
+        const headerStyle = {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1B5E8A' } },
+            font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' },
+            alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
+            }
+        };
+        const headerRow = ws.getRow(1);
+        headerRow.height = 32;
+        ws.columns.forEach((col, i) => {
+            const cell = headerRow.getCell(i + 1);
+            cell.value = col.header;
+            Object.assign(cell, headerStyle);
+        });
+
+        // Datos
+        const estadoStyles = {
+            completada: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }, font: { color: { argb: 'FF2E7D32' }, bold: true } },
+            pendiente: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E0' } }, font: { color: { argb: 'FFE65100' }, bold: true } },
+            no_cumplida: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }, font: { color: { argb: 'FFC62828' }, bold: true } }
+        };
+        const dataStyle = {
+            alignment: { vertical: 'middle', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+            }
+        };
+
+        rows.forEach((r, i) => {
+            const rowNum = i + 2;
+            const row = ws.getRow(rowNum);
+            row.height = 24;
+            const vals = [
+                i + 1, r.ie_codigo, r.ie_nombre, r.actividad, r.tipo,
+                r.fecha_limite ? new Date(r.fecha_limite).toLocaleDateString('es-PE') : '',
+                r.estado, r.director, r.director_dni, r.director_telefono,
+                r.asignador, r.area, r.descripcion
+            ];
+            vals.forEach((v, ci) => {
+                const cell = row.getCell(ci + 1);
+                cell.value = v || '';
+                Object.assign(cell, dataStyle);
+            });
+            // Color por estado
+            const estadoCell = row.getCell(7);
+            if (estadoStyles[r.estado]) {
+                Object.assign(estadoCell, estadoStyles[r.estado]);
+            }
+        });
+
+        // Auto-filtro
+        ws.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: rows.length + 1, column: ws.columns.length }
+        };
+
+        // Freeze header
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="asignaciones_ugel.xlsx"');
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error exportando Excel:', err);
+        res.status(500).json({ error: 'Error al exportar' });
+    }
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
     console.error('Error no capturado:', err);

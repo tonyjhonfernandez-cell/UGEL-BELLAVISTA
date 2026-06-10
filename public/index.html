@@ -594,9 +594,12 @@ body.director-mode #app-shell{display:block}
       <!-- ==================== SUPERVISOR: AVANCE MENSUAL ==================== -->
       <div class="view-section" id="view-avance-mensual">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-          <div>
-            <h2>Avance Mensual</h2>
-            <span>Consolidado provincial e informe de actividades por mes</span>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div>
+              <h2>Avance Mensual</h2>
+              <span>Consolidado provincial e informe de actividades por mes</span>
+            </div>
+            <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones')" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
           </div>
           <div class="filter-group" style="margin-bottom:0; width:300px; position:relative;">
             <label style="font-size:0.75rem; font-weight:700; color:var(--text3); margin-bottom:4px; display:block;">Consultar Institución Educativa</label>
@@ -683,7 +686,10 @@ body.director-mode #app-shell{display:block}
 
       <!-- ==================== SUPERVISOR: MONITOREO ==================== -->
       <div class="view-section" id="view-monitoreo">
-        <div class="page-hd"><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por IE</span></div>
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por IE</span></div>
+          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value))" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
         <div class="filter-bar">
           <div class="filter-group">
             <label>Buscar IE</label>
@@ -940,6 +946,15 @@ function showModal(title, bodyHtml, footerHtml) {
 }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('show');
+}
+
+function descargarExcel(url) {
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'reporte_ugel.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 // ===================== AUTH & IE SELECTOR =====================
