@@ -63,11 +63,11 @@ app.use(session({
 async function syncPasswords() {
     try {
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
+        // Solo para usuarios nuevos (password NULL/vacío) - no revertir cambios manuales
         await pool.query(`
             UPDATE usuarios
             SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
-            WHERE rol NOT IN ('admin')
-              AND password IS DISTINCT FROM COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
         `);
     } catch(e) {
         console.error('Error en syncPasswords:', e.message);
@@ -230,7 +230,6 @@ async function initDatabase() {
 app.use('/api', async (req, res, next) => {
     try {
         await initDatabase();
-        await syncPasswords();
         next();
     } catch (err) {
         console.error('DB init error en middleware:', err);
