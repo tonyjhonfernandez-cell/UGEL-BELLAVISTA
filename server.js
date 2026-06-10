@@ -543,6 +543,33 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     }
 });
 
+app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
+    try {
+        const asignacion = await db.prepare(`
+            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
+                   ta.nombre as tipo_nombre,
+                   ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.ruralidad,
+                   u.nombre_completo as director_nombre,
+                   asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
+            FROM asignaciones ase
+            LEFT JOIN actividades a ON ase.actividad_id = a.id
+            LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
+            LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
+            WHERE ase.id = ?
+        `).get(req.params.id);
+
+        if (!asignacion) {
+            return res.status(404).json({ error: 'Asignación no encontrada' });
+        }
+
+        res.json(asignacion);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     try {
         const { estado, notas_supervisor } = req.body;
