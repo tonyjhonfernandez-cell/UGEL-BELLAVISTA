@@ -60,6 +60,20 @@ app.use(session({
 
 // En Vercel (serverless) no hay estado global persistente.
 // Usamos la BD misma para saber si ya se migró.
+async function syncPasswords() {
+    try {
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
+        await pool.query(`
+            UPDATE usuarios
+            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+            WHERE rol NOT IN ('admin')
+              AND password IS DISTINCT FROM COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+        `);
+    } catch(e) {
+        console.error('Error en syncPasswords:', e.message);
+    }
+}
+
 async function runUserMigration() {
     try {
         // Añadir columnas si no existen
@@ -88,7 +102,6 @@ async function runUserMigration() {
             const parts = (u.nombre_completo || '').trim().toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
                 .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            // usuario = primer_nombre.primer_apellido (ej: "juan.garcia")
             let base = parts.length >= 2 ? parts[0] + '.' + parts[1] : (parts[0] || 'supervisor');
             let uname = base, cnt = 2;
             while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
@@ -133,7 +146,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
             nombre_completo TEXT NOT NULL,
-            dni VARCHAR(20) UNIQUE,
+            dni VARCHAR(20),
             ie_codigo VARCHAR(20),
             rol VARCHAR(20) NOT NULL DEFAULT 'director',
             dependencia VARCHAR(50),
@@ -217,6 +230,7 @@ async function initDatabase() {
 app.use('/api', async (req, res, next) => {
     try {
         await initDatabase();
+        await syncPasswords();
         next();
     } catch (err) {
         console.error('DB init error en middleware:', err);
@@ -226,6 +240,7 @@ app.use('/api', async (req, res, next) => {
 
 // También iniciar al arrancar (para entornos no-serverless)
 initDatabase().catch(err => console.error('DB init error:', err));
+syncPasswords().catch(err => console.error('syncPasswords error:', err));
 
 // Endpoint para forzar migración manual (útil en Vercel después de deploy)
 app.get('/api/migrate', async (req, res) => {
@@ -1080,6 +1095,49 @@ app.post('/api/admin/users/:id/password', authAdmin, async (req, res) => {
             return res.status(400).json({ error: 'La contraseña es requerida' });
         }
         await db.prepare("UPDATE usuarios SET password = ? WHERE id = ?").run(password, req.params.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/users', authAdmin, async (req, res) => {
+    try {
+        const { nombre_completo, dni, rol, dependencia, puesto, email, telefono, password, usuario } = req.body;
+        if (!nombre_completo) {
+            return res.status(400).json({ error: 'El nombre es requerido' });
+        }
+        const result = await db.prepare(
+            "INSERT INTO usuarios (nombre_completo, dni, rol, dependencia, puesto, email, telefono, activo) VALUES (?, ?, ?, ?, ?, ?, ?, true) RETURNING id"
+        ).run(nombre_completo, dni || null, rol || 'supervisor', dependencia || null, puesto || null, email || null, telefono || null);
+        const newId = result.lastInsertRowid;
+        const setPass = password || dni || '12345678';
+        await db.prepare("UPDATE usuarios SET password = ? WHERE id = ?").run(setPass, newId);
+        if (usuario) {
+            await db.prepare("UPDATE usuarios SET usuario = ? WHERE id = ?").run(usuario, newId);
+        }
+        res.json({ ok: true, id: newId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/admin/users/:id', authAdmin, async (req, res) => {
+    try {
+        const fields = [];
+        const values = [];
+        const { nombre_completo, dni, dependencia, puesto, email, telefono, activo } = req.body;
+        if (nombre_completo !== undefined) { fields.push('nombre_completo'); values.push(nombre_completo); }
+        if (dni !== undefined) { fields.push('dni'); values.push(dni); }
+        if (dependencia !== undefined) { fields.push('dependencia'); values.push(dependencia); }
+        if (puesto !== undefined) { fields.push('puesto'); values.push(puesto); }
+        if (email !== undefined) { fields.push('email'); values.push(email); }
+        if (telefono !== undefined) { fields.push('telefono'); values.push(telefono); }
+        if (activo !== undefined) { fields.push('activo'); values.push(activo); }
+        if (fields.length === 0) return res.status(400).json({ error: 'Sin campos para actualizar' });
+        const setClause = fields.map((f, i) => `${f} = $${i+1}`).join(', ');
+        values.push(req.params.id);
+        await pool.query(`UPDATE usuarios SET ${setClause} WHERE id = $${values.length}`, values);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

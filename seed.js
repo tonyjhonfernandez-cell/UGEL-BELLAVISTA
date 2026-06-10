@@ -657,10 +657,24 @@ async function seedDatabase(db) {
                     "Especialista en Finanzas",
                     "996640502",
                     "45566260"
-            ]
+            ],
+            [
+                "Lorena Diaz Diaz",
+                "AGI",
+                "PRACTICANTE",
+                "976857886",
+                "70250027"
+        ],
+        [
+                "Alfredo Silva Pisco",
+                "ADMINISTACION",
+                "Servicio Profesional Especializado en la Seguridad y Vigilancia de la UGEL Bellavista",
+                "",
+                "42268073"
+        ]
     ];
-
-    const checkSupervisor = db.prepare(
+    
+        const checkSupervisor = db.prepare(
         "SELECT id FROM usuarios WHERE nombre_completo = ? AND rol = 'supervisor'"
     );
     const insertSupervisor = db.prepare(
