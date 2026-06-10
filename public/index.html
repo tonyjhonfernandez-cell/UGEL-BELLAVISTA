@@ -976,10 +976,13 @@ async function goToSupervisorLogin() {
   currentUser = null;
   document.body.classList.remove('director-mode');
   document.getElementById('app-shell').style.display = 'none';
-  document.getElementById('sel-screen').style.display = 'none';
+  const sel = document.getElementById('sel-screen');
+  if (sel) sel.style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-usuario').value = '';
-  document.getElementById('login-password').value = '';
+  const u = document.getElementById('login-usuario');
+  const p = document.getElementById('login-password');
+  if (u) u.value = '';
+  if (p) p.value = '';
 }
 function showPublicDashboardFromLogin() {
   document.getElementById('login-screen').style.display = 'none';
@@ -2360,7 +2363,7 @@ var MONTHS = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
 ];
 var avanceSelectedMonth = new Date().getMonth();
-var chartAvanceMensualObj = null;
+// chartAvanceMensualObj ya declarado globalmente arriba
 var expandedAvanceActivityIds = new Set();
 
 function renderAvanceMonthSlider() {
