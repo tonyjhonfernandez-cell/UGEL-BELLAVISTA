@@ -688,7 +688,7 @@ body.director-mode #app-shell{display:block}
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
           <div><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por IE</span></div>
-          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value))" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
         </div>
         <div class="filter-bar">
           <div class="filter-group">
@@ -713,6 +713,12 @@ body.director-mode #app-shell{display:block}
               <option value="pendiente">Pendiente</option>
               <option value="completada">Completada</option>
               <option value="no_cumplida">No Cumplida</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Asignado por</label>
+            <select class="form-select" id="mon-asignador" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
             </select>
           </div>
         </div>
@@ -1233,6 +1239,7 @@ function initSupervisorApp() {
   buildSidebar();
   updateUserHeader();
   cargarTiposActividad();
+  cargarSupervisores();
   loadNotifBadge();
   
   if (currentUser.rol === 'admin') {
@@ -1364,6 +1371,19 @@ async function cargarTiposActividad() {
     for (var i = 0; i < tipos.length; i++) {
       sel.innerHTML += '<option value="' + tipos[i].id + '">' + tipos[i].nombre + '</option>';
     }
+  } catch (e) {}
+}
+
+async function cargarSupervisores() {
+  try {
+    var sel = document.getElementById('mon-asignador');
+    if (!sel || sel.dataset.loaded) return;
+    var d = await api('/api/supervisores');
+    var lista = d || [];
+    for (var i = 0; i < lista.length; i++) {
+      sel.innerHTML += '<option value="' + lista[i].id + '">' + lista[i].nombre_completo + ' (' + (lista[i].dependencia || '-') + ')</option>';
+    }
+    sel.dataset.loaded = '1';
   } catch (e) {}
 }
 
@@ -1832,13 +1852,16 @@ async function submitAsignar() {
 // ===================== MONITOREO =====================
 async function loadMonitoreo() {
   try {
+    cargarSupervisores();
     var es = document.getElementById('mon-estado').value;
     var bu = document.getElementById('mon-buscar').value;
     var n = document.getElementById('mon-nivel').value;
+    var as = document.getElementById('mon-asignador').value;
     var u = '/api/asignaciones?';
     if (es) u += 'estado=' + encodeURIComponent(es) + '&';
     if (bu) u += 'buscar=' + encodeURIComponent(bu) + '&';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
+    if (as) u += 'asignador_id=' + encodeURIComponent(as) + '&';
     var d = await api(u);
     var rows = d.asignaciones || d || [];
     var html = '';

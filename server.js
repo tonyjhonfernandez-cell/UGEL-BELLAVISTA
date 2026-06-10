@@ -764,13 +764,15 @@ app.get('/api/asignaciones', async (req, res) => {
         }
 
         const nivel = validarNivel(req.query.nivel || '');
-        const { estado, buscar } = req.query;
+        const { estado, buscar, asignador_id } = req.query;
         const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
         const estadoWhere = estado ? 'AND ase.estado = ?' : '';
         const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)' : '';
+        const asignadorWhere = asignador_id ? 'AND a.asignador_id = ?' : '';
         const params = [];
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q, q); }
+        if (asignador_id) params.push(asignador_id);
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             asignaciones = await db.prepare(`
@@ -785,7 +787,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
@@ -1213,10 +1215,22 @@ app.get('/api/force-seed', async (req, res) => {
     }
 });
 
+// ===================== SUPERVISORES (para filtros) =====================
+app.get('/api/supervisores', async (req, res) => {
+    try {
+        const lista = await db.prepare(
+            "SELECT id, nombre_completo, dependencia FROM usuarios WHERE rol = 'supervisor' AND activo = true ORDER BY nombre_completo"
+        ).all();
+        res.json(lista);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ===================== EXPORT EXCEL =====================
 app.get('/api/export/asignaciones', async (req, res) => {
     try {
-        const { nivel, estado, buscar } = req.query;
+        const { nivel, estado, buscar, asignador_id } = req.query;
         const params = [];
         let where = 'WHERE 1=1';
         if (nivel && NIVELES_VALIDOS.includes(nivel)) {
@@ -1230,6 +1244,10 @@ app.get('/api/export/asignaciones', async (req, res) => {
             where += ' AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)';
             const p = '%' + buscar + '%';
             params.push(p, p, p);
+        }
+        if (asignador_id) {
+            where += ' AND a.asignador_id = ?';
+            params.push(asignador_id);
         }
 
         const rows = await db.prepare(`
