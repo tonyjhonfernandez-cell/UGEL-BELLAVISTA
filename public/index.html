@@ -843,23 +843,6 @@ body.director-mode #app-shell {
                 <div class="col-md-4"><label class="form-label">Fecha Límite *</label><input type="date" class="form-control" id="as-fecha" required></div>
                 <div class="col-md-4"><label class="form-label">Hora Límite *</label><input type="time" class="form-control" id="as-hora" required></div>
               </div>
-              <div class="mb-3">
-                <label class="form-label">Niveles a los que aplica la actividad (Opcional, si no se marca ninguno aplicará a toda la IE)</label>
-                <div class="d-flex gap-3">
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="inicial" id="cb-as-ini">
-                    <label class="form-check-label" for="cb-as-ini">Inicial</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="primaria" id="cb-as-pri">
-                    <label class="form-check-label" for="cb-as-pri">Primaria</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="secundaria" id="cb-as-sec">
-                    <label class="form-check-label" for="cb-as-sec">Secundaria</label>
-                  </div>
-                </div>
-              </div>
               <hr>
               <!-- Alcance de la asignación -->
               <div class="row mb-3">
@@ -2558,11 +2541,11 @@ let selectedIEIds = new Set();
 function syncSelectedIEs() {
   var cbs = document.querySelectorAll('.ie-checkbox');
   for (var i = 0; i < cbs.length; i++) {
-    var id = parseInt(cbs[i].value);
+    var val = cbs[i].value;
     if (cbs[i].checked) {
-      selectedIEIds.add(id);
+      selectedIEIds.add(val);
     } else {
-      selectedIEIds.delete(id);
+      selectedIEIds.delete(val);
     }
   }
 }
@@ -2579,8 +2562,22 @@ async function loadIEsForAsignar() {
 function renderIECheckboxes(ies) {
   var html = '';
   for (var i = 0; i < ies.length; i++) {
-    var isChecked = selectedIEIds.has(ies[i].id) ? 'checked' : '';
-    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + ies[i].id + '" ' + isChecked + '><span class="ie-codigo">' + ies[i].codigo + '</span><span class="ie-nombre">' + ies[i].nombre + '</span></label>';
+    var ie = ies[i];
+    if (ie.tiene_inicial && ie.cm_inicial) {
+      var val = ie.id + '|inicial';
+      var isChecked = selectedIEIds.has(val) ? 'checked' : '';
+      html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + val + '" ' + isChecked + '><span class="ie-codigo" style="min-width:65px; display:inline-block;">' + ie.cm_inicial + '</span><span class="ie-nombre">' + ie.nombre + ' <small style="color:#6b7280; font-weight:600;">(Inicial)</small></span></label>';
+    }
+    if (ie.tiene_primaria && ie.cm_primaria) {
+      var val = ie.id + '|primaria';
+      var isChecked = selectedIEIds.has(val) ? 'checked' : '';
+      html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + val + '" ' + isChecked + '><span class="ie-codigo" style="min-width:65px; display:inline-block;">' + ie.cm_primaria + '</span><span class="ie-nombre">' + ie.nombre + ' <small style="color:#6b7280; font-weight:600;">(Primaria)</small></span></label>';
+    }
+    if (ie.tiene_secundaria && ie.cm_secundaria) {
+      var val = ie.id + '|secundaria';
+      var isChecked = selectedIEIds.has(val) ? 'checked' : '';
+      html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + val + '" ' + isChecked + '><span class="ie-codigo" style="min-width:65px; display:inline-block;">' + ie.cm_secundaria + '</span><span class="ie-nombre">' + ie.nombre + ' <small style="color:#6b7280; font-weight:600;">(Secundaria)</small></span></label>';
+    }
   }
   document.getElementById('ie-checkbox-list').innerHTML = html;
 }
@@ -2591,7 +2588,10 @@ function filterIEList() {
   var n = document.getElementById('ie-filter-nivel').value;
   
   var filtered = allIEs.filter(function(ie) {
-    var matchSearch = ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
+    var c1 = ie.cm_inicial || '';
+    var c2 = ie.cm_primaria || '';
+    var c3 = ie.cm_secundaria || '';
+    var matchSearch = ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1 || c1.toLowerCase().indexOf(q) !== -1 || c2.toLowerCase().indexOf(q) !== -1 || c3.toLowerCase().indexOf(q) !== -1;
     var matchNivel = true;
     if (n === 'inicial') matchNivel = ie.tiene_inicial;
     else if (n === 'primaria') matchNivel = ie.tiene_primaria;
@@ -2607,11 +2607,11 @@ function toggleAllIEs(s) {
   var cbs = document.querySelectorAll('.ie-checkbox');
   for (var i = 0; i < cbs.length; i++) { 
     cbs[i].checked = s; 
-    var id = parseInt(cbs[i].value);
+    var val = cbs[i].value;
     if (s) {
-      selectedIEIds.add(id);
+      selectedIEIds.add(val);
     } else {
-      selectedIEIds.delete(id);
+      selectedIEIds.delete(val);
     }
   }
 }
@@ -2631,23 +2631,34 @@ function onSearchIEAsignar(q) {
     return;
   }
   var query = normalizar(q);
-  var matches = allIEs.filter(function(ie) {
-    return normalizar(ie.codigo).indexOf(query) !== -1 || normalizar(ie.nombre).indexOf(query) !== -1;
+  var matches = [];
+  allIEs.forEach(function(ie) {
+    var normNombre = normalizar(ie.nombre);
+    if (ie.tiene_inicial && ie.cm_inicial && (normalizar(ie.cm_inicial).indexOf(query) !== -1 || normNombre.indexOf(query) !== -1)) {
+        matches.push({ id: ie.id, cm: ie.cm_inicial, nivel: 'inicial', nombre: ie.nombre });
+    }
+    if (ie.tiene_primaria && ie.cm_primaria && (normalizar(ie.cm_primaria).indexOf(query) !== -1 || normNombre.indexOf(query) !== -1)) {
+        matches.push({ id: ie.id, cm: ie.cm_primaria, nivel: 'primaria', nombre: ie.nombre });
+    }
+    if (ie.tiene_secundaria && ie.cm_secundaria && (normalizar(ie.cm_secundaria).indexOf(query) !== -1 || normNombre.indexOf(query) !== -1)) {
+        matches.push({ id: ie.id, cm: ie.cm_secundaria, nivel: 'secundaria', nombre: ie.nombre });
+    }
   });
   
   if (matches.length === 0) {
     container.innerHTML = '<div style="padding:10px;color:#999;font-size:0.8rem;text-align:center">No se encontraron resultados</div>';
   } else {
     var html = '';
-    var limit = Math.min(matches.length, 10);
+    var limit = Math.min(matches.length, 15);
     for (var i = 0; i < limit; i++) {
-      var ie = matches[i];
-      if (selectedSpecificIEIds.has(ie.id)) continue;
+      var item = matches[i];
+      var val = item.id + '|' + item.nivel;
+      if (selectedSpecificIEIds.has(val)) continue;
       
-      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
-      html += '<div class="as-autocomplete-item" onclick="addSpecificIE(' + ie.id + ', \'' + ie.codigo + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
-      html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + ie.codigo + '</span>';
-      html += '<span style="color:#333">' + ie.nombre + '</span>';
+      var escapedNombre = item.nombre.replace(/'/g, "\\'");
+      html += '<div class="as-autocomplete-item" onclick="addSpecificIE(' + item.id + ', \'' + item.nivel + '\', \'' + item.cm + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
+      html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + item.cm + '</span>';
+      html += '<span style="color:#333">' + item.nombre + ' <small style="color:#6b7280; font-weight:600;">(' + item.nivel.charAt(0).toUpperCase() + item.nivel.slice(1) + ')</small></span>';
       html += '</div>';
     }
     container.innerHTML = html;
@@ -2655,27 +2666,32 @@ function onSearchIEAsignar(q) {
   container.style.display = 'block';
 }
 
-function addSpecificIE(id, codigo, nombre) {
-  selectedSpecificIEIds.add(id);
+function addSpecificIE(id, nivel, cm, nombre) {
+  var val = id + '|' + nivel;
+  selectedSpecificIEIds.add(val);
   document.getElementById('as-search-ie').value = '';
   document.getElementById('as-search-autocomplete').style.display = 'none';
   renderSpecificIETags();
 }
 
-function removeSpecificIE(id) {
-  selectedSpecificIEIds.delete(id);
+function removeSpecificIE(val) {
+  selectedSpecificIEIds.delete(val);
   renderSpecificIETags();
 }
 
 function renderSpecificIETags() {
   var container = document.getElementById('as-selected-ies-tags');
   var html = '';
-  selectedSpecificIEIds.forEach(function(id) {
+  selectedSpecificIEIds.forEach(function(val) {
+    var parts = val.split('|');
+    var id = parseInt(parts[0]);
+    var nivel = parts[1];
     var ie = allIEs.find(function(item) { return item.id === id; });
     if (ie) {
+      var cm = (nivel === 'inicial') ? ie.cm_inicial : (nivel === 'primaria') ? ie.cm_primaria : ie.cm_secundaria;
       html += '<span class="badge badge-info" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; font-size:0.75rem; border-radius:20px; background:var(--granate); color:#fff; font-weight:700; border:none; margin-right:4px; margin-bottom:4px;">' +
-        ie.codigo + ' - ' + ie.nombre +
-        '<i class="fas fa-times" onclick="removeSpecificIE(' + ie.id + ')" style="cursor:pointer; font-size:0.7rem; opacity:0.8; margin-left:6px;"></i>' +
+        cm + ' - ' + ie.nombre + ' (' + nivel.substring(0,3).toUpperCase() + ')' +
+        '<i class="fas fa-times" onclick="removeSpecificIE(\'' + val + '\')" style="cursor:pointer; font-size:0.7rem; opacity:0.8; margin-left:6px;"></i>' +
         '</span>';
     }
   });
@@ -2697,19 +2713,31 @@ async function submitAsignar() {
   var ids = [];
   var targetIes = [];
   
-  var cbs = document.querySelectorAll('.as-nivel-cb:checked');
-  var globalNiveles = [];
-  for (var i = 0; i < cbs.length; i++) globalNiveles.push(cbs[i].value);
-  
   if (alcance === 'manual') {
     syncSelectedIEs();
-    ids = Array.from(selectedIEIds);
-    if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
-    targetIes = ids.map(id => ({ id: id, niveles: globalNiveles.length > 0 ? globalNiveles : null }));
+    if (selectedIEIds.size === 0) { showToast('Seleccione al menos un código modular', 'error'); return; }
+    var targetIesMap = {};
+    Array.from(selectedIEIds).forEach(function(val) {
+       var parts = val.split('|');
+       var ieId = parseInt(parts[0]);
+       var nivel = parts[1];
+       if (!targetIesMap[ieId]) targetIesMap[ieId] = [];
+       targetIesMap[ieId].push(nivel);
+    });
+    targetIes = Object.keys(targetIesMap).map(function(id) { return { id: parseInt(id), niveles: targetIesMap[id] }; });
+    ids = targetIes.map(function(t) { return t.id; });
   } else if (alcance === 'especifico') {
-    ids = Array.from(selectedSpecificIEIds);
-    if (ids.length === 0) { showToast('Agregue al menos una IE específica', 'error'); return; }
-    targetIes = ids.map(id => ({ id: id, niveles: globalNiveles.length > 0 ? globalNiveles : null }));
+    if (selectedSpecificIEIds.size === 0) { showToast('Agregue al menos un código modular', 'error'); return; }
+    var targetIesMap = {};
+    Array.from(selectedSpecificIEIds).forEach(function(val) {
+       var parts = val.split('|');
+       var ieId = parseInt(parts[0]);
+       var nivel = parts[1];
+       if (!targetIesMap[ieId]) targetIesMap[ieId] = [];
+       targetIesMap[ieId].push(nivel);
+    });
+    targetIes = Object.keys(targetIesMap).map(function(id) { return { id: parseInt(id), niveles: targetIesMap[id] }; });
+    ids = targetIes.map(function(t) { return t.id; });
   } else if (alcance === 'nivel') {
     var nivelVal = document.getElementById('as-alcance-nivel').value;
     var matchingIEs = allIEs.filter(function(ie) {
@@ -2720,6 +2748,7 @@ async function submitAsignar() {
       return false;
     });
     targetIes = matchingIEs.map(function(ie) { return { id: ie.id, niveles: [nivelVal] }; });
+    ids = targetIes.map(function(t) { return t.id; });
     if (targetIes.length === 0) { showToast('No se encontraron IEs para el nivel seleccionado', 'error'); return; }
   }
   
