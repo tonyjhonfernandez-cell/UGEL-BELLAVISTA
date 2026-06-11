@@ -71,6 +71,10 @@ async function runImport() {
                     cm_inicial: null,
                     cm_primaria: null,
                     cm_secundaria: null,
+                    tipo: '',
+                    provincia: '',
+                    distrito: '',
+                    lugar: '',
                     directores: []
                 };
             }
@@ -83,6 +87,12 @@ async function runImport() {
             if (rurality && !school.ruralidad) {
                 school.ruralidad = rurality;
             }
+            
+            // Tipo, Provincia, Distrito, Lugar
+            if (row[3] && !school.tipo) school.tipo = String(row[3]).trim().toUpperCase();
+            if (row[6] && !school.provincia) school.provincia = String(row[6]).trim().toUpperCase();
+            if (row[7] && !school.distrito) school.distrito = String(row[7]).trim().toUpperCase();
+            if (row[8] && !school.lugar) school.lugar = String(row[8]).trim().toUpperCase();
             
             // Mapear niveles y códigos modulares
             const level = String(rawNivel || '').trim().toLowerCase();
@@ -138,12 +148,15 @@ async function runImport() {
                     UPDATE instituciones_educativas 
                     SET nombre = $1, ruralidad = $2, 
                         tiene_inicial = $3, tiene_primaria = $4, tiene_secundaria = $5, tiene_otros = $6, 
-                        tipo_otros = $7, cm_inicial = $8, cm_primaria = $9, cm_secundaria = $10, activa = true
-                    WHERE codigo = $11
+                        tipo_otros = $7, cm_inicial = $8, cm_primaria = $9, cm_secundaria = $10,
+                        tipo = $11, provincia = $12, distrito = $13, lugar = $14, activa = true
+                    WHERE codigo = $15
                 `, [
                     school.nombre, school.ruralidad, 
                     school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
-                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria, school.codigo
+                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
+                    school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
+                    school.codigo
                 ]);
                 ieUpdated++;
             } else {
@@ -151,12 +164,14 @@ async function runImport() {
                     INSERT INTO instituciones_educativas (
                         codigo, nombre, ruralidad, 
                         tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, 
-                        tipo_otros, cm_inicial, cm_primaria, cm_secundaria, activa
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+                        tipo_otros, cm_inicial, cm_primaria, cm_secundaria,
+                        tipo, provincia, distrito, lugar, activa
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
                 `, [
                     school.codigo, school.nombre, school.ruralidad, 
                     school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
-                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria
+                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
+                    school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null
                 ]);
                 ieInserted++;
             }

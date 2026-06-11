@@ -140,6 +140,14 @@ async function applyMigrations() {
     } catch (e) {
         // Ignorar
     }
+    try {
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tipo VARCHAR(100)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS provincia VARCHAR(100)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS distrito VARCHAR(100)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS lugar VARCHAR(150)");
+    } catch (e) {
+        // Ignorar
+    }
 }
 
 async function initDatabase() {
@@ -165,6 +173,10 @@ async function initDatabase() {
             cm_inicial VARCHAR(20),
             cm_primaria VARCHAR(20),
             cm_secundaria VARCHAR(20),
+            tipo VARCHAR(100),
+            provincia VARCHAR(100),
+            distrito VARCHAR(100),
+            lugar VARCHAR(150),
             activa BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
         );
@@ -539,20 +551,27 @@ app.get('/api/check-session', (req, res) => {
 app.get('/api/ies', async (req, res) => {
     try {
         const { nivel, buscar } = req.query;
-        let sql = 'SELECT * FROM instituciones_educativas WHERE activa = true';
+        let sql = `
+            SELECT ie.*, 
+                   u.id as director_id, u.nombre_completo as director_nombre, 
+                   u.email as director_email, u.telefono as director_telefono
+            FROM instituciones_educativas ie
+            LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
+            WHERE ie.activa = true
+        `;
         const params = [];
         if (nivel) {
             const nv = (['inicial', 'primaria', 'secundaria', 'otros'].includes(nivel)) ? nivel : '';
             if (nv) {
-                sql += ` AND tiene_${nv} = true`;
+                sql += ` AND ie.tiene_${nv} = true`;
             }
         }
         if (buscar) {
-            sql += ' AND (nombre ILIKE ? OR codigo ILIKE ?)';
+            sql += ' AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR u.nombre_completo ILIKE ?)';
             const q = `%${buscar}%`;
-            params.push(q, q);
+            params.push(q, q, q);
         }
-        sql += ' ORDER BY codigo';
+        sql += ' ORDER BY ie.codigo';
         const ies = await db.prepare(sql).all(...params);
         res.json(ies);
     } catch (err) {
@@ -562,7 +581,14 @@ app.get('/api/ies', async (req, res) => {
 
 app.get('/api/ies/:id', async (req, res) => {
     try {
-        const ie = await db.prepare('SELECT * FROM instituciones_educativas WHERE id = ?').get(req.params.id);
+        const ie = await db.prepare(`
+            SELECT ie.*, 
+                   u.id as director_id, u.nombre_completo as director_nombre, 
+                   u.email as director_email, u.telefono as director_telefono
+            FROM instituciones_educativas ie
+            LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
+            WHERE ie.id = ?
+        `).get(req.params.id);
         if (!ie) return res.status(404).json({ error: 'IE no encontrada' });
         res.json(ie);
     } catch (err) {
@@ -570,30 +596,101 @@ app.get('/api/ies/:id', async (req, res) => {
     }
 });
 
-
 app.post('/api/ies', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria } = req.body;
+        const { 
+            codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
+            cm_inicial, cm_primaria, cm_secundaria,
+            tipo, provincia, distrito, lugar,
+            director_nombre, director_email, director_telefono
+        } = req.body;
+        
         if (!codigo || !nombre) {
             return res.status(400).json({ error: 'Código y nombre son requeridos' });
         }
-        const result = await db.prepare(
-            'INSERT INTO instituciones_educativas (codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)'
-        ).run(codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null, cm_inicial || null, cm_primaria || null, cm_secundaria || null);
-        res.json({ ok: true, id: result.lastInsertRowid });
+        
+        const result = await db.prepare(`
+            INSERT INTO instituciones_educativas (
+                codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
+                cm_inicial, cm_primaria, cm_secundaria, tipo, provincia, distrito, lugar, activa
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
+        `).run(
+            codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null,
+            cm_inicial || null, cm_primaria || null, cm_secundaria || null,
+            tipo || null, provincia || null, distrito || null, lugar || null
+        );
+        
+        const newIeId = result.lastInsertRowid;
+        
+        if (director_nombre) {
+            const username = 'director.' + codigo;
+            await pool.query(`
+                INSERT INTO usuarios (
+                    nombre_completo, ie_codigo, rol, usuario, password, email, telefono, activo
+                ) VALUES ($1, $2, 'director', $3, $4, $5, $6, true)
+                ON CONFLICT (usuario) DO UPDATE SET
+                    nombre_completo = EXCLUDED.nombre_completo,
+                    ie_codigo = EXCLUDED.ie_codigo,
+                    email = EXCLUDED.email,
+                    telefono = EXCLUDED.telefono,
+                    activo = true
+            `, [
+                director_nombre, codigo, username, codigo,
+                director_email || null, director_telefono || null
+            ]);
+        }
+        
+        res.json({ ok: true, id: newIeId });
     } catch (err) {
+        console.error('Error al crear IE:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
 app.put('/api/ies/:id', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria } = req.body;
-        await db.prepare(
-            'UPDATE instituciones_educativas SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=?, cm_inicial=?, cm_primaria=?, cm_secundaria=? WHERE id=?'
-        ).run(codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial || null, cm_primaria || null, cm_secundaria || null, req.params.id);
+        const { 
+            codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
+            cm_inicial, cm_primaria, cm_secundaria,
+            tipo, provincia, distrito, lugar,
+            director_nombre, director_email, director_telefono
+        } = req.body;
+        
+        const oldIe = await db.prepare('SELECT codigo FROM instituciones_educativas WHERE id = ?').get(req.params.id);
+        
+        await db.prepare(`
+            UPDATE instituciones_educativas 
+            SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=?, 
+                cm_inicial=?, cm_primaria=?, cm_secundaria=?, tipo=?, provincia=?, distrito=?, lugar=?
+            WHERE id=?
+        `).run(
+            codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
+            cm_inicial || null, cm_primaria || null, cm_secundaria || null,
+            tipo || null, provincia || null, distrito || null, lugar || null,
+            req.params.id
+        );
+        
+        if (director_nombre) {
+            const username = 'director.' + codigo;
+            await pool.query(`
+                INSERT INTO usuarios (
+                    nombre_completo, ie_codigo, rol, usuario, password, email, telefono, activo
+                ) VALUES ($1, $2, 'director', $3, $4, $5, $6, true)
+                ON CONFLICT (usuario) DO UPDATE SET
+                    nombre_completo = EXCLUDED.nombre_completo,
+                    ie_codigo = EXCLUDED.ie_codigo,
+                    email = EXCLUDED.email,
+                    telefono = EXCLUDED.telefono,
+                    activo = true
+            `, [
+                director_nombre, codigo, username, codigo,
+                director_email || null, director_telefono || null
+            ]);
+        }
+        
         res.json({ ok: true });
     } catch (err) {
+        console.error('Error al actualizar IE:', err);
         res.status(500).json({ error: err.message });
     }
 });

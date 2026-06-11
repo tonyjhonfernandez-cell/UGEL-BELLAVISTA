@@ -1083,15 +1083,7 @@ body.director-mode #app-shell {
         </div>
       </div>
 
-      <!-- ==================== SUPERVISOR: DIRECTORES ==================== -->
-      <div class="view-section" id="view-directores">
-        <div class="page-hd"><h2>Directores</h2><span>Lista de directores de instituciones educativas</span></div>
-        <div class="filter-bar" style="margin-bottom:16px">
-          <div class="filter-group"><label>Área</label><select class="form-select" id="dir-area-filter" onchange="loadDirectores()"><option value="">Todas</option></select></div>
-          <div class="filter-group"><label>Buscar</label><input type="text" class="form-control" id="dir-buscar" placeholder="Nombre o IE..." oninput="loadDirectores()"></div>
-        </div>
-        <div class="t-card"><div class="t-wrap"><table><thead><tr><th>Nombre</th><th>DNI</th><th>Área</th><th>IE</th><th>Email</th><th>Teléfono</th><th style="width:70px">Acción</th></tr></thead><tbody id="directores-table"></tbody></table></div></div>
-      </div>
+
 
       <!-- ==================== ADMIN: USUARIOS ==================== -->
       <div class="view-section" id="view-admin-usuarios">
@@ -1139,7 +1131,7 @@ body.director-mode #app-shell {
         <div class="filter-bar" style="margin-bottom:16px">
           <div class="filter-group" style="flex:1;">
             <label>Buscar</label>
-            <input type="text" class="form-control" id="ie-search-text" placeholder="Código, N° o Nombre..." oninput="loadIEs()">
+            <input type="text" class="form-control" id="ie-search-text" placeholder="Código Local, Modular, Nombre o Director..." oninput="loadIEs()">
           </div>
           <div class="filter-group" style="width: 200px;">
             <label>Nivel</label>
@@ -1157,9 +1149,18 @@ body.director-mode #app-shell {
             <table>
               <thead>
                 <tr>
-                  <th>Código Local</th>
-                  <th>Nombre de IE</th>
-                  <th>Niveles y Códigos Modulares</th>
+                  <th>CÓDIGO LOCAL</th>
+                  <th>CÓDIGO MODULAR</th>
+                  <th>ZONA</th>
+                  <th>TIPO</th>
+                  <th>INSTITUCIÓN EDUCATIVA</th>
+                  <th>NIVEL</th>
+                  <th>PROVINCIA</th>
+                  <th>DISTRITO</th>
+                  <th>LUGAR</th>
+                  <th>DIRECTOR</th>
+                  <th>EMAIL</th>
+                  <th>CELULAR</th>
                   <th class="admin-only" style="width:120px; text-align:center; display:none;">Acciones</th>
                 </tr>
               </thead>
@@ -1643,8 +1644,7 @@ function buildSidebar() {
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance / Dashboard</a>';
     html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>';
     html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>';
-    html += '<a href="#" data-view="directores" onclick="cambiarVista(\'directores\',this)"><i class="fas fa-users"></i> Directores</a>';
-    html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> IEs</a>';
+    html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
   }
   
   html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
@@ -3209,9 +3209,12 @@ async function loadIEs() {
       adminHeaders.forEach(el => el.style.display = 'none');
     }
     
+    let renderedRows = 0;
+    
     if (ies.length > 0) {
       for (var i = 0; i < ies.length; i++) {
         var ie = ies[i];
+        
         let actionCell = '';
         if (currentUser && currentUser.rol === 'admin') {
           actionCell = `<td style="text-align:center;">
@@ -3220,20 +3223,53 @@ async function loadIEs() {
           </td>`;
         }
         
-        let nivelesHTML = '<div style="display:flex; flex-wrap:wrap; gap:5px;">';
-        if (ie.tiene_inicial) nivelesHTML += '<span class="badge bg-info">Inicial: ' + (ie.cm_inicial || 'S/N') + '</span>';
-        if (ie.tiene_primaria) nivelesHTML += '<span class="badge bg-primary">Primaria: ' + (ie.cm_primaria || 'S/N') + '</span>';
-        if (ie.tiene_secundaria) nivelesHTML += '<span class="badge bg-success">Secundaria: ' + (ie.cm_secundaria || 'S/N') + '</span>';
-        if (ie.tiene_otros) nivelesHTML += '<span class="badge bg-secondary">' + (ie.tipo_otros || 'Otros') + '</span>';
-        if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria && !ie.tiene_otros) nivelesHTML += '<span class="text-muted">Sin niveles</span>';
-        nivelesHTML += '</div>';
-
-        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + nivelesHTML + '</td>' + actionCell + '</tr>';
+        // Generar filas por cada nivel según el filtro
+        const levelsToRender = [];
+        if (ie.tiene_inicial && (!n || n === 'inicial')) {
+          levelsToRender.push({ name: 'Inicial', cm: ie.cm_inicial || '-' });
+        }
+        if (ie.tiene_primaria && (!n || n === 'primaria')) {
+          levelsToRender.push({ name: 'Primaria', cm: ie.cm_primaria || '-' });
+        }
+        if (ie.tiene_secundaria && (!n || n === 'secundaria')) {
+          levelsToRender.push({ name: 'Secundaria', cm: ie.cm_secundaria || '-' });
+        }
+        if (ie.tiene_otros && (!n || n === 'otros')) {
+          levelsToRender.push({ name: ie.tipo_otros || 'Otros', cm: '-' });
+        }
+        
+        // Si no tiene niveles especificados pero coincide con la búsqueda
+        if (levelsToRender.length === 0 && !n) {
+          levelsToRender.push({ name: '-', cm: '-' });
+        }
+        
+        for (var j = 0; j < levelsToRender.length; j++) {
+          const lv = levelsToRender[j];
+          html += '<tr>' +
+            '<td>' + ie.codigo + '</td>' +
+            '<td>' + lv.cm + '</td>' +
+            '<td>' + (ie.ruralidad || '-') + '</td>' +
+            '<td>' + (ie.tipo || '-') + '</td>' +
+            '<td>' + ie.nombre + '</td>' +
+            '<td>' + lv.name + '</td>' +
+            '<td>' + (ie.provincia || '-') + '</td>' +
+            '<td>' + (ie.distrito || '-') + '</td>' +
+            '<td>' + (ie.lugar || '-') + '</td>' +
+            '<td>' + (ie.director_nombre || '-') + '</td>' +
+            '<td>' + (ie.director_email || '-') + '</td>' +
+            '<td>' + (ie.director_telefono || '-') + '</td>' +
+            actionCell +
+            '</tr>';
+          renderedRows++;
+        }
       }
-    } else {
-      const colSpan = (currentUser && currentUser.rol === 'admin') ? 4 : 3;
+    }
+    
+    if (renderedRows === 0) {
+      const colSpan = (currentUser && currentUser.rol === 'admin') ? 13 : 12;
       html = '<tr class="empty"><td colspan="' + colSpan + '">No hay IEs</td></tr>';
     }
+    
     document.getElementById('ies-table').innerHTML = html;
   } catch (e) { showToast('Error al cargar IEs', 'error'); }
 }
@@ -4172,7 +4208,11 @@ async function toggleActivoUsuario(id, activo) {
 }
 
 async function abrirModalIE(ieId = null) {
-  let ie = { codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false, tiene_otros: false, tipo_otros: '' };
+  let ie = { 
+    codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false, tiene_otros: false, tipo_otros: '',
+    ruralidad: 'URBANO', tipo: 'POLIDOCENTE COMPLETO', provincia: 'BELLAVISTA', distrito: '', lugar: '',
+    director_nombre: '', director_email: '', director_telefono: ''
+  };
   let title = 'Nueva Institución Educativa';
   
   if (ieId) {
@@ -4188,37 +4228,97 @@ async function abrirModalIE(ieId = null) {
   
   const body = `
     <form id="ie-form" onsubmit="event.preventDefault()">
-      <div class="mb-3">
-        <label class="form-label">Código Local *</label>
-        <input type="text" class="form-control" id="form-ie-codigo" value="${ie.codigo}" required ${ieId ? 'readonly' : ''}>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Código Local *</label>
+          <input type="text" class="form-control" id="form-ie-codigo" value="${ie.codigo}" required ${ieId ? 'readonly' : ''}>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Nombre de la IE *</label>
+          <input type="text" class="form-control" id="form-ie-nombre" value="${ie.nombre}" required>
+        </div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Nombre de la IE *</label>
-        <input type="text" class="form-control" id="form-ie-nombre" value="${ie.nombre}" required>
+      
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Zona (Ruralidad)</label>
+          <select class="form-select" id="form-ie-ruralidad">
+            <option value="URBANO" ${ie.ruralidad === 'URBANO' ? 'selected' : ''}>URBANO</option>
+            <option value="RURAL" ${ie.ruralidad === 'RURAL' ? 'selected' : ''}>RURAL</option>
+            <option value="RURAL 1" ${ie.ruralidad === 'RURAL 1' ? 'selected' : ''}>RURAL 1</option>
+            <option value="RURAL 2" ${ie.ruralidad === 'RURAL 2' ? 'selected' : ''}>RURAL 2</option>
+            <option value="RURAL 3" ${ie.ruralidad === 'RURAL 3' ? 'selected' : ''}>RURAL 3</option>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Tipo de IE</label>
+          <select class="form-select" id="form-ie-tipo">
+            <option value="POLIDOCENTE COMPLETO" ${ie.tipo === 'POLIDOCENTE COMPLETO' ? 'selected' : ''}>POLIDOCENTE COMPLETO</option>
+            <option value="MULTIGRADO" ${ie.tipo === 'MULTIGRADO' ? 'selected' : ''}>MULTIGRADO</option>
+            <option value="UNIDOCENTE" ${ie.tipo === 'UNIDOCENTE' ? 'selected' : ''}>UNIDOCENTE</option>
+            <option value="NO APLICA" ${ie.tipo === 'NO APLICA' ? 'selected' : ''}>NO APLICA</option>
+          </select>
+        </div>
       </div>
+      
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Provincia</label>
+          <input type="text" class="form-control" id="form-ie-provincia" value="${ie.provincia || ''}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Distrito</label>
+          <input type="text" class="form-control" id="form-ie-distrito" value="${ie.distrito || ''}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Lugar</label>
+          <input type="text" class="form-control" id="form-ie-lugar" value="${ie.lugar || ''}">
+        </div>
+      </div>
+      
       <div class="mb-3">
-        <label class="form-label">Niveles Educativos y Códigos Modulares</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <label class="form-label" style="font-weight:600;">Niveles Educativos y Códigos Modulares</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px;">
           <div>
-            <label><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial</label>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial</label>
             <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-inicial" placeholder="Cód. Modular" value="${ie.cm_inicial || ''}" style="display: ${ie.tiene_inicial ? 'block' : 'none'};">
           </div>
           <div>
-            <label><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-primaria').style.display = this.checked ? 'block' : 'none'"> Primaria</label>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-primaria').style.display = this.checked ? 'block' : 'none'"> Primaria</label>
             <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-primaria" placeholder="Cód. Modular" value="${ie.cm_primaria || ''}" style="display: ${ie.tiene_primaria ? 'block' : 'none'};">
           </div>
           <div>
-            <label><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-secundaria').style.display = this.checked ? 'block' : 'none'"> Secundaria</label>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-secundaria').style.display = this.checked ? 'block' : 'none'"> Secundaria</label>
             <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-secundaria" placeholder="Cód. Modular" value="${ie.cm_secundaria || ''}" style="display: ${ie.tiene_secundaria ? 'block' : 'none'};">
           </div>
           <div>
-            <label><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
           </div>
         </div>
       </div>
+      
       <div class="mb-3" id="form-ie-tipo-otros-group" style="display: ${ie.tiene_otros ? 'block' : 'none'};">
         <label class="form-label">Especificar Otros Niveles</label>
         <input type="text" class="form-control" id="form-ie-tipo-otros" value="${ie.tipo_otros || ''}">
+      </div>
+      
+      <div style="border-top: 1px dashed #cbd5e1; margin: 20px 0;"></div>
+      <div style="font-weight: 600; margin-bottom: 12px; color: var(--granate);"><i class="fas fa-user-tie"></i> Datos del Director</div>
+      
+      <div class="mb-3">
+        <label class="form-label">Nombre Completo del Director</label>
+        <input type="text" class="form-control" id="form-ie-director-nombre" value="${ie.director_nombre || ''}">
+      </div>
+      
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Correo Electrónico</label>
+          <input type="email" class="form-control" id="form-ie-director-email" value="${ie.director_email || ''}">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Celular</label>
+          <input type="text" class="form-control" id="form-ie-director-telefono" value="${ie.director_telefono || ''}">
+        </div>
       </div>
     </form>
   `;
@@ -4244,6 +4344,16 @@ async function guardarIE(ieId = null) {
   const cm_primaria = document.getElementById('form-ie-cm-primaria').value.trim();
   const cm_secundaria = document.getElementById('form-ie-cm-secundaria').value.trim();
   
+  const ruralidad = document.getElementById('form-ie-ruralidad').value;
+  const tipo = document.getElementById('form-ie-tipo').value;
+  const provincia = document.getElementById('form-ie-provincia').value.trim();
+  const distrito = document.getElementById('form-ie-distrito').value.trim();
+  const lugar = document.getElementById('form-ie-lugar').value.trim();
+  
+  const director_nombre = document.getElementById('form-ie-director-nombre').value.trim();
+  const director_email = document.getElementById('form-ie-director-email').value.trim();
+  const director_telefono = document.getElementById('form-ie-director-telefono').value.trim();
+  
   if (!codigo || !nombre) {
     showToast('Código y Nombre son obligatorios', 'error');
     return;
@@ -4251,7 +4361,9 @@ async function guardarIE(ieId = null) {
   
   const body = { 
     codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
-    cm_inicial, cm_primaria, cm_secundaria
+    cm_inicial, cm_primaria, cm_secundaria,
+    ruralidad, tipo, provincia, distrito, lugar,
+    director_nombre, director_email, director_telefono
   };
   
   try {
