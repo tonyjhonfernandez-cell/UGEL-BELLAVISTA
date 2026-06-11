@@ -148,6 +148,21 @@ async function applyMigrations() {
     } catch (e) {
         // Ignorar
     }
+    try {
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS link_url TEXT");
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
+    } catch (e) { /* Ignorar */ }
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS listas_ie (
+                id SERIAL PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                ie_ids TEXT NOT NULL,
+                creador_id INTEGER REFERENCES usuarios(id),
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+    } catch (e) { /* Ignorar */ }
 }
 
 async function initDatabase() {
@@ -609,6 +624,7 @@ app.post('/api/login', async (req, res) => {
             id: user.id,
             nombre: user.nombre_completo,
             rol: user.rol,
+            usuario: user.usuario || null,
             ie_codigo: user.ie_codigo || null,
             ie_nombre: ie ? ie.nombre : null,
             ie_id: ie ? ie.id : null
@@ -989,16 +1005,17 @@ app.get('/api/tipos-actividad', async (req, res) => {
 
 app.post('/api/actividades', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids, ies, fecha_inicio } = req.body;
+        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids, ies, fecha_inicio, link_url, niveles_aplicados } = req.body;
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
+        const tituloUp = titulo ? titulo.toUpperCase() : titulo;
 
         const targetIes = ies || (ie_ids || []).map(id => ({ id, niveles: null }));
 
         if (targetIes && targetIes.length > 0) {
             const result = await db.prepare(
-                'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id, fecha_inicio) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
-            ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id, inicio);
+                'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id, fecha_inicio, link_url, niveles_aplicados) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id'
+            ).run(tituloUp, descripcion, tipo_id || null, fecha_limite, hora, req.session.user.id, inicio, link_url || null, niveles_aplicados || null);
             const actividadId = result.lastInsertRowid;
 
             for (const ieData of targetIes) {
@@ -1045,7 +1062,10 @@ app.get('/api/actividades', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();
         let actividades;
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
+            const supFilter = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? 'WHERE a.asignador_id = ?' : '';
+            const supParams = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? [req.session.user.id] : [];
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre,
                 (SELECT COUNT(*) FROM asignaciones WHERE actividad_id = a.id) as total_asignaciones,
@@ -1054,8 +1074,9 @@ app.get('/api/actividades', authDirector, async (req, res) => {
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN usuarios u ON a.asignador_id = u.id
+                ${supFilter}
                 ORDER BY a.fecha_limite ASC
-            `).all();
+            `).all(...supParams);
         } else {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
@@ -1106,12 +1127,13 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
 
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio } = req.body;
+        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio, link_url, niveles_aplicados } = req.body;
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
+        const tituloUp = titulo ? titulo.toUpperCase() : titulo;
         await db.prepare(
-            'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=?, fecha_inicio=? WHERE id=?'
-        ).run(titulo, descripcion, tipo_id, fecha_limite, hora, inicio, req.params.id);
+            'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=?, fecha_inicio=?, link_url=?, niveles_aplicados=? WHERE id=?'
+        ).run(tituloUp, descripcion, tipo_id || null, fecha_limite, hora, inicio, link_url || null, niveles_aplicados || null, req.params.id);
 
         const localStr = new Date().toLocaleString('sv', { timeZone: 'America/Lima' });
         const [localDate, localTime] = localStr.split(' ');
@@ -1133,7 +1155,7 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
 app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
     try {
         const asignacion = await db.prepare(`
-            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
+            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                    ta.nombre as tipo_nombre,
                    ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                    u.nombre_completo as director_nombre,
@@ -1215,7 +1237,7 @@ app.get('/api/asignaciones', async (req, res) => {
         if (ie_codigo) {
             // Acceso público para una escuela específica por su código modular
             const asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
@@ -1247,10 +1269,14 @@ app.get('/api/asignaciones', async (req, res) => {
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q, q); }
         if (asignador_id) params.push(asignador_id);
+        const isSuperAdmin = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
+            // Supervisors only see activities THEY created, unless super-admin
+            const supervisorWhere = (!isSuperAdmin && req.session.user.rol === 'supervisor') ? 'AND a.asignador_id = ?' : '';
+            if (!isSuperAdmin && req.session.user.rol === 'supervisor') params.push(req.session.user.id);
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
@@ -1261,12 +1287,12 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${supervisorWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
@@ -1642,6 +1668,7 @@ app.post('/api/admin/impersonate', authAdmin, async (req, res) => {
             id: targetUser.id,
             nombre: targetUser.nombre_completo,
             rol: targetUser.rol,
+            usuario: targetUser.usuario || null,
             ie_codigo: targetUser.ie_codigo || null,
             ie_nombre: ie ? ie.nombre : null,
             ie_id: ie ? ie.id : null,
@@ -1688,6 +1715,62 @@ app.get('/api/force-seed', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message, stack: err.stack });
     }
+});
+
+// ===================== LISTAS IE =====================
+app.get('/api/listas-ie', authSupervisor, async (req, res) => {
+    try {
+        const rows = await db.prepare('SELECT * FROM listas_ie ORDER BY nombre').all();
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/listas-ie', authSupervisor, async (req, res) => {
+    try {
+        const { nombre, ie_ids } = req.body;
+        if (!nombre || !ie_ids || !Array.isArray(ie_ids) || ie_ids.length === 0) {
+            return res.status(400).json({ error: 'Nombre y lista de IEs son requeridos' });
+        }
+        const result = await db.prepare(
+            'INSERT INTO listas_ie (nombre, ie_ids, creador_id) VALUES (?, ?, ?)'
+        ).run(nombre.trim(), JSON.stringify(ie_ids), req.session.user.id);
+        res.json({ ok: true, id: result.lastInsertRowid });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
+    try {
+        await db.prepare('DELETE FROM listas_ie WHERE id = ?').run(req.params.id);
+        res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===================== DASHBOARD STATS =====================
+app.get('/api/dashboard/stats', authDirector, async (req, res) => {
+    try {
+        const total_inst = await pool.query("SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true");
+        const total_serv = await pool.query("SELECT COUNT(*) as c FROM ie_niveles iln JOIN instituciones_educativas ie ON iln.ie_id = ie.id WHERE ie.activa = true");
+        const por_zona = await pool.query(`
+            SELECT COALESCE(ruralidad, 'URBANO') as zona, COUNT(*) as total
+            FROM instituciones_educativas WHERE activa = true
+            GROUP BY ruralidad ORDER BY ruralidad
+        `);
+        const por_tipo = await pool.query(`
+            SELECT COALESCE(tipo, 'NO APLICA') as tipo, COUNT(*) as total
+            FROM instituciones_educativas WHERE activa = true
+            GROUP BY tipo ORDER BY tipo
+        `);
+        const zonaMap = {};
+        por_zona.rows.forEach(r => { zonaMap[r.zona] = parseInt(r.total); });
+        const tipoMap = {};
+        por_tipo.rows.forEach(r => { tipoMap[r.tipo] = parseInt(r.total); });
+        res.json({
+            total_instituciones: parseInt(total_inst.rows[0].c),
+            total_servicios: parseInt(total_serv.rows[0].c),
+            por_zona: zonaMap,
+            por_tipo: tipoMap
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ===================== SUPERVISORES (para filtros) =====================

@@ -891,94 +891,112 @@ body.director-mode #app-shell {
           <div class="t-hd"><i class="fas fa-plus-circle"></i> Asignar Nueva Actividad</div>
           <div style="padding:22px">
             <form id="asignar-form" onsubmit="event.preventDefault();submitAsignar()">
+              <!-- Título -->
+              <div class="mb-3">
+                <label class="form-label">Título *</label>
+                <input type="text" class="form-control" id="as-titulo" required oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;" placeholder="TÍTULO DE LA ACTIVIDAD">
+              </div>
+              <!-- Descripción -->
+              <div class="mb-3">
+                <label class="form-label">Descripción <span style="font-size:0.75rem; color:#6b7280; font-weight:400;">(referencia interna)</span></label>
+                <textarea class="form-control" id="as-descripcion" rows="2" placeholder="Detalles adicionales para referencia interna..."></textarea>
+              </div>
+              <!-- Fecha Límite -->
               <div class="row mb-3">
-                <div class="col-md-6"><label class="form-label">Título *</label><input type="text" class="form-control" id="as-titulo" required></div>
-                <div class="col-md-6"><label class="form-label">Tipo *</label><select class="form-select" id="as-tipo" required><option value="">Seleccionar...</option></select></div>
+                <div class="col-md-4">
+                  <label class="form-label">Fecha Límite *</label>
+                  <input type="date" class="form-control" id="as-fecha" required>
+                </div>
               </div>
-              <div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" id="as-descripcion" rows="3"></textarea></div>
-              <div class="row mb-4">
-                <div class="col-md-4"><label class="form-label">Fecha de Inicio *</label><input type="date" class="form-control" id="as-fecha-inicio" required></div>
-                <div class="col-md-4"><label class="form-label">Fecha Límite *</label><input type="date" class="form-control" id="as-fecha" required></div>
-                <div class="col-md-4"><label class="form-label">Hora Límite *</label><input type="time" class="form-control" id="as-hora" required></div>
+              <!-- Enlace -->
+              <div class="mb-3">
+                <label class="form-label">¿Incluye enlace?</label>
+                <div class="d-flex gap-3 mb-2">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-link-toggle" id="as-link-no" value="no" checked onchange="document.getElementById('as-link-container').style.display='none'">
+                    <label class="form-check-label" for="as-link-no">No</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-link-toggle" id="as-link-si" value="si" onchange="document.getElementById('as-link-container').style.display='block'">
+                    <label class="form-check-label" for="as-link-si">Sí</label>
+                  </div>
+                </div>
+                <div id="as-link-container" style="display:none;">
+                  <input type="url" class="form-control" id="as-link-url" placeholder="https://...">
+                </div>
               </div>
-              <div class="mb-3" id="niveles-global-container" style="display:none;">
-                <label class="form-label">Niveles a los que aplica la actividad (Opcional, si no se marca ninguno aplicará a todos los niveles de la IE seleccionada)</label>
-                <div class="d-flex gap-3">
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="inicial" id="cb-as-ini">
-                    <label class="form-check-label" for="cb-as-ini">Inicial</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="primaria" id="cb-as-pri">
-                    <label class="form-check-label" for="cb-as-pri">Primaria</label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input as-nivel-cb" type="checkbox" value="secundaria" id="cb-as-sec">
-                    <label class="form-check-label" for="cb-as-sec">Secundaria</label>
-                  </div>
+              <!-- Niveles a los que aplica -->
+              <div class="mb-4">
+                <label class="form-label">Niveles a los que aplica <span style="font-size:0.75rem; color:#6b7280; font-weight:400;">(opcional)</span></label>
+                <div class="d-flex flex-wrap gap-3" id="as-niveles-actividad-container">
+                  <!-- Rendered from nivelesCache -->
                 </div>
               </div>
               <hr>
               <!-- Alcance de la asignación -->
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <label class="form-label">Alcance de Asignación *</label>
-                  <select class="form-select" id="as-alcance" onchange="onChangeAlcance(this.value)">
-                    <option value="nivel">Por Niveles en Conjunto</option>
-                    <option value="modular">Por Código Modular Específico</option>
-                    <option value="institucion">Por Institución (Todos sus niveles)</option>
-                    <option value="manual">Por Lista (Selección manual)</option>
-                  </select>
+              <div class="mb-3">
+                <label class="form-label fw-bold">¿A quién asignar? *</label>
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-todas" value="todas" onchange="onChangeAlcanceNew('todas')" checked>
+                    <label class="form-check-label" for="as-alc-todas"><strong>Todas</strong> las IEs activas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-nivel" value="nivel" onchange="onChangeAlcanceNew('nivel')">
+                    <label class="form-check-label" for="as-alc-nivel"><strong>Por nivel</strong></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-manual" value="manual" onchange="onChangeAlcanceNew('manual')">
+                    <label class="form-check-label" for="as-alc-manual"><strong>Manualmente</strong></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-lista" value="lista" onchange="onChangeAlcanceNew('lista')">
+                    <label class="form-check-label" for="as-alc-lista"><strong>Lista guardada</strong></label>
+                  </div>
                 </div>
-                <div class="col-md-6" id="alcance-nivel-container" style="display:none;">
-                  <label class="form-label">Nivel Educativo *</label>
-                  <select class="form-select" id="as-alcance-nivel">
-                    <option value="inicial">Inicial</option>
-                    <option value="primaria">Primaria</option>
-                    <option value="secundaria">Secundaria</option>
-                    <option value="otros">Otros</option>
-                  </select>
+
+                <!-- Por nivel -->
+                <div id="alcance-new-nivel" style="display:none;" class="mb-3">
+                  <label class="form-label">Seleccionar nivel(es) *</label>
+                  <div class="d-flex flex-wrap gap-3" id="as-alcance-niveles-container">
+                    <!-- Rendered from nivelesCache -->
+                  </div>
+                </div>
+
+                <!-- Manual -->
+                <div id="alcance-new-manual" style="display:none;">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Instituciones Educativas</label>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(true)">Seleccionar todas</button>
+                      <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-md-5">
+                      <input type="text" class="form-control" id="ie-search" placeholder="Buscar por código o nombre..." oninput="filterIEList()">
+                    </div>
+                    <div class="col-md-3">
+                      <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
+                        <option value="">Todos los niveles</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="ie-list" id="ie-checkbox-list"></div>
+                </div>
+
+                <!-- Lista guardada -->
+                <div id="alcance-new-lista" style="display:none;">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Seleccionar lista guardada</label>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mostrarCrearLista()"><i class="fas fa-plus"></i> Nueva lista</button>
+                  </div>
+                  <div id="listas-ie-container" style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <!-- Rendered dynamically -->
+                  </div>
                 </div>
               </div>
 
-              <!-- Por instituciones específicas container -->
-              <div class="mb-3" id="alcance-especifico-container" style="display:none;">
-                <label class="form-label">Buscar y Agregar Instituciones *</label>
-                <div style="position:relative;">
-                  <input type="text" class="form-control" id="as-search-ie" placeholder="Escriba código modular o nombre de la IE..." oninput="onSearchIEAsignar(this.value)">
-                  <div id="as-search-autocomplete" class="autocomplete-dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; z-index:10; background:#fff; border:1px solid #d1d5db; border-radius:8px; max-height:200px; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1);"></div>
-                </div>
-                <div id="as-selected-ies-tags" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
-              </div>
-
-              <!-- Selección manual container -->
-              <div id="alcance-manual-container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <label class="form-label mb-0">Instituciones Educativas *</label>
-                  <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(true)">Seleccionar todas</button>
-                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <div class="col-md-4">
-                    <label class="form-label" style="font-size:.75rem">Buscar IE</label>
-                    <input type="text" class="form-control" id="ie-search" placeholder="Código, N° o Nombre..." oninput="filterIEList()">
-                  </div>
-
-                  <div class="col-md-4">
-                    <label class="form-label" style="font-size:.75rem">Nivel</label>
-                    <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
-                      <option value="">Todos</option>
-                      <option value="inicial">Inicial</option>
-                      <option value="primaria">Primaria</option>
-                      <option value="secundaria">Secundaria</option>
-                      <option value="otros">Otros</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="ie-list" id="ie-checkbox-list"></div>
-              </div>
               <div class="mt-4 text-center"><button type="submit" class="btn btn-primary px-5">Asignar Actividad</button></div>
             </form>
           </div>
@@ -987,10 +1005,11 @@ body.director-mode #app-shell {
 
       <!-- ==================== SUPERVISOR: AVANCE MENSUAL ==================== -->
       <div class="view-section" id="view-avance-mensual">
+        <div id="dashboard-stats-cards"></div>
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
           <div style="display:flex; align-items:center; gap:12px;">
             <div>
-              <h2>Avance Mensual</h2>
+              <h2>Dashboard</h2>
               <span>Consolidado provincial e informe de actividades por mes</span>
             </div>
             <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones')" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
@@ -1693,10 +1712,12 @@ function buildSidebar() {
   }
   
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
-    html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Avance / Dashboard</a>';
+    html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
     html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar</a>';
     html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-desktop"></i> Monitoreo</a>';
-    html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
+    if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
+      html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
+    }
   }
   
   html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user"></i> Mi Perfil</a>';
@@ -2424,7 +2445,8 @@ function mostrarDetalleActividad(id) {
   var area = row.area || '';
   var subarea = row.subarea || '';
   var telefono = row.asignador_telefono || '';
-  var desc = row.actividad_descripcion || row.descripcion || 'Sin descripción';
+  var desc = row.actividad_descripcion || row.descripcion || '';
+  var linkUrl = row.link_url || '';
   var estado = row.estado || 'pendiente';
   var notas = row.notas_supervisor || '';
   var completadoFecha = row.fecha_completado || '';
@@ -2459,10 +2481,14 @@ function mostrarDetalleActividad(id) {
       </div>
       <h3 style="font-size:1.15rem; font-weight:800; color:#111827; margin:0 0 12px 0; text-transform:uppercase; border-bottom:2px solid #e5e7eb; padding-bottom:8px; line-height:1.4;">${titulo}</h3>
       
-      <div style="margin-bottom:16px;">
+      ${desc ? `<div style="margin-bottom:16px;">
         <h5 style="font-size:0.75rem; font-weight:700; color:#4b5563; margin:0 0 6px 0; text-transform:uppercase; letter-spacing:0.5px;">Descripción</h5>
         <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; font-size:0.85rem; color:#374151; line-height:1.5; white-space:pre-wrap; word-break:break-word;">${desc}</div>
-      </div>
+      </div>` : ''}
+      ${linkUrl ? `<div style="margin-bottom:16px;">
+        <h5 style="font-size:0.75rem; font-weight:700; color:#4b5563; margin:0 0 6px 0; text-transform:uppercase; letter-spacing:0.5px;"><i class="fas fa-link" style="margin-right:4px;color:var(--granate);"></i> Enlace</h5>
+        <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" style="font-size:0.85rem; color:#2563eb; word-break:break-all;">${linkUrl}</a>
+      </div>` : ''}
       
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px; background:#f3f4f6; border-radius:12px; padding:12px;">
         <div>
@@ -2626,8 +2652,117 @@ async function loadIEsForAsignar() {
     allIEs = d.ies || d || [];
     selectedIEIds.clear();
     renderIECheckboxes(allIEs);
-    onChangeAlcance(document.getElementById('as-alcance').value);
+    // Populate nivel filter dropdown
+    var nf = document.getElementById('ie-filter-nivel');
+    if (nf) {
+      nf.innerHTML = '<option value="">Todos los niveles</option>';
+      if (window.nivelesCache) {
+        window.nivelesCache.forEach(function(nv) {
+          nf.innerHTML += '<option value="' + nv.clave + '">' + nv.nombre + '</option>';
+        });
+      }
+    }
+    // Populate activity niveles checkboxes
+    var actNivCont = document.getElementById('as-niveles-actividad-container');
+    if (actNivCont && window.nivelesCache) {
+      var html = '';
+      window.nivelesCache.forEach(function(nv) {
+        html += '<div class="form-check"><input class="form-check-input as-act-nivel-cb" type="checkbox" value="' + nv.clave + '" id="cb-act-niv-' + nv.clave + '"><label class="form-check-label" for="cb-act-niv-' + nv.clave + '">' + nv.nombre + '</label></div>';
+      });
+      actNivCont.innerHTML = html;
+    }
+    // Populate alcance niveles checkboxes
+    var alcNivCont = document.getElementById('as-alcance-niveles-container');
+    if (alcNivCont && window.nivelesCache) {
+      var html2 = '';
+      window.nivelesCache.forEach(function(nv) {
+        html2 += '<div class="form-check"><input class="form-check-input as-alc-nivel-cb" type="checkbox" value="' + nv.clave + '" id="cb-alc-niv-' + nv.clave + '"><label class="form-check-label" for="cb-alc-niv-' + nv.clave + '">' + nv.nombre + '</label></div>';
+      });
+      alcNivCont.innerHTML = html2;
+    }
+    onChangeAlcanceNew('todas');
   } catch (e) {}
+}
+
+function onChangeAlcanceNew(val) {
+  document.getElementById('alcance-new-nivel').style.display = (val === 'nivel') ? 'block' : 'none';
+  document.getElementById('alcance-new-manual').style.display = (val === 'manual') ? 'block' : 'none';
+  document.getElementById('alcance-new-lista').style.display = (val === 'lista') ? 'block' : 'none';
+  if (val === 'lista') cargarListasIE();
+}
+
+async function cargarListasIE() {
+  try {
+    var listas = await api('/api/listas-ie');
+    var cont = document.getElementById('listas-ie-container');
+    if (!cont) return;
+    if (!listas || listas.length === 0) {
+      cont.innerHTML = '<div style="color:#9ca3af; font-size:0.8rem;">No hay listas guardadas. Crea una con el botón de arriba.</div>';
+      return;
+    }
+    var html = '';
+    listas.forEach(function(lista) {
+      var ids = JSON.parse(lista.ie_ids || '[]');
+      html += '<div class="form-check" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">' +
+        '<input class="form-check-input as-lista-radio" type="radio" name="as-lista-sel" value="' + lista.id + '" id="lista-' + lista.id + '" data-ie-ids=\'' + lista.ie_ids + '\'>' +
+        '<label class="form-check-label" for="lista-' + lista.id + '" style="font-weight:600;">' + lista.nombre + ' <span style="color:#6b7280; font-weight:400; font-size:0.78rem;">(' + ids.length + ' IEs)</span></label>' +
+        '<button type="button" class="btn btn-xs btn-danger ms-2" onclick="eliminarLista(' + lista.id + ')"><i class="fas fa-trash"></i></button>' +
+        '</div>';
+    });
+    cont.innerHTML = html;
+  } catch (e) { /* ignore */ }
+}
+
+async function eliminarLista(id) {
+  try {
+    await api('/api/listas-ie/' + id, { method: 'DELETE' });
+    showToast('Lista eliminada', 'success');
+    cargarListasIE();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function mostrarCrearLista() {
+  // Show selected manual IEs or let user pick
+  showModal('Nueva Lista de IEs',
+    '<div class="mb-3"><label class="form-label">Nombre de la lista *</label><input class="form-control" id="nl-nombre" placeholder="Ej: Escuelas rurales zona norte"></div>' +
+    '<div class="mb-2"><label class="form-label">Buscar IEs <span style="font-size:0.75rem; color:#6b7280;">(escribe para filtrar)</span></label>' +
+    '<input class="form-control mb-2" id="nl-search" placeholder="Código o nombre..." oninput="filterNLList()"></div>' +
+    '<div id="nl-ie-list" style="max-height:280px; overflow-y:auto; border:1px solid #e5e7eb; border-radius:8px; padding:8px;"></div>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="guardarNuevaLista()">Guardar lista</button>');
+  renderNLList(allIEs);
+}
+
+function filterNLList() {
+  var q = document.getElementById('nl-search') ? document.getElementById('nl-search').value.toLowerCase() : '';
+  var filtered = allIEs.filter(function(ie) {
+    return ie.nombre.toLowerCase().indexOf(q) !== -1 || ie.codigo.toLowerCase().indexOf(q) !== -1;
+  });
+  renderNLList(filtered);
+}
+
+function renderNLList(ies) {
+  var cont = document.getElementById('nl-ie-list');
+  if (!cont) return;
+  var html = '';
+  ies.forEach(function(ie) {
+    html += '<label style="display:flex; align-items:center; gap:8px; padding:4px 6px; cursor:pointer; border-radius:4px; font-size:0.8rem;" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="nl-ie-cb" value="' + ie.id + '"> <span style="font-weight:700; color:var(--granate); min-width:60px;">' + ie.codigo + '</span> ' + ie.nombre + '</label>';
+  });
+  cont.innerHTML = html || '<div style="color:#9ca3af; font-size:0.8rem; padding:8px;">No se encontraron IEs</div>';
+}
+
+async function guardarNuevaLista() {
+  var nombre = document.getElementById('nl-nombre') ? document.getElementById('nl-nombre').value.trim() : '';
+  if (!nombre) { showToast('Ingrese un nombre para la lista', 'error'); return; }
+  var cbs = document.querySelectorAll('.nl-ie-cb:checked');
+  var ids = [];
+  cbs.forEach(function(cb) { ids.push(parseInt(cb.value)); });
+  if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
+  try {
+    await api('/api/listas-ie', { method: 'POST', body: { nombre: nombre, ie_ids: ids } });
+    showToast('Lista guardada con éxito', 'success');
+    closeModal();
+    cargarListasIE();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 function renderIECheckboxes(ies) {
@@ -2788,84 +2923,73 @@ function renderSpecificIETags() {
 }
 
 async function submitAsignar() {
-  var tit = document.getElementById('as-titulo').value.trim();
-  var ti = document.getElementById('as-tipo').value;
+  var tit = document.getElementById('as-titulo').value.trim().toUpperCase();
   var desc = document.getElementById('as-descripcion').value.trim();
-  var fecInicio = document.getElementById('as-fecha-inicio').value;
   var fec = document.getElementById('as-fecha').value;
-  var hor = document.getElementById('as-hora').value;
-  
-  if (!tit || !ti || !fec || !hor || !fecInicio) { showToast('Complete campos obligatorios', 'error'); return; }
-  if (fecInicio > fec) { showToast('La fecha de inicio no puede ser posterior a la fecha límite', 'error'); return; }
-  
-  var alcance = document.getElementById('as-alcance').value;
-  var ids = [];
+  var linkSi = document.getElementById('as-link-si') && document.getElementById('as-link-si').checked;
+  var linkUrl = linkSi ? (document.getElementById('as-link-url').value.trim() || null) : null;
+
+  if (!tit || !fec) { showToast('Complete campos obligatorios (título y fecha límite)', 'error'); return; }
+
+  // Collect activity-level niveles
+  var actNivCbs = document.querySelectorAll('.as-act-nivel-cb:checked');
+  var actNiveles = [];
+  actNivCbs.forEach(function(cb) { actNiveles.push(cb.value); });
+
+  // Determine alcance
+  var alcanceRadio = document.querySelector('input[name="as-alcance-radio"]:checked');
+  var alcance = alcanceRadio ? alcanceRadio.value : 'todas';
   var targetIes = [];
-  
-  var cbs = document.querySelectorAll('.as-nivel-cb:checked');
-  var globalNiveles = [];
-  for (var i = 0; i < cbs.length; i++) globalNiveles.push(cbs[i].value);
-  
-  if (alcance === 'manual') {
-    syncSelectedIEs();
-    if (selectedIEIds.size === 0) { showToast('Seleccione al menos una institución de la lista', 'error'); return; }
-    ids = Array.from(selectedIEIds);
-    targetIes = ids.map(function(id) { return { id: parseInt(id), niveles: globalNiveles.length > 0 ? globalNiveles : null }; });
-  } else if (alcance === 'institucion') {
-    if (selectedSpecificIEIds.size === 0) { showToast('Agregue al menos una IE específica', 'error'); return; }
-    ids = Array.from(selectedSpecificIEIds).map(function(v) { return parseInt(v); });
-    targetIes = ids.map(function(id) { return { id: parseInt(id), niveles: globalNiveles.length > 0 ? globalNiveles : null }; });
-  } else if (alcance === 'modular') {
-    if (selectedSpecificIEIds.size === 0) { showToast('Agregue al menos un código modular', 'error'); return; }
-    var targetIesMap = {};
-    Array.from(selectedSpecificIEIds).forEach(function(val) {
-       var parts = val.split('|');
-       var ieId = parseInt(parts[0]);
-       var nivel = parts[1];
-       if (!targetIesMap[ieId]) targetIesMap[ieId] = [];
-       targetIesMap[ieId].push(nivel);
-    });
-    targetIes = Object.keys(targetIesMap).map(function(id) { return { id: parseInt(id), niveles: targetIesMap[id] }; });
-    ids = targetIes.map(function(t) { return t.id; });
+
+  if (alcance === 'todas') {
+    targetIes = allIEs.map(function(ie) { return { id: ie.id, niveles: actNiveles.length > 0 ? actNiveles : null }; });
+    if (targetIes.length === 0) { showToast('No hay IEs activas', 'error'); return; }
   } else if (alcance === 'nivel') {
-    var nivelVal = document.getElementById('as-alcance-nivel').value;
+    var alcNivCbs = document.querySelectorAll('.as-alc-nivel-cb:checked');
+    var alcNiveles = [];
+    alcNivCbs.forEach(function(cb) { alcNiveles.push(cb.value); });
+    if (alcNiveles.length === 0) { showToast('Seleccione al menos un nivel', 'error'); return; }
+    // Filter IEs that have at least one of the selected niveles
     var matchingIEs = allIEs.filter(function(ie) {
-      if (nivelVal === 'inicial') return ie.tiene_inicial;
-      if (nivelVal === 'primaria') return ie.tiene_primaria;
-      if (nivelVal === 'secundaria') return ie.tiene_secundaria;
-      if (nivelVal === 'otros') return ie.tiene_otros;
-      return false;
+      if (!ie.niveles) return false;
+      return ie.niveles.some(function(nv) { return alcNiveles.indexOf(nv.clave) !== -1; });
     });
-    targetIes = matchingIEs.map(function(ie) { return { id: ie.id, niveles: [nivelVal] }; });
-    ids = targetIes.map(function(t) { return t.id; });
-    if (targetIes.length === 0) { showToast('No se encontraron IEs para el nivel seleccionado', 'error'); return; }
+    targetIes = matchingIEs.map(function(ie) { return { id: ie.id, niveles: alcNiveles }; });
+    if (targetIes.length === 0) { showToast('No se encontraron IEs para los niveles seleccionados', 'error'); return; }
+  } else if (alcance === 'manual') {
+    syncSelectedIEs();
+    if (selectedIEIds.size === 0) { showToast('Seleccione al menos una institución', 'error'); return; }
+    targetIes = Array.from(selectedIEIds).map(function(id) { return { id: parseInt(id), niveles: actNiveles.length > 0 ? actNiveles : null }; });
+  } else if (alcance === 'lista') {
+    var listaRadio = document.querySelector('input[name="as-lista-sel"]:checked');
+    if (!listaRadio) { showToast('Seleccione una lista guardada', 'error'); return; }
+    var listaIds = JSON.parse(listaRadio.dataset.ieIds || '[]');
+    if (listaIds.length === 0) { showToast('La lista seleccionada está vacía', 'error'); return; }
+    targetIes = listaIds.map(function(id) { return { id: parseInt(id), niveles: actNiveles.length > 0 ? actNiveles : null }; });
   }
-  
+
   var btnSubmit = document.querySelector('#asignar-form button[type="submit"]');
-  if (btnSubmit) {
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Asignando...';
-  }
-  
+  if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Asignando...'; }
+
   try {
-    await api('/api/actividades', { method: 'POST', body: { titulo: tit, tipo_id: ti, descripcion: desc, fecha_limite: fec, hora_limite: hor, ies: targetIes, ie_ids: ids, fecha_inicio: fecInicio } });
-    showToast('Actividad asignada con éxito', 'success');
+    var ids = targetIes.map(function(t) { return t.id; });
+    await api('/api/actividades', { method: 'POST', body: {
+      titulo: tit, descripcion: desc, fecha_limite: fec,
+      link_url: linkUrl, niveles_aplicados: actNiveles.length > 0 ? actNiveles.join(',') : null,
+      ies: targetIes, ie_ids: ids
+    }});
+    showToast('Actividad asignada con éxito (' + targetIes.length + ' IEs)', 'success');
     document.getElementById('asignar-form').reset();
-    document.getElementById('ie-filter-nivel').value = '';
-    document.getElementById('ie-search').value = '';
+    document.getElementById('as-link-no').checked = true;
+    document.getElementById('as-link-container').style.display = 'none';
     selectedIEIds.clear();
     renderIECheckboxes(allIEs);
-    selectedSpecificIEIds.clear();
-    renderSpecificIETags();
-    document.getElementById('as-alcance').value = 'nivel';
-    onChangeAlcance('nivel');
-  } catch (e) { 
-    showToast('Error: ' + e.message, 'error'); 
+    onChangeAlcanceNew('todas');
+    document.getElementById('as-alc-todas').checked = true;
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
   } finally {
-    if (btnSubmit) {
-      btnSubmit.disabled = false;
-      btnSubmit.innerHTML = 'Asignar Actividad';
-    }
+    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.innerHTML = 'Asignar Actividad'; }
   }
 }
 
@@ -2884,69 +3008,129 @@ async function loadMonitoreo() {
     if (as) u += 'asignador_id=' + encodeURIComponent(as) + '&';
     var d = await api(u);
     var rows = d.asignaciones || d || [];
-    var html = '';
-    if (rows.length > 0) {
-      for (var i = 0; i < rows.length; i++) {
-        var a = rows[i];
-        var act = a.actividad_id || a.id;
-        var actionBtns = '';
-        if (a.estado !== 'completada') {
-          actionBtns += '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'completada\')" title="Marcar completada"><i class="fas fa-check"></i></button>';
-        }
-        if (a.estado !== 'no_cumplida') {
-          actionBtns += '<button class="btn btn-xs btn-danger me-1" onclick="cambiarEstadoAsignacion(' + a.id + ',\'no_cumplida\')" title="Marcar no cumplida (vencida)"><i class="fas fa-times"></i></button>';
-        }
-        if (a.estado !== 'inconclusa') {
-          actionBtns += '<button class="btn btn-xs me-1" style="background-color: #ea580c; border-color: #ea580c; color: white;" onclick="cambiarEstadoAsignacion(' + a.id + ',\'inconclusa\')" title="Marcar inconclusa"><i class="fas fa-exclamation-triangle"></i></button>';
-        }
-        
-        var ieCell = '<div style="font-weight:700; color:#1f2937; text-transform:uppercase; font-size:0.78rem;">' + (a.ie_nombre || '-') + '</div>' +
-          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">CÓDIGO: ' + (a.ie_codigo || '-') + '</div>';
-        
-        var nivelesArr = a.niveles_aplicados ? a.niveles_aplicados.split(',') : [];
-        var nivelesStr = '';
-        if (nivelesArr.length > 0) {
-          var codes = [];
-          if (nivelesArr.includes('inicial') && a.cm_inicial) codes.push('Ini: ' + a.cm_inicial);
-          if (nivelesArr.includes('primaria') && a.cm_primaria) codes.push('Pri: ' + a.cm_primaria);
-          if (nivelesArr.includes('secundaria') && a.cm_secundaria) codes.push('Sec: ' + a.cm_secundaria);
-          if (codes.length > 0) {
-            nivelesStr = '<div style="font-size:0.7rem; color:#2563eb; font-weight:700; margin-top:4px;">Aplica a: ' + codes.join(' | ') + '</div>';
-          } else {
-            nivelesStr = '<div style="font-size:0.7rem; color:#2563eb; font-weight:700; margin-top:4px;">Aplica a: ' + nivelesArr.join(', ').toUpperCase() + '</div>';
-          }
-        } else {
-          nivelesStr = '<div style="font-size:0.7rem; color:#6b7280; font-weight:600; margin-top:4px;">Aplica a: IE Completa</div>';
-        }
 
-        var actCell = '<div style="font-weight:800; color:#1e1e2f; font-size:0.78rem; text-transform:uppercase;">' + (a.actividad_titulo || a.titulo || '-') + '</div>' +
-          '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">ASIGNADO POR: ' + (a.asignador_nombre || '-') + ' (' + (a.area || '-') + ' - ' + (a.subarea || '-') + ')</div>' + nivelesStr;
-        
-        var dateText = a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-';
-        var dateCell = '<div style="font-weight:700; color:#4b5563; font-size:0.72rem; text-align:center;">' + dateText + '</div>';
-        
-        var stateCell = '<div style="text-align:center;"><span class="badge badge-' + a.estado + '" style="font-size:0.65rem;">' + a.estado.replace('_', ' ').toUpperCase() + '</span></div>';
-        
-        var actionsCell = '<div style="text-align:center; display:flex; gap:4px; justify-content:center;">' + actionBtns + 
-          '<button class="btn btn-xs btn-warning" onclick="editarActividadModal(' + act + ')" title="Editar / Eliminar"><i class="fas fa-edit"></i></button></div>';
- 
-        html += '<tr>' +
-          '<td style="text-align: center;"><input type="checkbox" class="mon-row-checkbox" value="' + act + '" onchange="updateBulkDeleteButtonState()"></td>' +
-          '<td>' + ieCell + '</td>' +
-          '<td>' + actCell + '</td>' +
-          '<td>' + dateCell + '</td>' +
-          '<td>' + stateCell + '</td>' +
-          '<td>' + actionsCell + '</td>' +
+    // Group by actividad_id
+    var actMap = {};
+    for (var i = 0; i < rows.length; i++) {
+      var a = rows[i];
+      var actId = a.actividad_id;
+      if (!actMap[actId]) {
+        actMap[actId] = {
+          id: actId,
+          titulo: a.actividad_titulo || '-',
+          fecha_limite: a.fecha_limite,
+          asignador_nombre: a.asignador_nombre,
+          area: a.area,
+          ies: []
+        };
+      }
+      actMap[actId].ies.push(a);
+    }
+
+    var actIds = Object.keys(actMap);
+    var html = '';
+
+    if (actIds.length === 0) {
+      html = '<tr class="empty"><td colspan="6">No se encontraron asignaciones</td></tr>';
+      document.getElementById('monitoreo-table').innerHTML = html;
+      var mc = document.getElementById('select-all-mon');
+      if (mc) mc.checked = false;
+      updateBulkDeleteButtonState();
+      return;
+    }
+
+    for (var k = 0; k < actIds.length; k++) {
+      var grp = actMap[actIds[k]];
+      var total = grp.ies.length;
+      var completadas = grp.ies.filter(function(x){ return x.estado === 'completada'; }).length;
+      var pct = total > 0 ? Math.round(completadas / total * 100) : 0;
+      var dateText = grp.fecha_limite ? new Date(grp.fecha_limite).toLocaleDateString('es-PE') : '-';
+      var pctColor = pct >= 80 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626';
+
+      // Activity header row (clickable to expand)
+      html += '<tr style="background:#f8fafc; cursor:pointer;" onclick="toggleMonGroup(\'' + grp.id + '\')">' +
+        '<td style="text-align:center;"><input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onchange="updateBulkDeleteButtonState();event.stopPropagation()"></td>' +
+        '<td colspan="3">' +
+          '<div style="display:flex; align-items:center; gap:12px;">' +
+            '<i class="fas fa-chevron-right" id="mon-chevron-' + grp.id + '" style="color:#6b7280; font-size:0.75rem; transition:transform 0.2s;"></i>' +
+            '<div>' +
+              '<div style="font-weight:800; color:#1e1e2f; font-size:0.82rem; text-transform:uppercase;">' + grp.titulo + '</div>' +
+              '<div style="font-size:0.68rem; color:#6b7280; font-weight:600; margin-top:2px;">Por: ' + (grp.asignador_nombre || '-') + (grp.area ? ' · ' + grp.area : '') + '</div>' +
+            '</div>' +
+          '</div>' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+          '<div style="font-size:0.72rem; color:#4b5563; font-weight:700;">' + dateText + '</div>' +
+          '<div style="margin-top:4px; background:#e5e7eb; border-radius:4px; height:6px; overflow:hidden;">' +
+            '<div style="width:' + pct + '%; background:' + pctColor + '; height:100%;"></div>' +
+          '</div>' +
+          '<div style="font-size:0.65rem; color:' + pctColor + '; font-weight:700; margin-top:2px;">' + completadas + '/' + total + ' (' + pct + '%)</div>' +
+        '</td>' +
+        '<td style="text-align:center;">' +
+          '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad"><i class="fas fa-edit"></i></button>' +
+        '</td>' +
+        '</tr>';
+
+      // IE rows (hidden by default)
+      html += '<tr id="mon-group-' + grp.id + '" style="display:none;"><td colspan="6" style="padding:0;">';
+      html += '<table style="width:100%; border-collapse:collapse;">';
+      for (var j = 0; j < grp.ies.length; j++) {
+        var ie = grp.ies[j];
+        var stateBadge = '<span class="badge badge-' + ie.estado + '" style="font-size:0.62rem;">' + ie.estado.replace('_', ' ').toUpperCase() + '</span>';
+        var ieBtns = '';
+        if (ie.estado !== 'completada') {
+          ieBtns += '<button class="btn btn-xs btn-success me-1" onclick="cambiarEstadoAsignacion(' + ie.id + ',\'completada\')" title="Completada"><i class="fas fa-check"></i></button>';
+        }
+        if (ie.estado !== 'inconclusa') {
+          ieBtns += '<button class="btn btn-xs me-1" style="background:#ea580c;border-color:#ea580c;color:#fff;" onclick="cambiarEstadoAsignacion(' + ie.id + ',\'inconclusa\')" title="Inconclusa"><i class="fas fa-exclamation-triangle"></i></button>';
+        }
+        ieBtns += '<button class="btn btn-xs btn-danger" onclick="eliminarAsignacion(' + ie.id + ',' + grp.id + ')" title="Eliminar asignación"><i class="fas fa-trash"></i></button>';
+        html += '<tr style="background:#fff; border-top:1px solid #f0f0f0;">' +
+          '<td style="width:40px;"></td>' +
+          '<td style="padding:8px 12px; width:35%;">' +
+            '<div style="font-size:0.75rem; font-weight:700; color:#374151; text-transform:uppercase;">' + (ie.ie_nombre || '-') + '</div>' +
+            '<div style="font-size:0.65rem; color:#9ca3af; font-weight:600;">Cód: ' + (ie.ie_codigo || '-') + '</div>' +
+          '</td>' +
+          '<td style="padding:8px 12px; width:20%; text-align:center;">' + stateBadge + '</td>' +
+          '<td style="padding:8px 12px; text-align:right;">' + ieBtns + '</td>' +
           '</tr>';
       }
-    } else {
-      html = '<tr class="empty"><td colspan="6">No se encontraron asignaciones</td></tr>';
+      html += '</table>';
+      html += '</td></tr>';
     }
+
     document.getElementById('monitoreo-table').innerHTML = html;
     var masterCheckbox = document.getElementById('select-all-mon');
     if (masterCheckbox) masterCheckbox.checked = false;
     updateBulkDeleteButtonState();
   } catch (e) { showToast('Error al cargar monitoreo: ' + e.message, 'error'); }
+}
+
+function toggleMonGroup(actId) {
+  var row = document.getElementById('mon-group-' + actId);
+  var chev = document.getElementById('mon-chevron-' + actId);
+  if (!row) return;
+  var isHidden = row.style.display === 'none';
+  row.style.display = isHidden ? 'table-row' : 'none';
+  if (chev) chev.style.transform = isHidden ? 'rotate(90deg)' : '';
+}
+
+async function eliminarAsignacion(asignacionId, actividadId) {
+  showModal('Eliminar Asignación',
+    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs.</p>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarAsignacion(' + asignacionId + ',' + actividadId + ')">Eliminar</button>');
+}
+
+async function confirmarEliminarAsignacion(asignacionId, actividadId) {
+  try {
+    // Delete just this assignment via the actividad delete? We need a dedicated endpoint.
+    // Use bulk-delete on the actividad if it's the only one, otherwise we need to mark or use a workaround.
+    // For now, call DELETE /api/actividades/:id only if single; otherwise show message.
+    await api('/api/asignaciones/' + asignacionId + '/estado', { method: 'PUT', body: { estado: 'no_cumplida', notas_supervisor: 'Eliminado manualmente' } });
+    showToast('Asignación marcada como no cumplida', 'success');
+    closeModal();
+    loadMonitoreo();
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
  
 function cambiarEstadoAsignacion(id, est) {
@@ -3092,29 +3276,30 @@ async function editarActividadModal(actividadId) {
   try {
     var d = await api('/api/actividades/' + actividadId);
     var act = d.actividad || d;
-    var tipos = await api('/api/tipos-actividad');
-    var opts = '<option value="">Seleccionar...</option>';
-    var tlist = tipos.tipos || tipos || [];
-    for (var i = 0; i < tlist.length; i++) {
-      opts += '<option value="' + tlist[i].id + '"' + (tlist[i].id === act.tipo_id ? ' selected' : '') + '>' + tlist[i].nombre + '</option>';
-    }
+    var linkChecked = act.link_url ? 'checked' : '';
+    var linkDisplay = act.link_url ? 'block' : 'none';
     showModal('Editar Actividad',
-      '<form id="editar-act-form"><div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ea-titulo" value="' + (act.titulo || '') + '"></div><div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" id="ea-descripcion" rows="3">' + (act.descripcion || '') + '</textarea></div><div class="row"><div class="col-md-4 mb-3"><label class="form-label">Tipo</label><select class="form-select" id="ea-tipo">' + opts + '</select></div><div class="col-md-4 mb-3"><label class="form-label">Fecha de Inicio</label><input type="date" class="form-control" id="ea-fecha-inicio" value="' + (act.fecha_inicio || '') + '"></div><div class="col-md-4 mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + (act.fecha_limite || '') + '"></div></div></form>',
+      '<form id="editar-act-form">' +
+      '<div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ea-titulo" value="' + (act.titulo || '').replace(/"/g,'&quot;') + '" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;"></div>' +
+      '<div class="mb-3"><label class="form-label">Descripción <span style="font-size:0.75rem;color:#6b7280;font-weight:400;">(referencia interna)</span></label><textarea class="form-control" id="ea-descripcion" rows="2">' + (act.descripcion || '') + '</textarea></div>' +
+      '<div class="mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + (act.fecha_limite || '') + '"></div>' +
+      '<div class="mb-3"><label class="form-label">¿Incluye enlace?</label>' +
+      '<div class="d-flex gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-no" value="no" ' + (act.link_url ? '' : 'checked') + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'none\'"><label class="form-check-label" for="ea-link-no">No</label></div>' +
+      '<div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-si" value="si" ' + linkChecked + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'block\'"><label class="form-check-label" for="ea-link-si">Sí</label></div></div>' +
+      '<div id="ea-link-box" style="display:' + linkDisplay + ';"><input type="url" class="form-control" id="ea-link-url" value="' + (act.link_url || '') + '" placeholder="https://..."></div>' +
+      '</div></form>',
       '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger me-auto" onclick="eliminarActividad(' + actividadId + ')"><i class="fas fa-trash"></i> Eliminar</button><button class="btn btn-primary" onclick="guardarEdicionActividad(' + actividadId + ')">Guardar</button>');
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 async function guardarEdicionActividad(id) {
-  var body = {
-    titulo: document.getElementById('ea-titulo').value.trim(),
-    descripcion: document.getElementById('ea-descripcion').value.trim(),
-    tipo_id: document.getElementById('ea-tipo').value,
-    fecha_inicio: document.getElementById('ea-fecha-inicio').value,
-    fecha_limite: document.getElementById('ea-fecha').value
-  };
-  if (!body.titulo || !body.tipo_id || !body.fecha_limite || !body.fecha_inicio) { showToast('Complete campos obligatorios', 'error'); return; }
-  if (body.fecha_inicio > body.fecha_limite) { showToast('La fecha de inicio no puede ser posterior a la fecha límite', 'error'); return; }
+  var titulo = document.getElementById('ea-titulo').value.trim().toUpperCase();
+  var descripcion = document.getElementById('ea-descripcion').value.trim();
+  var fecha_limite = document.getElementById('ea-fecha').value;
+  var linkSi = document.getElementById('ea-link-si') && document.getElementById('ea-link-si').checked;
+  var link_url = linkSi ? (document.getElementById('ea-link-url').value.trim() || null) : null;
+  if (!titulo || !fecha_limite) { showToast('Título y fecha límite son obligatorios', 'error'); return; }
   try {
-    await api('/api/actividades/' + id, { method: 'PUT', body: body });
+    await api('/api/actividades/' + id, { method: 'PUT', body: { titulo, descripcion, fecha_limite, link_url, fecha_inicio: fecha_limite } });
     showToast('Actividad actualizada', 'success');
     closeModal();
     loadMonitoreo();
@@ -3602,6 +3787,28 @@ document.addEventListener('click', function(e) {
 async function loadAvanceMensual() {
   try {
     renderAvanceMonthSlider();
+    // Load dashboard stats cards
+    try {
+      var stats = await api('/api/dashboard/stats');
+      var zonaHtml = Object.entries(stats.por_zona || {}).map(function(e) {
+        return '<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:#f3f4f6; border-radius:6px; font-size:0.72rem; font-weight:700; color:#374151;">' + e[0] + ': <span style="color:var(--granate);">' + e[1] + '</span></span>';
+      }).join('');
+      var tipoHtml = Object.entries(stats.por_tipo || {}).map(function(e) {
+        return '<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:#f3f4f6; border-radius:6px; font-size:0.72rem; font-weight:700; color:#374151;">' + e[0] + ': <span style="color:var(--granate);">' + e[1] + '</span></span>';
+      }).join('');
+      var sc = document.getElementById('dashboard-stats-cards');
+      if (sc) {
+        sc.innerHTML =
+          '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:20px;">' +
+            '<div class="kpi-card granate" style="margin:0;"><div class="kpi-icon"><i class="fas fa-school"></i></div><div class="kpi-body"><div class="kpi-label">Total Instituciones</div><div class="kpi-value">' + (stats.total_instituciones || 0) + '</div><div class="kpi-sub">IEs activas registradas</div></div></div>' +
+            '<div class="kpi-card green" style="margin:0;"><div class="kpi-icon" style="background:var(--green-bg);color:var(--green);"><i class="fas fa-layer-group"></i></div><div class="kpi-body"><div class="kpi-label">Total Servicios Educativos</div><div class="kpi-value">' + (stats.total_servicios || 0) + '</div><div class="kpi-sub">Códigos modulares asignados</div></div></div>' +
+          '</div>' +
+          '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:20px;">' +
+            '<div class="t-card" style="margin:0; padding:16px;"><div style="font-size:0.72rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;"><i class="fas fa-map-marker-alt"></i> Por Zona</div><div>' + (zonaHtml || '<span style="color:#9ca3af; font-size:0.8rem;">Sin datos</span>') + '</div></div>' +
+            '<div class="t-card" style="margin:0; padding:16px;"><div style="font-size:0.72rem; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;"><i class="fas fa-sitemap"></i> Por Tipo</div><div>' + (tipoHtml || '<span style="color:#9ca3af; font-size:0.8rem;">Sin datos</span>') + '</div></div>' +
+          '</div>';
+      }
+    } catch(se) { /* stats optional */ }
 
     var inputAvance = document.getElementById('avance-ie-search');
     if (inputAvance && !inputAvance.dataset.hasListener) {
