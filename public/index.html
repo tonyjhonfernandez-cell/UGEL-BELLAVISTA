@@ -2019,19 +2019,9 @@ function renderDirectorActividadesTable() {
     var waLink = '-';
     if (a.asignador_telefono) {
       waLink = `
-        <div style="line-height: 1.3;" onclick="event.stopPropagation();">
-          <div>${a.asignador_telefono}</div>
-          <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-            <a href="https://wa.me/51${a.asignador_telefono}" target="_blank" style="color: #25D366; text-decoration: none; font-size: 12px; font-weight: 700; display: inline-flex; align-items:center; gap: 4px;" onclick="event.stopPropagation();">
-              <i class="fab fa-whatsapp" style="font-size: 14px;"></i> WhatsApp
-            </a>
-            ${resp_nombre ? `
-              <a href="#" style="color: var(--granate); text-decoration: none; font-size: 12px; font-weight: 700; display: inline-flex; align-items:center; gap: 4px;" onclick="event.stopPropagation(); event.preventDefault(); contactarSupervisor(${a.id}, '${resp_nombre.replace(/'/g, "\\'")}')">
-                <i class="far fa-paper-plane" style="font-size: 11px;"></i> Mensaje
-              </a>
-            ` : ''}
-          </div>
-        </div>
+        <a href="https://wa.me/51${a.asignador_telefono}?text=${encodeURIComponent('Hola, le escribo para consultar sobre la actividad: "' + titulo + '"')}" target="_blank" style="color: #16a34a; text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; background: #f0fdf4; padding: 6px 12px; border-radius: 20px; border: 1px solid #bbf7d0; font-size: 0.8rem; transition: all 0.15s; white-space: nowrap;" onclick="event.stopPropagation();" onmouseover="this.style.background='#dcfce7'; this.style.borderColor='#86efac';" onmouseout="this.style.background='#f0fdf4'; this.style.borderColor='#bbf7d0';">
+          <i class="fab fa-whatsapp" style="font-size: 15px; color: #25D366;"></i> ${a.asignador_telefono}
+        </a>
       `;
     } else if (resp_nombre) {
       waLink = `

@@ -759,7 +759,7 @@ app.get('/api/asignaciones', async (req, res) => {
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
-                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
@@ -794,7 +794,7 @@ app.get('/api/asignaciones', async (req, res) => {
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
-                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea
+                       asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
