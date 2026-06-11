@@ -53,7 +53,7 @@ app.use(session({
     saveUninitialized: true,
     cookie: {
         maxAge: 8 * 60 * 60 * 1000,
-        secure: true,
+        secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
     }
 }));
@@ -122,11 +122,34 @@ async function runUserMigration() {
     }
 }
 
+async function applyMigrations() {
+    try {
+        await pool.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS remitente_id INTEGER REFERENCES usuarios(id)");
+    } catch (e) {
+        // Ignorar
+    }
+    try {
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) UNIQUE");
+        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
+    } catch (e) {
+        // Ignorar
+    }
+    try {
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS fecha_inicio DATE");
+        await pool.query("UPDATE actividades SET fecha_inicio = fecha_limite WHERE fecha_inicio IS NULL");
+    } catch (e) {
+        // Ignorar
+    }
+}
+
 async function initDatabase() {
     // Si ya hay usuarios migrados, salir rápido
     try {
         const r = await pool.query("SELECT COUNT(*) as c FROM usuarios WHERE usuario IS NOT NULL AND usuario != ''");
-        if (parseInt(r.rows[0].c) > 0) return;
+        if (parseInt(r.rows[0].c) > 0) {
+            await applyMigrations();
+            return;
+        }
     } catch(e) { /* tabla no existe aún */ }
     await db.exec(`
         CREATE TABLE IF NOT EXISTS instituciones_educativas (
@@ -197,18 +220,7 @@ async function initDatabase() {
         );
     `);
 
-    try {
-        await pool.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS remitente_id INTEGER REFERENCES usuarios(id)");
-    } catch (e) {
-        // Ignorar si hay error al añadir la columna
-    }
-
-    try {
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) UNIQUE");
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
-    } catch (e) {
-        // Ignorar si ya existen
-    }
+    await applyMigrations();
 
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
     if (tipos.c == 0) {
@@ -474,7 +486,7 @@ app.get('/api/directores/:id', authSupervisor, async (req, res) => {
 app.get('/api/directores/:id/historial', authSupervisor, async (req, res) => {
     try {
         const historial = await db.prepare(`
-            SELECT a.titulo, a.fecha_limite, a.hora_limite, ase.estado, ase.notas_supervisor, 
+            SELECT a.titulo, a.fecha_limite, a.fecha_inicio, a.hora_limite, ase.estado, ase.notas_supervisor, 
                    ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre
             FROM asignaciones ase
             JOIN actividades a ON ase.actividad_id = a.id
@@ -522,14 +534,15 @@ app.get('/api/tipos-actividad', async (req, res) => {
 
 app.post('/api/actividades', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids } = req.body;
+        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids, fecha_inicio } = req.body;
         const hora = hora_limite || '23:59';
+        const inicio = fecha_inicio || fecha_limite;
 
         if (ie_ids && ie_ids.length > 0) {
             for (const ieId of ie_ids) {
                 const result = await db.prepare(
-                    'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING id'
-                ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id);
+                    'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id, fecha_inicio) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+                ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id, inicio);
 
                 const actividadId = result.lastInsertRowid;
 
@@ -633,11 +646,12 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
 
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite } = req.body;
+        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio } = req.body;
         const hora = hora_limite || '23:59';
+        const inicio = fecha_inicio || fecha_limite;
         await db.prepare(
-            'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=? WHERE id=?'
-        ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.params.id);
+            'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=?, fecha_inicio=? WHERE id=?'
+        ).run(titulo, descripcion, tipo_id, fecha_limite, hora, inicio, req.params.id);
 
         const localStr = new Date().toLocaleString('sv', { timeZone: 'America/Lima' });
         const [localDate, localTime] = localStr.split(' ');
@@ -659,7 +673,7 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
 app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
     try {
         const asignacion = await db.prepare(`
-            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
+            SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                    ta.nombre as tipo_nombre,
                    ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                    u.nombre_completo as director_nombre,
@@ -741,7 +755,7 @@ app.get('/api/asignaciones', async (req, res) => {
         if (ie_codigo) {
             // Acceso público para una escuela específica por su código modular
             const asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
@@ -776,7 +790,7 @@ app.get('/api/asignaciones', async (req, res) => {
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
@@ -792,7 +806,7 @@ app.get('/api/asignaciones', async (req, res) => {
             `).all(...params);
         } else {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
@@ -835,7 +849,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const baseJoin = 'FROM asignaciones ase INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id';
             const total = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere()}`).get(...buildParams());
             const completadas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'completada'")}`).get(...buildParams());
-            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'pendiente'")}`).get(...buildParams());
+            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado IN ('pendiente', 'inconclusa')")}`).get(...buildParams());
             const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${baseJoin} ${buildWhere("AND ase.estado = 'no_cumplida'")}`).get(...buildParams());
 
             const hoy = new Date().toISOString().split('T')[0];
@@ -849,7 +863,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 SELECT ie.codigo, ie.nombre,
                     COUNT(*) as total,
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
-                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
+                    COUNT(CASE WHEN ase.estado IN ('pendiente', 'inconclusa') THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
                 ${baseJoin} ${buildWhere()}
                 GROUP BY ie.id, ie.codigo, ie.nombre
@@ -890,7 +904,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 SELECT ie.codigo, ie.nombre,
                     COUNT(*) as total,
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
-                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
+                    COUNT(CASE WHEN ase.estado IN ('pendiente', 'inconclusa') THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
                 ${baseJoin} ${buildWhere()}
                 GROUP BY ie.id, ie.codigo, ie.nombre
@@ -921,7 +935,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
 
             const total = await db.prepare(`SELECT COUNT(*) as c ${fromDir}`).get(userId);
             const completadas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'completada'`).get(userId);
-            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'pendiente'`).get(userId);
+            const pendientes = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado IN ('pendiente', 'inconclusa')`).get(userId);
             const no_cumplidas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'no_cumplida'`).get(userId);
 
             const hoy = new Date().toISOString().split('T')[0];
@@ -949,7 +963,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 SELECT asignador.dependencia as area,
                     COUNT(*) as total,
                     COUNT(CASE WHEN ase.estado = 'completada' THEN 1 END) as completadas,
-                    COUNT(CASE WHEN ase.estado = 'pendiente' THEN 1 END) as pendientes,
+                    COUNT(CASE WHEN ase.estado IN ('pendiente', 'inconclusa') THEN 1 END) as pendientes,
                     COUNT(CASE WHEN ase.estado = 'no_cumplida' THEN 1 END) as no_cumplidas
                 FROM asignaciones ase
                 INNER JOIN actividades a ON ase.actividad_id = a.id
@@ -1253,6 +1267,7 @@ app.get('/api/export/asignaciones', async (req, res) => {
         const rows = await db.prepare(`
             SELECT ase.estado,
                    a.titulo as actividad,
+                   a.fecha_inicio,
                    a.fecha_limite,
                    a.descripcion,
                    ta.nombre as tipo,
@@ -1286,6 +1301,7 @@ app.get('/api/export/asignaciones', async (req, res) => {
             { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie_nombre', width: 42 },
             { header: 'ACTIVIDAD', key: 'actividad', width: 38 },
             { header: 'TIPO', key: 'tipo', width: 16 },
+            { header: 'FECHA INICIO', key: 'fecha_inicio', width: 16 },
             { header: 'FECHA LÍMITE', key: 'fecha_limite', width: 16 },
             { header: 'ESTADO', key: 'estado', width: 16 },
             { header: 'DIRECTOR', key: 'director', width: 32 },
@@ -1320,6 +1336,7 @@ app.get('/api/export/asignaciones', async (req, res) => {
         const estadoStyles = {
             completada: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }, font: { color: { argb: 'FF2E7D32' }, bold: true } },
             pendiente: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E0' } }, font: { color: { argb: 'FFE65100' }, bold: true } },
+            inconclusa: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE0B2' } }, font: { color: { argb: 'FFF57C00' }, bold: true } },
             no_cumplida: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }, font: { color: { argb: 'FFC62828' }, bold: true } }
         };
         const dataStyle = {
@@ -1338,6 +1355,7 @@ app.get('/api/export/asignaciones', async (req, res) => {
             row.height = 24;
             const vals = [
                 i + 1, r.ie_codigo, r.ie_nombre, r.actividad, r.tipo,
+                r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-PE') : '',
                 r.fecha_limite ? new Date(r.fecha_limite).toLocaleDateString('es-PE') : '',
                 r.estado, r.director, r.director_dni, r.director_telefono,
                 r.asignador, r.area, r.descripcion
@@ -1348,7 +1366,7 @@ app.get('/api/export/asignaciones', async (req, res) => {
                 Object.assign(cell, dataStyle);
             });
             // Color por estado
-            const estadoCell = row.getCell(7);
+            const estadoCell = row.getCell(8);
             if (estadoStyles[r.estado]) {
                 Object.assign(estadoCell, estadoStyles[r.estado]);
             }
