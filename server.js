@@ -573,13 +573,13 @@ app.get('/api/ies/:id', async (req, res) => {
 
 app.post('/api/ies', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
+        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria } = req.body;
         if (!codigo || !nombre) {
             return res.status(400).json({ error: 'Código y nombre son requeridos' });
         }
         const result = await db.prepare(
-            'INSERT INTO instituciones_educativas (codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, activa) VALUES (?, ?, ?, ?, ?, ?, ?, true)'
-        ).run(codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null);
+            'INSERT INTO instituciones_educativas (codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria, activa) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)'
+        ).run(codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null, cm_inicial || null, cm_primaria || null, cm_secundaria || null);
         res.json({ ok: true, id: result.lastInsertRowid });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -588,10 +588,10 @@ app.post('/api/ies', authAdmin, async (req, res) => {
 
 app.put('/api/ies/:id', authAdmin, async (req, res) => {
     try {
-        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros } = req.body;
+        const { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial, cm_primaria, cm_secundaria } = req.body;
         await db.prepare(
-            'UPDATE instituciones_educativas SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=? WHERE id=?'
-        ).run(codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, req.params.id);
+            'UPDATE instituciones_educativas SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=?, cm_inicial=?, cm_primaria=?, cm_secundaria=? WHERE id=?'
+        ).run(codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, cm_inicial || null, cm_primaria || null, cm_secundaria || null, req.params.id);
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

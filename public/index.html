@@ -4201,7 +4201,7 @@ async function abrirModalIE(ieId = null) {
   const body = `
     <form id="ie-form" onsubmit="event.preventDefault()">
       <div class="mb-3">
-        <label class="form-label">Código Modular *</label>
+        <label class="form-label">Código Local *</label>
         <input type="text" class="form-control" id="form-ie-codigo" value="${ie.codigo}" required ${ieId ? 'readonly' : ''}>
       </div>
       <div class="mb-3">
@@ -4209,12 +4209,23 @@ async function abrirModalIE(ieId = null) {
         <input type="text" class="form-control" id="form-ie-nombre" value="${ie.nombre}" required>
       </div>
       <div class="mb-3">
-        <label class="form-label">Niveles Educativos</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <label><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''}> Inicial</label>
-          <label><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''}> Primaria</label>
-          <label><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''}> Secundaria</label>
-          <label><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
+        <label class="form-label">Niveles Educativos y Códigos Modulares</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div>
+            <label><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-inicial" placeholder="Cód. Modular" value="${ie.cm_inicial || ''}" style="display: ${ie.tiene_inicial ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-primaria').style.display = this.checked ? 'block' : 'none'"> Primaria</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-primaria" placeholder="Cód. Modular" value="${ie.cm_primaria || ''}" style="display: ${ie.tiene_primaria ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-secundaria').style.display = this.checked ? 'block' : 'none'"> Secundaria</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-secundaria" placeholder="Cód. Modular" value="${ie.cm_secundaria || ''}" style="display: ${ie.tiene_secundaria ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
+          </div>
         </div>
       </div>
       <div class="mb-3" id="form-ie-tipo-otros-group" style="display: ${ie.tiene_otros ? 'block' : 'none'};">
@@ -4241,12 +4252,19 @@ async function guardarIE(ieId = null) {
   const tiene_otros = document.getElementById('form-ie-otros').checked;
   const tipo_otros = document.getElementById('form-ie-tipo-otros').value.trim();
   
+  const cm_inicial = document.getElementById('form-ie-cm-inicial').value.trim();
+  const cm_primaria = document.getElementById('form-ie-cm-primaria').value.trim();
+  const cm_secundaria = document.getElementById('form-ie-cm-secundaria').value.trim();
+  
   if (!codigo || !nombre) {
     showToast('Código y Nombre son obligatorios', 'error');
     return;
   }
   
-  const body = { codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros };
+  const body = { 
+    codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
+    cm_inicial, cm_primaria, cm_secundaria
+  };
   
   try {
     const url = ieId ? '/api/ies/' + ieId : '/api/ies';
