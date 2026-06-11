@@ -410,55 +410,71 @@ body.director-mode {
 }
 body.director-mode #app-shell {
   display: block;
-}.dir-layout{min-height:100vh;background:#f0f2f5}
-.dir-header{background:transparent;padding:24px 28px 12px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none}
+.dir-header{background:transparent;padding:20px 28px 8px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none}
 .dir-header .dh-left{display:flex;align-items:center;gap:12px}
-.dir-header h1{font-size:1.6rem;font-weight:800;color:var(--granate);letter-spacing:.5px;text-align:center;margin:0;flex:1}
+.dir-header h1{font-size:1.5rem;font-weight:800;color:var(--granate);letter-spacing:.5px;text-align:center;margin:0;flex:1}
 .dir-header .dh-right{display:flex;align-items:center;flex-shrink:0}
 
 .dir-body{padding:12px 28px 28px}
-.dir-top-row{display:flex;gap:18px;margin-bottom:20px}
+.dir-top-row{display:flex;gap:18px;margin-bottom:16px}
 .dir-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1}
-.dir-kpi{background:#fff;border:1px solid #dde0e3;padding:20px 20px 0;display:flex;flex-direction:column;justify-content:space-between;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-.dir-kpi .kpi-label{font-size:.75rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px}
-.dir-kpi .kpi-number{font-size:2.4rem;font-weight:800;margin-bottom:12px;line-height:1}
-.dir-kpi .kpi-line{height:4px;margin:0 -20px;flex-shrink:0}
+.dir-kpi{padding:16px 16px 0;display:flex;flex-direction:column;justify-content:space-between;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.02);border-radius:12px;border:2px solid transparent !important;}
+.dir-kpi .kpi-label{font-size:.75rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.dir-kpi .kpi-number{font-size:2.2rem;font-weight:800;margin-bottom:8px;line-height:1}
+.dir-kpi .kpi-line{height:4px;margin:0 -16px;flex-shrink:0}
 .dir-kpi .kpi-line.blue-line{background:#1e3a8a}
 .dir-kpi .kpi-line.yellow-line{background:#d97706}
 .dir-kpi .kpi-line.green-line{background:#059669}
 .dir-kpi .kpi-line.red-line{background:#dc2626}
+
+.dir-kpi.total { background: #eff6ff !important; border-color: #bfdbfe !important; }
 .dir-kpi.total .kpi-label, .dir-kpi.total .kpi-number { color: #1e3a8a; }
+
+.dir-kpi.pendientes { background: #fffbeb !important; border-color: #fef3c7 !important; }
 .dir-kpi.pendientes .kpi-label, .dir-kpi.pendientes .kpi-number { color: #d97706; }
+
+.dir-kpi.cumplidas { background: #ecfdf5 !important; border-color: #a7f3d0 !important; }
 .dir-kpi.cumplidas .kpi-label, .dir-kpi.cumplidas .kpi-number { color: #059669; }
+
+.dir-kpi.vencidas { background: #fef2f2 !important; border-color: #fecaca !important; }
 .dir-kpi.vencidas .kpi-label, .dir-kpi.vencidas .kpi-number { color: #dc2626; }
 
-.dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:16px;width:300px;flex-shrink:0;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-.dir-chart-box h3{font-size:.75rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:12px;text-align:left;text-transform:uppercase}
-.dir-chart-wrap{position:relative;flex:1;width:100%;min-height:160px}
+.dir-chart-box{background:#fff;border:1px solid #dde0e3;padding:12px 16px;width:280px;flex-shrink:0;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,0.02);border-radius:12px;}
+.dir-chart-box h3{font-size:.72rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:8px;text-align:left;text-transform:uppercase}
+.dir-chart-wrap{position:relative;flex:1;width:100%;min-height:130px}
 .dir-chart-wrap canvas{position:absolute;top:0;left:0;width:100%!important;height:100%!important}
 
 .dir-bottom-row{display:flex;gap:18px}
-.dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:20px 16px;width:240px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;flex-direction:column;align-items:center}
-.dir-filter-panel h3{font-size:.8rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:16px;text-transform:uppercase;text-align:center;width:100%}
-.dir-filter-panel label{font-size:.78rem;color:var(--granate);font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:8px;text-align:center;width:100%}
-.dir-filter-panel label i{font-size:.85rem;color:var(--granate)}
-.dir-filter-panel input{width:100%;padding:10px 16px;border:1.5px solid #dde0e3;border-radius:20px;font-size:.85rem;font-weight:700;font-family:inherit;outline:none;background:#fcfcfc;margin-bottom:14px;text-align:center;color:#555}
+.dir-filter-panel{background:#f4f5f6;border:1px solid #dde0e3;padding:16px 12px;width:220px;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;flex-direction:column;align-items:center;border-radius:12px;}
+.dir-filter-panel h3{font-size:.75rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase;text-align:center;width:100%}
+.dir-filter-panel label{font-size:.75rem;color:var(--granate);font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;text-align:center;width:100%}
+.dir-filter-panel label i{font-size:.8rem;color:var(--granate)}
+.dir-filter-panel input{width:100%;padding:8px 12px;border:1.5px solid #dde0e3;border-radius:20px;font-size:.82rem;font-weight:700;font-family:inherit;outline:none;background:#fcfcfc;margin-bottom:10px;text-align:center;color:#555}
 .dir-filter-panel input:focus{border-color:var(--granate);background:#fff}
-.dir-filter-panel .dir-ie-name{font-size:.85rem;font-weight:800;color:#444;display:block;text-align:center;line-height:1.3;margin-top:4px}
+.dir-filter-panel .dir-ie-name{font-size:.8rem;font-weight:800;color:#444;display:block;text-align:center;line-height:1.3;margin-top:2px}
 
-.dir-table-section{flex:1;background:#fff;border:1px solid #dde0e3;padding:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+.dir-table-section{flex:1;background:#fff;border:1px solid #dde0e3;padding:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.02);border-radius:12px;}
 .dir-table-section h3{font-size:.75rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase}
 .dir-table-wrap{overflow-x:auto}
 .dir-table-section table{width:100%;border-collapse:collapse}
-.dir-table-section th{font-size:.72rem;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.3px;padding:12px 16px;text-align:left;background:#f3f4f6;border-bottom:1.5px solid #dde0e3}
-.dir-table-section td{padding:12px 16px;font-size:.82rem;font-weight:500;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.dir-table-section th{font-size:.7rem;font-weight:800;color:#4b5563;text-transform:uppercase;letter-spacing:.3px;padding:10px 14px;text-align:left;background:#f3f4f6;border-bottom:1.5px solid #dde0e3}
+.dir-table-section td{padding:10px 14px;font-size:.82rem;font-weight:500;color:#374151;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+.dir-table-section tr{border-left:4px solid transparent;transition:background-color 0.15s ease, border-left-color 0.15s ease;}
 .dir-table-section tr:last-child td{border-bottom:none}
-.dir-badge{display:inline-block;padding:6px 16px;border-radius:20px;font-size:.72rem;font-weight:700;color:#fff;letter-spacing:.2px;text-align:center;min-width:90px}
+.dir-table-section tr.row-vencida { background-color: #fef2f2 !important; border-left-color: #ef4444 !important; }
+.dir-table-section tr.row-pendiente { background-color: #fffbeb !important; border-left-color: #f59e0b !important; }
+.dir-table-section tr.row-cumplida { background-color: #f0fdf4 !important; border-left-color: #10b981 !important; }
+
+.dir-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.7rem;font-weight:700;color:#fff;letter-spacing:.2px;text-align:center;min-width:85px}
 .dir-badge.red{background:#dc2626}
 .dir-badge.yellow{background:#d97706}
 .dir-badge.green{background:#059669}
 .dir-badge.orange{background:#ea580c}
 .dir-table-section .dir-empty{text-align:center;padding:32px;color:#999;font-size:.85rem;font-weight:500}
+
+/* Mini Calendar */
+.calendar-day{transition:transform 0.15s ease, box-shadow 0.15s ease;}
+.calendar-day:not(.empty)[onclick]:hover{transform:scale(1.15);box-shadow:0 4px 6px rgba(0,0,0,0.1);z-index:2;cursor:pointer;}
 
 @media(max-width:1100px){
   .dir-top-row{flex-direction:column}
@@ -466,7 +482,7 @@ body.director-mode #app-shell {
   .dir-bottom-row{flex-direction:column}
   .dir-filter-panel{width:100%}
 }
-@media(max-width:700px){
+@media(max-width:768px){
   .dir-kpis{grid-template-columns:repeat(2,1fr)}
   .dir-header{flex-direction:column;text-align:center;padding:16px;gap:12px}
   .dir-header h1{font-size:.9rem;width:100%;order:1;margin-top:0}
@@ -475,7 +491,48 @@ body.director-mode #app-shell {
   .dir-body{padding:12px 16px}
   .dir-kpi{padding:12px}
   .dir-kpi .kpi-number{font-size:1.8rem}
-  .dir-table-section th,.dir-table-section td{padding:8px 10px;font-size:.75rem}
+  
+  .dir-table-section table, 
+  .dir-table-section thead, 
+  .dir-table-section tbody, 
+  .dir-table-section th, 
+  .dir-table-section td, 
+  .dir-table-section tr { 
+    display: block; 
+  }
+  .dir-table-section thead tr { 
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  .dir-table-section tr { 
+    border: 1px solid #dde0e3;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  .dir-table-section td { 
+    border: none;
+    border-bottom: 1px solid #f1f5f9; 
+    position: relative;
+    padding: 6px 0 !important;
+    font-size: 0.82rem !important;
+    text-align: left;
+  }
+  .dir-table-section td:last-child {
+    border-bottom: 0;
+  }
+  .dir-table-section td::before { 
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--slate-600);
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }}
 }
 .autocomplete-item:hover {
   background: var(--granate-light) !important;
@@ -595,12 +652,15 @@ body.director-mode #app-shell {
       <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
       <div class="view-section active" id="view-director-main">
         <div class="dir-layout">
-          <div class="dir-header" style="background:transparent;padding:24px 28px 12px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none">
+          <div class="dir-header" style="background:transparent;padding:20px 28px 8px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none">
             <div class="dh-left" style="display:flex;align-items:center;gap:12px">
               <img src="logo.png" alt="UGEL" style="height:76px;width:auto;object-fit:contain">
               <div style="font-weight:800;font-size:1.1rem;color:var(--granate);line-height:1.1;letter-spacing:0.5px">UGEL<br>BELLAVISTA</div>
             </div>
-            <h1 style="font-size:1.6rem;font-weight:800;color:var(--granate);letter-spacing:0.5px;text-align:center;margin:0;flex:1">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
+            <div style="text-align:center;flex:1">
+              <h1 style="font-size:1.5rem;font-weight:800;color:var(--granate);letter-spacing:0.5px;margin:0">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
+              <div style="font-size:0.95rem;font-weight:600;color:var(--text2);margin-top:2px;">¡Bienvenido, Director(a)!</div>
+            </div>
             <div class="dh-right" style="display:flex;align-items:center;gap:10px" id="dir-auth-buttons">
               <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:var(--granate);color:var(--granate);font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
@@ -642,13 +702,27 @@ body.director-mode #app-shell {
                 <div id="dir-search-autocomplete" style="display:none;position:absolute;top:110px;left:16px;right:16px;background:#fff;border:1px solid #dde0e3;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-height:220px;overflow-y:auto;text-align:left"></div>
                 <strong class="dir-ie-name" id="dir-filter-iename">Seleccione una IE</strong>
               </div>
-              <div class="dir-table-section">
-                <h3>LISTADO DE ACTIVIDADES ASIGNADAS</h3>
-                <div class="dir-table-wrap">
-                  <table>
-                    <thead><tr><th>ACTIVIDAD</th><th>FECHA LÍMITE</th><th>ESTADO</th><th>RESPONSABLE</th><th>TELÉFONO</th></tr></thead>
-                    <tbody id="director-actividades-table"></tbody>
-                  </table>
+              <div class="dir-table-section" style="display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                  <h3 id="dir-table-title" style="font-size:.75rem;font-weight:800;color:var(--granate);letter-spacing:.5px;text-transform:uppercase;margin:0;">LISTADO DE ACTIVIDADES ASIGNADAS</h3>
+                  <div id="dir-export-container" style="display:none;">
+                    <button class="btn btn-outline btn-sm" id="btn-export-director" style="border-color:#059669; color:#059669; border-radius:20px; padding:4px 12px; display:inline-flex; align-items:center; gap:6px; background:#fff; font-weight:700; transition:all 0.15s">
+                      <i class="fas fa-file-excel"></i> Exportar Reporte
+                    </button>
+                  </div>
+                </div>
+                
+                <div id="dir-table-content-area">
+                  <div class="dir-table-wrap" style="max-height: calc(100vh - 380px); overflow-y: auto;">
+                    <table>
+                      <thead><tr><th>ACTIVIDAD</th><th>FECHA LÍMITE</th><th>ESTADO</th><th>RESPONSABLE</th><th>TELÉFONO</th></tr></thead>
+                      <tbody id="director-actividades-table"></tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div id="dir-empty-state-area" style="display:none; padding:30px 10px; background:#fff; border-radius:12px;">
+                  <!-- Rendered dynamically via JS -->
                 </div>
               </div>
             </div>
@@ -1682,6 +1756,125 @@ function setDirectorFilter(filterType) {
   renderDirectorActividadesTable();
 }
 
+function renderMiniCalendar(containerId, activities) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const numDays = new Date(year, month + 1, 0).getDate();
+
+  const activityDates = {};
+  activities.forEach(a => {
+    if (a.fecha_limite) {
+      const dateStr = a.fecha_limite.split('T')[0];
+      if (!activityDates[dateStr]) {
+        activityDates[dateStr] = [];
+      }
+      activityDates[dateStr].push(a);
+    }
+  });
+
+  let html = `
+    <div class="mini-calendar" style="width: 100%; max-width: 300px; background: #fff; border: 1px solid #dde0e3; border-radius: 12px; padding: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div class="calendar-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <span style="font-weight:800; font-size:0.78rem; color:var(--granate); text-transform:uppercase;">${monthNames[month]} ${year}</span>
+        <span style="font-size:0.68rem; font-weight:700; color:var(--text2);">Vencimientos</span>
+      </div>
+      <div class="calendar-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:4px; text-align:center; font-size:0.7rem; font-weight:700; line-height: 1;">
+        <div style="color:var(--text3); padding: 4px 0;">D</div>
+        <div style="color:var(--text3); padding: 4px 0;">L</div>
+        <div style="color:var(--text3); padding: 4px 0;">M</div>
+        <div style="color:var(--text3); padding: 4px 0;">M</div>
+        <div style="color:var(--text3); padding: 4px 0;">J</div>
+        <div style="color:var(--text3); padding: 4px 0;">V</div>
+        <div style="color:var(--text3); padding: 4px 0;">S</div>
+  `;
+
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="calendar-day empty" style="height:24px;"></div>`;
+  }
+
+  const todayStr = now.toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
+  for (let day = 1; day <= numDays; day++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const hasActivities = activityDates[dateStr] && activityDates[dateStr].length > 0;
+    
+    let dayStyle = `display:flex; align-items:center; justify-content:center; height:24px; width:24px; margin:2px auto; border-radius:50%; position:relative; font-size:0.72rem;`;
+    let tooltipTitle = "";
+
+    if (hasActivities) {
+      const activeActs = activityDates[dateStr];
+      const hasVencida = activeActs.some(a => a.estado === 'no_cumplida' || ((a.estado === 'pendiente' || a.estado === 'inconclusa') && a.fecha_limite < todayStr));
+      const hasCumplida = activeActs.every(a => a.estado === 'completada');
+      
+      if (hasVencida) {
+        dayStyle += `background:#fee2e2; color:#dc2626; font-weight:800; cursor:pointer;`;
+      } else if (hasCumplida) {
+        dayStyle += `background:#d1fae5; color:#059669; font-weight:800; cursor:pointer;`;
+      } else {
+        dayStyle += `background:#fef3c7; color:#d97706; font-weight:800; cursor:pointer;`;
+      }
+
+      tooltipTitle = activeActs.map(a => `${a.estado === 'completada' ? '✓' : '•'} ${a.actividad_titulo || a.titulo}`).join('\\n');
+    } else {
+      dayStyle += `color:var(--text);`;
+    }
+
+    if (dateStr === todayStr) {
+      dayStyle += `border: 1.5px solid var(--granate); font-weight:800;`;
+    }
+
+    html += `
+      <div class="calendar-day" style="${dayStyle}" ${hasActivities ? `title="${tooltipTitle}" onclick="showCalendarDateActivities('${dateStr}')"` : ''}>
+        ${day}
+      </div>
+    `;
+  }
+
+  html += `
+      </div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+}
+
+function showCalendarDateActivities(dateStr) {
+  const acts = currentDirectorRows.filter(a => a.fecha_limite && a.fecha_limite.split('T')[0] === dateStr);
+  if (acts.length === 1) {
+    mostrarDetalleActividad(acts[0].id);
+  } else if (acts.length > 1) {
+    let html = '<div style="display:flex; flex-direction:column; gap:10px; font-family:\'Inter\',sans-serif;">';
+    acts.forEach(a => {
+      let icon = a.estado === 'completada' ? 'fa-check-circle text-success' : 'fa-clock text-warning';
+      html += `
+        <div onclick="closeModal(); mostrarDetalleActividad(${a.id})" style="padding:10px; border:1px solid #dde0e3; border-radius:8px; cursor:pointer; background:#f9fafb; display:flex; align-items:center; gap:10px; transition:background 0.15s;">
+          <i class="fas ${icon}" style="font-size: 1.1rem;"></i>
+          <div style="flex:1; text-align:left;">
+            <strong style="font-size:0.82rem; color:var(--text);">${a.actividad_titulo || a.titulo}</strong>
+            <div style="font-size:0.72rem; color:var(--text2);">${a.tipo_nombre || a.tipo || ''}</div>
+          </div>
+        </div>
+      `;
+    });
+    html += '</div>';
+    abrirModalHtml('Actividades para el ' + formatFechaMock(dateStr), html);
+  }
+}
+
+function abrirModalHtml(titulo, htmlContent) {
+  document.getElementById('modal-title').textContent = titulo;
+  document.getElementById('modal-body').innerHTML = htmlContent;
+  document.getElementById('modal-footer').innerHTML = '<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
 function renderDirectorActividadesTable() {
   const hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
   const rows = currentDirectorRows;
@@ -1697,7 +1890,7 @@ function renderDirectorActividadesTable() {
     filteredItems = rows;
   }
 
-  var titleEl = document.querySelector('.dir-table-section h3');
+  var titleEl = document.getElementById('dir-table-title');
   if (titleEl) {
     var filterText = 'ACTIVIDADES ASIGNADAS';
     if (currentDirectorFilter === 'pendiente') filterText = 'ACTIVIDADES PENDIENTES';
@@ -1707,11 +1900,55 @@ function renderDirectorActividadesTable() {
   }
 
   const tableBody = document.getElementById('director-actividades-table');
-  if (!tableBody) return;
+  const tableArea = document.getElementById('dir-table-content-area');
+  const emptyArea = document.getElementById('dir-empty-state-area');
+  const exportContainer = document.getElementById('dir-export-container');
+
+  if (!tableBody || !tableArea || !emptyArea) return;
 
   if (filteredItems.length === 0) {
-    tableBody.innerHTML = '<tr><td class="dir-empty" colspan="5">No se encontraron actividades</td></tr>';
+    tableArea.style.display = 'none';
+    if (exportContainer) exportContainer.style.display = 'none';
+    emptyArea.style.display = 'block';
+
+    const pendingCount = rows.filter(r => (r.estado === 'pendiente' || r.estado === 'inconclusa') && !(r.fecha_limite && r.fecha_limite < hoy)).length;
+    
+    if (pendingCount === 0 && (currentDirectorFilter === 'pendiente' || currentDirectorFilter === 'all')) {
+      emptyArea.innerHTML = `
+        <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap; width:100%;">
+          <div style="flex:1; min-width:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+            <div style="width: 72px; height: 72px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 16px; box-shadow: 0 8px 16px rgba(5,150,105,0.08);">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">¡Al día con todo!</h4>
+            <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">¡Felicidades! Estás al día con tus actividades pendientes.</p>
+          </div>
+          <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
+        </div>
+      `;
+      renderMiniCalendar('dir-mini-calendar-container', rows);
+    } else {
+      emptyArea.innerHTML = `
+        <div style="text-align:center; padding:30px 10px; color:var(--text3);">
+          <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 12px; color: var(--slate-300);"></i>
+          <p style="margin:0; font-size: 0.85rem; font-weight: 500;">No se encontraron actividades en esta categoría.</p>
+        </div>
+      `;
+    }
     return;
+  }
+
+  tableArea.style.display = 'block';
+  emptyArea.style.display = 'none';
+  if (exportContainer) {
+    exportContainer.style.display = 'block';
+    const btnExport = document.getElementById('btn-export-director');
+    if (btnExport) {
+      btnExport.onclick = () => {
+        const codigo = document.getElementById('dir-filter-codigo').value;
+        descargarExcel('/api/export/asignaciones?buscar=' + encodeURIComponent(codigo) + (currentDirectorFilter !== 'all' ? '&estado=' + (currentDirectorFilter === 'pendiente' ? 'pendiente' : currentDirectorFilter === 'completada' ? 'completada' : 'no_cumplida') : ''));
+      };
+    }
   }
 
   var html = filteredItems.map(a => {
@@ -1733,24 +1970,24 @@ function renderDirectorActividadesTable() {
       }
     }
 
-    var badgeClass = 'green', badgeText = 'Cumplido';
+    var badgeClass = 'green', badgeText = 'Cumplido', rowClass = 'row-cumplida';
     if (estado === 'pendiente') { 
       var isOverdue = a.fecha_limite && a.fecha_limite < hoy;
       if (isOverdue) {
-        badgeClass = 'red'; badgeText = 'Vencido';
+        badgeClass = 'red'; badgeText = 'Vencido'; rowClass = 'row-vencida';
       } else {
-        badgeClass = 'yellow'; badgeText = 'Pendiente';
+        badgeClass = 'yellow'; badgeText = 'Pendiente'; rowClass = 'row-pendiente';
       }
     }
     else if (estado === 'no_cumplida') {
-      badgeClass = 'red'; badgeText = 'Vencido';
+      badgeClass = 'red'; badgeText = 'Vencido'; rowClass = 'row-vencida';
     }
     else if (estado === 'inconclusa') {
       var isOverdue = a.fecha_limite && a.fecha_limite < hoy;
       if (isOverdue) {
-        badgeClass = 'red'; badgeText = 'Inconclusa (Vencida)';
+        badgeClass = 'red'; badgeText = 'Inconclusa (Vencida)'; rowClass = 'row-vencida';
       } else {
-        badgeClass = 'orange'; badgeText = 'Inconclusa';
+        badgeClass = 'orange'; badgeText = 'Inconclusa'; rowClass = 'row-pendiente';
       }
     }
 
@@ -1787,12 +2024,12 @@ function renderDirectorActividadesTable() {
 
     var badgeTipoHtml = tipo ? `<div style="margin-top: 4px;"><span class="badge badge-info" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; background-color: #e5e7eb; color: #4b5563;">${tipo}</span></div>` : '';
 
-    return `<tr onclick="mostrarDetalleActividad(${a.id})">
-      <td><strong>${titulo}</strong>${badgeTipoHtml}</td>
-      <td>${fechaDisplay}</td>
-      <td><span class="dir-badge ${badgeClass}">${badgeText}</span></td>
-      <td>${resp}</td>
-      <td>${waLink}</td>
+    return `<tr class="${rowClass}" onclick="mostrarDetalleActividad(${a.id})">
+      <td data-label="Actividad"><strong>${titulo}</strong>${badgeTipoHtml}</td>
+      <td data-label="Fecha Límite">${fechaDisplay}</td>
+      <td data-label="Estado"><span class="dir-badge ${badgeClass}">${badgeText}</span></td>
+      <td data-label="Responsable">${resp}</td>
+      <td data-label="Teléfono">${waLink}</td>
     </tr>`;
   }).join('');
 
