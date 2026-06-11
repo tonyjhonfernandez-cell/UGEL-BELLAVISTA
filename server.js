@@ -668,6 +668,9 @@ app.post('/api/ies', authAdmin, async (req, res) => {
         res.json({ ok: true, id: newIeId });
     } catch (err) {
         console.error('Error al crear IE:', err);
+        if (err.code === '23505') {
+            return res.status(400).json({ error: `El código "${req.body.codigo}" ya existe. Use un código diferente.` });
+        }
         res.status(500).json({ error: err.message });
     }
 });
