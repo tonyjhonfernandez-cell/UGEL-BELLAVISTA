@@ -899,6 +899,7 @@ body.director-mode #app-shell {
   flex-direction: column;
   justify-content: space-between;
   min-height: 120px;
+  cursor: pointer;
 }
 .dir-card-item:hover {
   transform: translateY(-4px);
@@ -2284,16 +2285,16 @@ function renderDirectorActividadesTable() {
       const desc   = a.actividad_descripcion || a.descripcion || '';
       
       const contactBtn = resp ? `
-        <button class="dir-card-contact-btn" onclick="contactarSupervisor(${a.id}, '${resp.replace(/'/g, "\\'")}')">
+        <button class="dir-card-contact-btn" onclick="event.stopPropagation(); contactarSupervisor(${a.id}, '${resp.replace(/'/g, "\\'")}')">
           <i class="far fa-paper-plane"></i> Contactar
         </button>
       ` : '';
 
       return `
-        <div class="dir-card-item">
+        <div class="dir-card-item" onclick="mostrarDetalleActividad(${a.id})">
           <div class="dir-card-body">
-            ${tipo ? `<span class="dir-card-tag">${tipo}</span>` : ''}
             <h4 class="dir-card-title">${titulo}</h4>
+            ${tipo ? `<span class="dir-card-tag" style="margin-top: 2px; margin-bottom: 8px;">${tipo}</span>` : ''}
             ${desc ? `<p class="dir-card-desc" title="${desc.replace(/"/g, '&quot;')}">${desc}</p>` : ''}
           </div>
           <div class="dir-card-footer">
@@ -2353,6 +2354,106 @@ function renderDirectorActividadesTable() {
       <div class="dir-act-col-body">${buildItems(vencidas,'fa-exclamation-circle','Sin actividades vencidas')}</div>
     </div>
   `;
+}
+
+function mostrarDetalleActividad(id) {
+  var row = currentDirectorRows.find(function(r) { return r.id === id; });
+  if (!row) return;
+
+  var titulo = row.actividad_titulo || row.titulo || 'Sin título';
+  var fecha = row.fecha_limite ? formatFechaMock(row.fecha_limite) : 'Sin fecha';
+  var hora = row.hora_limite || '23:59';
+  var tipo = row.tipo_nombre || row.tipo || 'Sin tipo';
+  var resp = row.asignador_nombre || '';
+  var area = row.area || '';
+  var subarea = row.subarea || '';
+  var telefono = row.asignador_telefono || '';
+  var desc = row.actividad_descripcion || row.descripcion || 'Sin descripción';
+  var estado = row.estado || 'pendiente';
+  var notas = row.notas_supervisor || '';
+  var completadoFecha = row.fecha_completado || '';
+
+  var stateBadge = '';
+  if (estado === 'completada') {
+    stateBadge = '<span class="badge badge-completada" style="background-color:#059669; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.65rem;">CUMPLIDA</span>';
+  } else if (estado === 'no_cumplida') {
+    stateBadge = '<span class="badge badge-no_cumplida" style="background-color:#dc2626; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.65rem;">VENCIDA</span>';
+  } else {
+    var hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
+    if (row.fecha_limite && row.fecha_limite < hoy) {
+      stateBadge = '<span class="badge badge-no_cumplida" style="background-color:#dc2626; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.65rem;">VENCIDA</span>';
+    } else {
+      stateBadge = '<span class="badge badge-pendiente" style="background-color:#d97706; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; font-size:0.65rem;">PENDIENTE</span>';
+    }
+  }
+
+  var contactBtn = resp ? `
+    <button class="btn btn-primary" onclick="event.stopPropagation(); closeModal(); contactarSupervisor(${row.id}, '${resp.replace(/'/g, "\\'")}')">
+      <i class="far fa-paper-plane"></i> Contactar
+    </button>
+  ` : '';
+
+  var bodyHtml = `
+    <div style="font-family:'Inter',sans-serif; color:#1f2937;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+        <span class="badge badge-info" style="font-size:0.65rem; text-transform:uppercase; font-weight:700; padding:4px 10px; border-radius:6px;">${tipo}</span>
+        ${stateBadge}
+      </div>
+      <h3 style="font-size:1.15rem; font-weight:800; color:#111827; margin:0 0 12px 0; text-transform:uppercase; border-bottom:2px solid #e5e7eb; padding-bottom:8px; line-height:1.4;">${titulo}</h3>
+      
+      <div style="margin-bottom:16px;">
+        <h5 style="font-size:0.75rem; font-weight:700; color:#4b5563; margin:0 0 6px 0; text-transform:uppercase; letter-spacing:0.5px;">Descripción</h5>
+        <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; font-size:0.85rem; color:#374151; line-height:1.5; white-space:pre-wrap; word-break:break-word;">${desc}</div>
+      </div>
+      
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px; background:#f3f4f6; border-radius:12px; padding:12px;">
+        <div>
+          <div style="font-size:0.65rem; font-weight:700; color:#6b7280; text-transform:uppercase;">Fecha Límite</div>
+          <div style="font-size:0.8rem; font-weight:600; color:#1f2937; margin-top:2px;"><i class="far fa-calendar-alt" style="margin-right:4px;"></i> ${fecha}</div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem; font-weight:700; color:#6b7280; text-transform:uppercase;">Hora Límite</div>
+          <div style="font-size:0.8rem; font-weight:600; color:#1f2937; margin-top:2px;"><i class="far fa-clock" style="margin-right:4px;"></i> ${hora}</div>
+        </div>
+        <div>
+          <div style="font-size:0.65rem; font-weight:700; color:#6b7280; text-transform:uppercase;">Asignador / Área</div>
+          <div style="font-size:0.8rem; font-weight:600; color:#1f2937; margin-top:2px;">
+            <i class="far fa-user" style="margin-right:4px;"></i> ${resp || '-'}
+            ${area ? `<div style="font-size:0.7rem; color:#6b7280; margin-left:14px; font-weight:normal;">${area} ${subarea ? `(${subarea})` : ''}</div>` : ''}
+          </div>
+        </div>
+        ${telefono ? `
+        <div>
+          <div style="font-size:0.65rem; font-weight:700; color:#6b7280; text-transform:uppercase;">Contacto Asignador</div>
+          <div style="font-size:0.8rem; font-weight:600; color:#1f2937; margin-top:2px;"><i class="fas fa-phone-alt" style="margin-right:4px; color:#059669;"></i> ${telefono}</div>
+        </div>
+        ` : ''}
+      </div>
+
+      ${completadoFecha ? `
+      <div style="margin-bottom:16px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:12px; padding:12px;">
+        <div style="font-size:0.65rem; font-weight:700; color:#047857; text-transform:uppercase;">Fecha de Completado</div>
+        <div style="font-size:0.8rem; font-weight:600; color:#065f46; margin-top:2px;">
+          <i class="fas fa-calendar-check" style="margin-right:4px;"></i> ${new Date(completadoFecha).toLocaleString('es-PE')}
+        </div>
+      </div>
+      ` : ''}
+
+      ${notas ? `
+      <div style="margin-bottom:16px; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; padding:12px;">
+        <div style="font-size:0.65rem; font-weight:700; color:#b45309; text-transform:uppercase;">Notas del Supervisor</div>
+        <div style="font-size:0.8rem; color:#78350f; margin-top:4px; font-style:italic;">"${notas}"</div>
+      </div>
+      ` : ''}
+    </div>
+  `;
+
+  var footerHtml = `
+    <button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>
+    ${contactBtn}
+  `;
+
+  showModal(titulo, bodyHtml, footerHtml);
 }
 
 function contactarSupervisor(asignacionId, nombre) {

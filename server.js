@@ -741,7 +741,7 @@ app.get('/api/asignaciones', async (req, res) => {
         if (ie_codigo) {
             // Acceso público para una escuela específica por su código modular
             const asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
@@ -776,7 +776,7 @@ app.get('/api/asignaciones', async (req, res) => {
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        u.nombre_completo as director_nombre,
@@ -792,7 +792,7 @@ app.get('/api/asignaciones', async (req, res) => {
             `).all(...params);
         } else {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
