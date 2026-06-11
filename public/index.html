@@ -799,10 +799,10 @@ body.director-mode #app-shell {
   background: var(--slate-200);
 }
 
-/* 3 Activity Columns */
+/* Activities Responsive Grid */
 .dir-acts-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
 }
 .dir-act-col {
@@ -889,7 +889,7 @@ body.director-mode #app-shell {
   background: #ffffff;
   border: 1px solid var(--slate-200);
   border-radius: 14px;
-  margin: 12px;
+  margin: 0;
   padding: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1230,13 +1230,13 @@ body.director-mode #app-shell {
 
               <!-- Columnas de actividades -->
               <div class="dir-activities-wrap">
-                <div class="dir-acts-section-title">Actividades por estado</div>
+                <div class="dir-acts-section-title">Actividades Asignadas</div>
                 <div class="dir-acts-grid" id="dir-acts-grid">
                   <!-- Estado inicial: sin IE seleccionada -->
                   <div class="dir-no-ie-state">
                     <div class="dir-no-ie-icon"><i class="fas fa-school"></i></div>
                     <h3>Busque su Institución Educativa</h3>
-                    <p>Use el buscador de arriba para encontrar su IE y visualizar las actividades asignadas separadas por estado</p>
+                    <p>Use el buscador de arriba para encontrar su IE y visualizar las actividades asignadas, filtradas por estado desde las tarjetas superiores.</p>
                   </div>
                 </div>
               </div>
@@ -2219,7 +2219,16 @@ async function loadDirectorMain(ieCodigo) {
     document.querySelectorAll('.dir-kpi').forEach(el => {
       el.classList.remove('active-kpi-filter');
     });
-    document.querySelector('.dir-kpi.pendientes')?.classList.add('active-kpi-filter');
+    if (currentDirectorFilter === 'completada') {
+      document.querySelector('.dir-kpi.cumplidas')?.classList.add('active-kpi-filter');
+    } else if (currentDirectorFilter === 'vencida') {
+      document.querySelector('.dir-kpi.vencidas')?.classList.add('active-kpi-filter');
+    } else if (currentDirectorFilter === 'all') {
+      document.querySelector('.dir-kpi.total')?.classList.add('active-kpi-filter');
+    } else {
+      currentDirectorFilter = 'pendiente';
+      document.querySelector('.dir-kpi.pendientes')?.classList.add('active-kpi-filter');
+    }
     
     const cards = [
       { class: 'total', type: 'all' },
@@ -2242,11 +2251,7 @@ async function loadDirectorMain(ieCodigo) {
 }
 
 function setDirectorFilter(filterType) {
-  if (currentDirectorFilter === filterType) {
-    currentDirectorFilter = 'active_tasks';
-  } else {
-    currentDirectorFilter = filterType;
-  }
+  currentDirectorFilter = filterType;
   
   document.querySelectorAll('.dir-kpi').forEach(el => {
     el.classList.remove('active-kpi-filter');
@@ -2269,91 +2274,109 @@ function renderDirectorActividadesTable() {
   const hoy = new Date().toLocaleString('sv', { timeZone: 'America/Lima' }).split(' ')[0];
   const rows = currentDirectorRows;
 
-  const pendientes = rows.filter(r => r.estado === 'pendiente' && !(r.fecha_limite && r.fecha_limite < hoy));
-  const cumplidas  = rows.filter(r => r.estado === 'completada');
-  const vencidas   = rows.filter(r => r.estado === 'no_cumplida' || (r.estado === 'pendiente' && r.fecha_limite && r.fecha_limite < hoy));
+  var filteredItems = [];
+  var filterName = 'Actividades';
+  var emptyIcon = 'fa-clipboard-list';
+  var emptyMsg = 'Sin actividades';
 
-  function buildItems(items, emptyIcon, emptyMsg) {
-    if (!items.length) {
-      return `<div class="dir-act-empty"><i class="fas ${emptyIcon}"></i><span>${emptyMsg}</span></div>`;
-    }
-    return items.map(a => {
-      const titulo = a.actividad_titulo || a.titulo || 'Sin título';
-      const fecha  = a.fecha_limite ? formatFechaMock(a.fecha_limite) : 'Sin fecha';
-      const tipo   = a.tipo_nombre || a.tipo || '';
-      const resp   = a.asignador_nombre || '';
-      const desc   = a.actividad_descripcion || a.descripcion || '';
-      
-      const contactBtn = resp ? `
-        <button class="dir-card-contact-btn" onclick="event.stopPropagation(); contactarSupervisor(${a.id}, '${resp.replace(/'/g, "\\'")}')">
-          <i class="far fa-paper-plane"></i> Contactar
-        </button>
-      ` : '';
+  if (currentDirectorFilter === 'pendiente') {
+    filteredItems = rows.filter(r => r.estado === 'pendiente' && !(r.fecha_limite && r.fecha_limite < hoy));
+    filterName = 'Actividades Pendientes';
+    emptyIcon = 'fa-clock';
+    emptyMsg = 'Sin actividades pendientes';
+  } else if (currentDirectorFilter === 'completada') {
+    filteredItems = rows.filter(r => r.estado === 'completada');
+    filterName = 'Actividades Cumplidas';
+    emptyIcon = 'fa-check-circle';
+    emptyMsg = 'Sin actividades cumplidas';
+  } else if (currentDirectorFilter === 'vencida') {
+    filteredItems = rows.filter(r => r.estado === 'no_cumplida' || (r.estado === 'pendiente' && r.fecha_limite && r.fecha_limite < hoy));
+    filterName = 'Actividades Vencidas';
+    emptyIcon = 'fa-exclamation-circle';
+    emptyMsg = 'Sin actividades vencidas';
+  } else {
+    filteredItems = rows;
+    filterName = 'Todas las Actividades';
+    emptyIcon = 'fa-layer-group';
+    emptyMsg = 'Sin actividades asignadas';
+  }
 
-      return `
-        <div class="dir-card-item" onclick="mostrarDetalleActividad(${a.id})">
-          <div class="dir-card-body">
-            ${tipo ? `<span class="dir-card-tag">${tipo}</span>` : ''}
-            <h4 class="dir-card-title">${titulo}</h4>
-            ${desc ? `<p class="dir-card-desc" title="${desc.replace(/"/g, '&quot;')}">${desc}</p>` : ''}
-          </div>
-          <div class="dir-card-footer">
-            <div class="dir-card-meta">
-              <div class="dir-card-meta-item" title="Fecha límite">
-                <i class="far fa-calendar-alt"></i>
-                <span>${fecha}</span>
-              </div>
-              ${resp ? `
-                <div class="dir-card-meta-item" title="Supervisor responsable">
-                  <i class="far fa-user"></i>
-                  <span>${resp}</span>
-                </div>
-              ` : ''}
-            </div>
-            ${contactBtn}
-          </div>
-        </div>
-      `;
-    }).join('');
+  var titleEl = document.querySelector('.dir-acts-section-title');
+  if (titleEl) {
+    titleEl.textContent = filterName + ' (' + filteredItems.length + ')';
   }
 
   const grid = document.getElementById('dir-acts-grid');
   if (!grid) return;
-  grid.innerHTML = `
-    <div class="dir-act-col col-pendientes">
-      <div class="dir-act-col-hd">
-        <div class="dir-act-col-ico"><i class="fas fa-clock"></i></div>
-        <div class="dir-act-col-info">
-          <strong>Pendientes</strong>
-          <small>Por completar</small>
-        </div>
-        <div class="dir-act-col-cnt">${pendientes.length}</div>
+
+  if (filteredItems.length === 0) {
+    grid.innerHTML = `
+      <div class="dir-no-ie-state" style="grid-column: 1 / -1; width: 100%; box-sizing: border-box;">
+        <div class="dir-no-ie-icon" style="background:#f3f4f6; color:#9ca3af; box-shadow:none;"><i class="fas ${emptyIcon}"></i></div>
+        <h3>${emptyMsg}</h3>
+        <p>No se registran actividades para este filtro en tu institución educativa.</p>
       </div>
-      <div class="dir-act-col-body">${buildItems(pendientes,'fa-clock','Sin actividades pendientes')}</div>
-    </div>
-    <div class="dir-act-col col-cumplidas">
-      <div class="dir-act-col-hd">
-        <div class="dir-act-col-ico"><i class="fas fa-check-circle"></i></div>
-        <div class="dir-act-col-info">
-          <strong>Cumplidas</strong>
-          <small>Completadas a tiempo</small>
+    `;
+    return;
+  }
+
+  var html = filteredItems.map(a => {
+    const titulo = a.actividad_titulo || a.titulo || 'Sin título';
+    const fecha  = a.fecha_limite ? formatFechaMock(a.fecha_limite) : 'Sin fecha';
+    const tipo   = a.tipo_nombre || a.tipo || '';
+    const resp   = a.asignador_nombre || '';
+    const desc   = a.actividad_descripcion || a.descripcion || '';
+    const estado = a.estado || 'pendiente';
+    
+    var borderStyle = '';
+    var estadoNormalizado = estado;
+    if (estado === 'pendiente' && a.fecha_limite && a.fecha_limite < hoy) {
+      estadoNormalizado = 'vencida';
+    } else if (estado === 'no_cumplida') {
+      estadoNormalizado = 'vencida';
+    }
+
+    if (estadoNormalizado === 'completada') {
+      borderStyle = 'border-left: 4px solid #10b981;';
+    } else if (estadoNormalizado === 'vencida') {
+      borderStyle = 'border-left: 4px solid #ef4444;';
+    } else {
+      borderStyle = 'border-left: 4px solid #f59e0b;';
+    }
+
+    const contactBtn = resp ? `
+      <button class="dir-card-contact-btn" onclick="event.stopPropagation(); contactarSupervisor(${a.id}, '${resp.replace(/'/g, "\\'")}')">
+        <i class="far fa-paper-plane"></i> Contactar
+      </button>
+    ` : '';
+
+    return `
+      <div class="dir-card-item" style="${borderStyle}" onclick="mostrarDetalleActividad(${a.id})">
+        <div class="dir-card-body">
+          ${tipo ? `<span class="dir-card-tag">${tipo}</span>` : ''}
+          <h4 class="dir-card-title">${titulo}</h4>
+          ${desc ? `<p class="dir-card-desc" title="${desc.replace(/"/g, '&quot;')}">${desc}</p>` : ''}
         </div>
-        <div class="dir-act-col-cnt">${cumplidas.length}</div>
-      </div>
-      <div class="dir-act-col-body">${buildItems(cumplidas,'fa-check-circle','Sin actividades cumplidas')}</div>
-    </div>
-    <div class="dir-act-col col-vencidas">
-      <div class="dir-act-col-hd">
-        <div class="dir-act-col-ico"><i class="fas fa-exclamation-circle"></i></div>
-        <div class="dir-act-col-info">
-          <strong>Vencidas</strong>
-          <small>Fuera de plazo</small>
+        <div class="dir-card-footer">
+          <div class="dir-card-meta">
+            <div class="dir-card-meta-item" title="Fecha límite">
+              <i class="far fa-calendar-alt"></i>
+              <span>${fecha}</span>
+            </div>
+            ${resp ? `
+              <div class="dir-card-meta-item" title="Supervisor responsable">
+                <i class="far fa-user"></i>
+                <span>${resp}</span>
+              </div>
+            ` : ''}
+          </div>
+          ${contactBtn}
         </div>
-        <div class="dir-act-col-cnt">${vencidas.length}</div>
       </div>
-      <div class="dir-act-col-body">${buildItems(vencidas,'fa-exclamation-circle','Sin actividades vencidas')}</div>
-    </div>
-  `;
+    `;
+  }).join('');
+
+  grid.innerHTML = html;
 }
 
 function mostrarDetalleActividad(id) {
