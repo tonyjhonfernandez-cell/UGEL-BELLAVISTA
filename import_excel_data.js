@@ -8,154 +8,189 @@ const pool = new Pool({
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-function normalizeStr(str) {
-    if (!str) return '';
-    return str.toString()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '');
+function padLocal(val) {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (!s) return '';
+    return s.padStart(6, '0');
+}
+
+function padModular(val) {
+    if (val === undefined || val === null) return '';
+    const s = String(val).trim();
+    if (!s) return '';
+    return s.padStart(7, '0');
 }
 
 async function runImport() {
     try {
-        console.log('Iniciando importación...');
+        console.log('Iniciando importación desde datos.xlsx.xlsx...');
         
-        // 1. IMPORTAR CÓDIGOS MODULARES
-        const codigosPath = path.join(__dirname, 'codigos modulares.xlsx');
-        const cmWorkbook = xlsx.readFile(codigosPath);
+        const excelPath = path.join(__dirname, 'datos.xlsx.xlsx');
+        const workbook = xlsx.readFile(excelPath);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
         
-        const dbIes = await pool.query('SELECT id, nombre, codigo FROM instituciones_educativas');
-        const ieMap = new Map();
-        dbIes.rows.forEach(ie => {
-            ieMap.set(normalizeStr(ie.nombre), ie);
-            // También mapeamos partes numéricas como clave alternativa (ej: "0208" para "0208 SANTIAGO ANTUNEZ...")
-            const match = ie.nombre.match(/^0*(\d+)/);
-            if (match && match[1]) {
-                ieMap.set(match[1], ie);
-            }
-        });
-
-        const niveles = [
-            { sheet: 'inical', col: 'cm_inicial' },
-            { sheet: 'primaria', col: 'cm_primaria' },
-            { sheet: 'secunadaria', col: 'cm_secundaria' }
-        ];
-
-        let cmUpdates = 0;
-
-        for (const nivel of niveles) {
-            if (!cmWorkbook.Sheets[nivel.sheet]) continue;
-            // Para inical y primaria los headers están en index 0, secundaria en index 1
-            const startRow = nivel.sheet === 'secunadaria' ? 2 : 1; 
-            const rows = xlsx.utils.sheet_to_json(cmWorkbook.Sheets[nivel.sheet], { header: 1 });
-            
-            for (let i = startRow; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row || row.length < 9) continue;
-                
-                const codMod = (row[6] || '').toString().trim();
-                const nombreIE = (row[8] || '').toString().trim();
-                
-                if (!codMod || !nombreIE) continue;
-
-                // Intentar match
-                const normName = normalizeStr(nombreIE);
-                let matchedIE = ieMap.get(normName);
-                
-                // Si no coincide, intentar por número si empieza con número
-                if (!matchedIE) {
-                    const matchNum = nombreIE.match(/^0*(\d+)/);
-                    if (matchNum && matchNum[1]) {
-                        matchedIE = ieMap.get(matchNum[1]);
-                    }
-                }
-                
-                if (matchedIE) {
-                    await pool.query(`UPDATE instituciones_educativas SET ${nivel.col} = $1 WHERE id = $2`, [codMod, matchedIE.id]);
-                    cmUpdates++;
-                } else {
-                    console.log(`NO MATCH: ${nombreIE} (${codMod}) en nivel ${nivel.col}`);
-                }
-            }
-        }
-        console.log(`Se actualizaron ${cmUpdates} códigos modulares en IEs.`);
-
-        // 2. IMPORTAR SUPERVISORES
-        const supPath = path.join(__dirname, 'DATA COLABORADORES- UGEL BELLAVISTA 2026.xlsx');
-        const supWorkbook = xlsx.readFile(supPath);
-        const sheetSup = supWorkbook.Sheets[supWorkbook.SheetNames[0]]; // MAYO
-        const supRows = xlsx.utils.sheet_to_json(sheetSup, { header: 1 });
+        // Cargar filas
+        const rows = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+        console.log(`Total de filas leídas del Excel (incluyendo cabecera): ${rows.length}`);
         
-        let supCount = 0;
-        // Data empieza en index 2
-        for (let i = 2; i < supRows.length; i++) {
-            const row = supRows[i];
-            if (!row || !row[1] || row[1].toString().trim().toLowerCase() !== 'bellavista') continue; // Asegurar que es fila válida
+        // Agrupar filas por CÓDIGO LOCAL (o por CÓDIGO MODULAR si es PRONOEI)
+        const schoolsMap = {};
+        
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.length === 0) continue;
             
-            const nombre = (row[3] || '').toString().trim();
-            const apellidos = (row[4] || '').toString().trim();
-            const nombreCompleto = `${nombre} ${apellidos}`.trim();
-            const dni = (row[5] || '').toString().trim();
-            const dependencia = (row[8] || '').toString().trim();
-            const puesto = (row[9] || '').toString().trim();
-            const celular = (row[10] || '').toString().trim();
-            const email = (row[11] || '').toString().trim();
+            const rawLocal = row[0];
+            const rawModular = row[1];
+            const rawNivel = row[5];
             
-            if (!nombre || !dni) continue;
-
-            // Generar usuario: primer nombre . primer apellido
-            const parts = nombreCompleto.toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            
-            let uname = 'supervisor';
-            if (parts.length > 0) {
-                const primerNombre = parts[0];
-                const partsApellidos = apellidos.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-                const primerApellido = partsApellidos.length > 0 ? partsApellidos[0] : (parts.length > 1 ? parts[1] : 'sup');
-                uname = `${primerNombre}.${primerApellido}`;
+            if (rawLocal === undefined || rawLocal === null || rawModular === undefined || rawModular === null) {
+                continue; // fila vacía o inválida
             }
-
-            // Buscar si ya existe por DNI o por nombre
-            const existing = await pool.query("SELECT id, usuario FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
             
-            if (existing.rows.length > 0) {
-                // Actualizar
-                const uId = existing.rows[0].id;
-                // Asegurar usuario único
-                let finalUname = uname;
-                let c = 1;
-                while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [finalUname, uId])).rows.length > 0) {
-                    finalUname = uname + (++c);
-                }
-                
-                await pool.query(`
-                    UPDATE usuarios 
-                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = 'supervisor', usuario = $6, password = $7
-                    WHERE id = $8
-                `, [nombreCompleto, dependencia, puesto, celular, email, finalUname, dni, uId]);
+            const isPRONOEI = String(rawLocal).trim() === '999999' || String(rawNivel).trim().toUpperCase() === 'PRONOEI';
+            const modularCode = padModular(rawModular);
+            
+            // Si es PRONOEI, usamos el código modular de 7 dígitos como su código único local
+            const localCode = isPRONOEI ? modularCode : padLocal(rawLocal);
+            
+            if (!localCode) continue;
+            
+            if (!schoolsMap[localCode]) {
+                schoolsMap[localCode] = {
+                    codigo: localCode,
+                    nombre: String(row[4] || '').trim().replace(/\s+/g, ' '),
+                    ruralidad: '',
+                    tiene_inicial: false,
+                    tiene_primaria: false,
+                    tiene_secundaria: false,
+                    tiene_otros: false,
+                    tipo_otros: null,
+                    cm_inicial: null,
+                    cm_primaria: null,
+                    cm_secundaria: null,
+                    directores: []
+                };
+            }
+            
+            const school = schoolsMap[localCode];
+            
+            // Ruralidad
+            let rurality = String(row[2] || '').trim().toUpperCase();
+            if (rurality === 'URBANA') rurality = 'URBANO';
+            if (rurality && !school.ruralidad) {
+                school.ruralidad = rurality;
+            }
+            
+            // Mapear niveles y códigos modulares
+            const level = String(rawNivel || '').trim().toLowerCase();
+            if (level.includes('inicial') || level.includes('jardin') || level.includes('cuna')) {
+                school.tiene_inicial = true;
+                school.cm_inicial = modularCode;
+            } else if (level.includes('primaria')) {
+                school.tiene_primaria = true;
+                school.cm_primaria = modularCode;
+            } else if (level.includes('secundaria')) {
+                school.tiene_secundaria = true;
+                school.cm_secundaria = modularCode;
             } else {
-                // Insertar
-                let finalUname = uname;
-                let c = 1;
-                while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [finalUname])).rows.length > 0) {
-                    finalUname = uname + (++c);
-                }
-
-                await pool.query(`
-                    INSERT INTO usuarios (nombre_completo, dni, rol, dependencia, puesto, telefono, email, usuario, password, activo)
-                    VALUES ($1, $2, 'supervisor', $3, $4, $5, $6, $7, $8, true)
-                `, [nombreCompleto, dni, dependencia, puesto, celular, email, finalUname, dni]);
+                school.tiene_otros = true;
+                school.tipo_otros = String(rawNivel || '').trim();
             }
-            supCount++;
+            
+            // Director
+            const dirName = String(row[9] || '').trim().replace(/\s+/g, ' ');
+            const dirEmail = String(row[10] || '').trim();
+            const dirPhone = String(row[11] || '').trim();
+            if (dirName) {
+                school.directores.push({
+                    nombre: dirName,
+                    email: dirEmail,
+                    telefono: dirPhone
+                });
+            }
         }
-        console.log(`Se procesaron ${supCount} supervisores.`);
-
-        console.log('¡Importación completada!');
+        
+        const uniqueSchools = Object.values(schoolsMap);
+        console.log(`Se identificaron ${uniqueSchools.length} instituciones únicas (incluyendo PRONOEIs individuales).`);
+        
+        let ieInserted = 0;
+        let ieUpdated = 0;
+        let dirProcessed = 0;
+        
+        // Conexión y transacciones a la base de datos
+        for (const school of uniqueSchools) {
+            // Decidir director principal
+            const primaryDir = school.directores[0] || {
+                nombre: school.nombre, // fallback si no hay director
+                email: '',
+                telefono: ''
+            };
+            
+            // 1. Insertar / Actualizar Institución Educativa
+            const ieCheck = await pool.query('SELECT id FROM instituciones_educativas WHERE codigo = $1', [school.codigo]);
+            const exists = ieCheck.rows.length > 0;
+            
+            if (exists) {
+                await pool.query(`
+                    UPDATE instituciones_educativas 
+                    SET nombre = $1, ruralidad = $2, 
+                        tiene_inicial = $3, tiene_primaria = $4, tiene_secundaria = $5, tiene_otros = $6, 
+                        tipo_otros = $7, cm_inicial = $8, cm_primaria = $9, cm_secundaria = $10, activa = true
+                    WHERE codigo = $11
+                `, [
+                    school.nombre, school.ruralidad, 
+                    school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
+                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria, school.codigo
+                ]);
+                ieUpdated++;
+            } else {
+                await pool.query(`
+                    INSERT INTO instituciones_educativas (
+                        codigo, nombre, ruralidad, 
+                        tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, 
+                        tipo_otros, cm_inicial, cm_primaria, cm_secundaria, activa
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
+                `, [
+                    school.codigo, school.nombre, school.ruralidad, 
+                    school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
+                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria
+                ]);
+                ieInserted++;
+            }
+            
+            // 2. Insertar / Actualizar Director de la IE
+            const username = `director.${school.codigo}`;
+            const defaultPassword = school.codigo; // El código local (o modular en caso de PRONOEI) es su contraseña inicial
+            
+            await pool.query(`
+                INSERT INTO usuarios (
+                    nombre_completo, ie_codigo, rol, usuario, password, email, telefono, activo
+                ) VALUES ($1, $2, 'director', $3, $4, $5, $6, true)
+                ON CONFLICT (usuario) DO UPDATE SET
+                    nombre_completo = EXCLUDED.nombre_completo,
+                    ie_codigo = EXCLUDED.ie_codigo,
+                    email = EXCLUDED.email,
+                    telefono = EXCLUDED.telefono,
+                    password = COALESCE(usuarios.password, EXCLUDED.password),
+                    activo = true
+            `, [
+                primaryDir.nombre, school.codigo, username, defaultPassword,
+                primaryDir.email || null, primaryDir.telefono || null
+            ]);
+            dirProcessed++;
+        }
+        
+        console.log('\n--- Resumen de la Importación ---');
+        console.log(`IEs creadas: ${ieInserted}`);
+        console.log(`IEs actualizadas: ${ieUpdated}`);
+        console.log(`Directores procesados (creados/actualizados): ${dirProcessed}`);
+        console.log('¡Importación finalizada con éxito!');
         process.exit(0);
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error durante la importación:', err);
         process.exit(1);
     }
 }
