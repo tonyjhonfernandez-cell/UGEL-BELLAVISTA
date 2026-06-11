@@ -152,6 +152,7 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg);background-image:
 .bg-warning-light { background: #fef3c7 !important; color: #b45309 !important; }
 .bg-danger-light { background: #ffe4e6 !important; color: #be123c !important; }
 .bg-neutral-light { background: #f1f5f9 !important; color: #475569 !important; }
+.bg-purple-light { background: #ede9fe !important; color: #6d28d9 !important; }
 .bg-success-pill { background: #dcfce7 !important; color: #15803d !important; padding: 3px 8px !important; border-radius: 12px !important; display: inline-block !important; font-weight: 600 !important; }
 
 
@@ -1193,7 +1194,8 @@ body.director-mode #app-shell {
             <label>Nivel</label>
             <select class="form-select" id="ie-nivel-filter" onchange="loadIEs()">
               <option value="">Todos</option>
-              <option value="inicial">Inicial</option>
+              <option value="inicial">Inicial - Jardín</option>
+              <option value="cuna_jardin">Inicial - Cuna-Jardín</option>
               <option value="primaria">Primaria</option>
               <option value="secundaria">Secundaria</option>
               <option value="ebe">EBE</option>
@@ -1204,6 +1206,7 @@ body.director-mode #app-shell {
             </select>
           </div>
         </div>
+        <div id="ie-resumen-niveles" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
         <div class="t-card">
           <div class="t-wrap">
             <table>
@@ -3279,7 +3282,10 @@ async function loadIEs() {
         // Generar filas por cada nivel según el filtro
         const levelsToRender = [];
         if (ie.tiene_inicial && (!n || n === 'inicial')) {
-          levelsToRender.push({ name: 'Inicial', cm: ie.cm_inicial || '-' });
+          levelsToRender.push({ name: 'Inicial - Jardín', cm: ie.cm_inicial || '-' });
+        }
+        if (ie.tiene_cuna_jardin && (!n || n === 'cuna_jardin')) {
+          levelsToRender.push({ name: 'Inicial - Cuna-Jardín', cm: ie.cm_cuna_jardin || '-' });
         }
         if (ie.tiene_primaria && (!n || n === 'primaria')) {
           levelsToRender.push({ name: 'Primaria', cm: ie.cm_primaria || '-' });
@@ -3319,7 +3325,9 @@ async function loadIEs() {
           else if (ie.ruralidad === 'RURAL') zonaClass = 'bg-warning-light';
           
           let levelClass = 'bg-info-light';
-          if (lv.name === 'Primaria') levelClass = 'bg-primary-light';
+          if (lv.name === 'Inicial - Jardín') levelClass = 'bg-info-light';
+          else if (lv.name === 'Inicial - Cuna-Jardín') levelClass = 'bg-purple-light';
+          else if (lv.name === 'Primaria') levelClass = 'bg-primary-light';
           else if (lv.name === 'Secundaria') levelClass = 'bg-success-light';
           else if (lv.name === 'EBE') levelClass = 'bg-danger-light';
           else if (lv.name === 'CETPRO') levelClass = 'bg-warning-light';
@@ -3376,8 +3384,39 @@ async function loadIEs() {
       const colSpan = (currentUser && currentUser.rol === 'admin') ? 6 : 5;
       html = '<tr class="empty"><td colspan="' + colSpan + '">No hay IEs</td></tr>';
     }
-    
+
     document.getElementById('ies-table').innerHTML = html;
+
+    // Resumen de conteo por nivel
+    var counts = {
+      'Inicial - Jardín': 0, 'Inicial - Cuna-Jardín': 0, 'Primaria': 0,
+      'Secundaria': 0, 'EBE': 0, 'CETPRO': 0, 'PRONOEI': 0, 'EBA': 0
+    };
+    for (var k = 0; k < ies.length; k++) {
+      var ie2 = ies[k];
+      if (ie2.tiene_inicial) counts['Inicial - Jardín']++;
+      if (ie2.tiene_cuna_jardin) counts['Inicial - Cuna-Jardín']++;
+      if (ie2.tiene_primaria) counts['Primaria']++;
+      if (ie2.tiene_secundaria) counts['Secundaria']++;
+      if (ie2.tiene_ebe) counts['EBE']++;
+      if (ie2.tiene_cetpro) counts['CETPRO']++;
+      if (ie2.tiene_pronoei) counts['PRONOEI']++;
+      if (ie2.tiene_eba) counts['EBA']++;
+    }
+    var colorMap = {
+      'Inicial - Jardín': 'bg-info-light', 'Inicial - Cuna-Jardín': 'bg-purple-light',
+      'Primaria': 'bg-primary-light', 'Secundaria': 'bg-success-light',
+      'EBE': 'bg-danger-light', 'CETPRO': 'bg-warning-light',
+      'PRONOEI': 'bg-neutral-light', 'EBA': 'bg-info-light'
+    };
+    var resumenHtml = '';
+    for (var nv in counts) {
+      if (counts[nv] > 0) {
+        resumenHtml += '<span class="badge ' + colorMap[nv] + '" style="font-size:0.78rem;padding:4px 10px;border-radius:12px;">' +
+          nv + ': <strong>' + counts[nv] + '</strong></span>';
+      }
+    }
+    document.getElementById('ie-resumen-niveles').innerHTML = resumenHtml;
   } catch (e) { showToast('Error al cargar IEs', 'error'); }
 }
 
@@ -4389,8 +4428,12 @@ async function abrirModalIE(ieId = null) {
         <label class="form-label" style="font-weight:600;">Niveles Educativos y Códigos Modulares</label>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px;">
           <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial</label>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial - Jardín</label>
             <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-inicial" placeholder="Cód. Modular" value="${ie.cm_inicial || ''}" style="display: ${ie.tiene_inicial ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-cuna-jardin" ${ie.tiene_cuna_jardin ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-cuna-jardin').style.display = this.checked ? 'block' : 'none'"> Inicial - Cuna-Jardín</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-cuna-jardin" placeholder="Cód. Modular" value="${ie.cm_cuna_jardin || ''}" style="display: ${ie.tiene_cuna_jardin ? 'block' : 'none'};">
           </div>
           <div>
             <label style="font-weight: 500;"><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-primaria').style.display = this.checked ? 'block' : 'none'"> Primaria</label>
@@ -4460,6 +4503,7 @@ async function guardarIE(ieId = null) {
   const codigo = document.getElementById('form-ie-codigo').value.trim();
   const nombre = document.getElementById('form-ie-nombre').value.trim();
   const tiene_inicial = document.getElementById('form-ie-inicial').checked;
+  const tiene_cuna_jardin = document.getElementById('form-ie-cuna-jardin').checked;
   const tiene_primaria = document.getElementById('form-ie-primaria').checked;
   const tiene_secundaria = document.getElementById('form-ie-secundaria').checked;
   const tiene_ebe = document.getElementById('form-ie-ebe').checked;
@@ -4468,8 +4512,9 @@ async function guardarIE(ieId = null) {
   const tiene_eba = document.getElementById('form-ie-eba').checked;
   const tiene_otros = document.getElementById('form-ie-otros').checked;
   const tipo_otros = document.getElementById('form-ie-tipo-otros').value.trim();
-  
+
   const cm_inicial = document.getElementById('form-ie-cm-inicial').value.trim();
+  const cm_cuna_jardin = document.getElementById('form-ie-cm-cuna-jardin').value.trim();
   const cm_primaria = document.getElementById('form-ie-cm-primaria').value.trim();
   const cm_secundaria = document.getElementById('form-ie-cm-secundaria').value.trim();
   const cm_ebe = document.getElementById('form-ie-cm-ebe').value.trim();
@@ -4492,11 +4537,11 @@ async function guardarIE(ieId = null) {
     return;
   }
   
-  const body = { 
-    codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria,
+  const body = {
+    codigo, nombre, tiene_inicial, tiene_cuna_jardin, tiene_primaria, tiene_secundaria,
     tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
     tiene_otros, tipo_otros,
-    cm_inicial, cm_primaria, cm_secundaria,
+    cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
     cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
     ruralidad, tipo, provincia, distrito, lugar,
     director_nombre, director_email, director_telefono

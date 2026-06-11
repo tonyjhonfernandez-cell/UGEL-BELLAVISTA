@@ -26,6 +26,20 @@ async function runImport() {
     try {
         console.log('Iniciando importación desde datos.xlsx.xlsx...');
         
+        // Asegurar que las columnas nuevas existan
+        console.log('Verificando columnas de niveles educativos...');
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_ebe BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_cetpro BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_pronoei BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_eba BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_ebe VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cetpro VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_pronoei VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_eba VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_cuna_jardin BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cuna_jardin VARCHAR(20)");
+        console.log('Columnas verificadas OK.');
+        
         const excelPath = path.join(__dirname, 'datos.xlsx.xlsx');
         const workbook = xlsx.readFile(excelPath);
         const sheetName = workbook.SheetNames[0];
@@ -64,6 +78,7 @@ async function runImport() {
                     nombre: String(row[4] || '').trim().replace(/\s+/g, ' '),
                     ruralidad: '',
                     tiene_inicial: false,
+                    tiene_cuna_jardin: false,
                     tiene_primaria: false,
                     tiene_secundaria: false,
                     tiene_ebe: false,
@@ -73,6 +88,7 @@ async function runImport() {
                     tiene_otros: false,
                     tipo_otros: null,
                     cm_inicial: null,
+                    cm_cuna_jardin: null,
                     cm_primaria: null,
                     cm_secundaria: null,
                     cm_ebe: null,
@@ -104,7 +120,12 @@ async function runImport() {
             
             // Mapear niveles y códigos modulares
             const level = String(rawNivel || '').trim().toLowerCase();
-            if (level.includes('inicial') || level.includes('jardin') || level.includes('cuna')) {
+            // Normalizar tildes para comparación
+            const levelNorm = level.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            if (levelNorm.includes('cuna')) {
+                school.tiene_cuna_jardin = true;
+                school.cm_cuna_jardin = modularCode;
+            } else if (levelNorm.includes('inicial') || levelNorm.includes('jardin')) {
                 school.tiene_inicial = true;
                 school.cm_inicial = modularCode;
             } else if (level.includes('primaria')) {
@@ -165,19 +186,19 @@ async function runImport() {
             
             if (exists) {
                 await pool.query(`
-                    UPDATE instituciones_educativas 
-                    SET nombre = $1, ruralidad = $2, 
-                        tiene_inicial = $3, tiene_primaria = $4, tiene_secundaria = $5, tiene_otros = $6, 
-                        tipo_otros = $7, cm_inicial = $8, cm_primaria = $9, cm_secundaria = $10,
-                        tipo = $11, provincia = $12, distrito = $13, lugar = $14,
-                        tiene_ebe = $15, tiene_cetpro = $16, tiene_pronoei = $17, tiene_eba = $18,
-                        cm_ebe = $19, cm_cetpro = $20, cm_pronoei = $21, cm_eba = $22,
+                    UPDATE instituciones_educativas
+                    SET nombre = $1, ruralidad = $2,
+                        tiene_inicial = $3, tiene_cuna_jardin = $4, tiene_primaria = $5, tiene_secundaria = $6, tiene_otros = $7,
+                        tipo_otros = $8, cm_inicial = $9, cm_cuna_jardin = $10, cm_primaria = $11, cm_secundaria = $12,
+                        tipo = $13, provincia = $14, distrito = $15, lugar = $16,
+                        tiene_ebe = $17, tiene_cetpro = $18, tiene_pronoei = $19, tiene_eba = $20,
+                        cm_ebe = $21, cm_cetpro = $22, cm_pronoei = $23, cm_eba = $24,
                         activa = true
-                    WHERE codigo = $23
+                    WHERE codigo = $25
                 `, [
-                    school.nombre, school.ruralidad, 
-                    school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
-                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
+                    school.nombre, school.ruralidad,
+                    school.tiene_inicial, school.tiene_cuna_jardin, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
+                    school.tipo_otros, school.cm_inicial, school.cm_cuna_jardin, school.cm_primaria, school.cm_secundaria,
                     school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
                     school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
                     school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba,
@@ -187,18 +208,18 @@ async function runImport() {
             } else {
                 await pool.query(`
                     INSERT INTO instituciones_educativas (
-                        codigo, nombre, ruralidad, 
-                        tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, 
-                        tipo_otros, cm_inicial, cm_primaria, cm_secundaria,
+                        codigo, nombre, ruralidad,
+                        tiene_inicial, tiene_cuna_jardin, tiene_primaria, tiene_secundaria, tiene_otros,
+                        tipo_otros, cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
                         tipo, provincia, distrito, lugar,
                         tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
                         cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
                         activa
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, true)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, true)
                 `, [
-                    school.codigo, school.nombre, school.ruralidad, 
-                    school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
-                    school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
+                    school.codigo, school.nombre, school.ruralidad,
+                    school.tiene_inicial, school.tiene_cuna_jardin, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
+                    school.tipo_otros, school.cm_inicial, school.cm_cuna_jardin, school.cm_primaria, school.cm_secundaria,
                     school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
                     school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
                     school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba
