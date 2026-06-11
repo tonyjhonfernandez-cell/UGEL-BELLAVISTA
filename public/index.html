@@ -418,28 +418,41 @@ body.director-mode #app-shell {
 .dir-header .dh-right{display:flex;align-items:center;flex-shrink:0}
 
 .dir-body{padding:12px 28px 28px}
-.dir-top-row{display:flex;gap:18px;margin-bottom:16px}
-.dir-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;flex:1}
-.dir-kpi{padding:16px 16px 0;display:flex;flex-direction:column;justify-content:space-between;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.02);border-radius:12px;border:2px solid transparent !important;}
-.dir-kpi .kpi-label{font-size:.75rem;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
-.dir-kpi .kpi-number{font-size:2.2rem;font-weight:800;margin-bottom:8px;line-height:1}
-.dir-kpi .kpi-line{height:4px;margin:0 -16px;flex-shrink:0}
-.dir-kpi .kpi-line.blue-line{background:#1e3a8a}
-.dir-kpi .kpi-line.yellow-line{background:#d97706}
-.dir-kpi .kpi-line.green-line{background:#059669}
-.dir-kpi .kpi-line.red-line{background:#dc2626}
+.dir-top-row{display:flex;gap:18px;margin-bottom:16px;align-items:center}
+.dir-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex:1}
+.dir-kpi{display:flex;align-items:center;background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:2px solid transparent !important;border-radius:12px;padding:8px 14px;position:relative;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.02);height:72px;transition:transform 0.2s ease, box-shadow 0.2s ease;cursor:pointer;}
+.dir-kpi .kpi-cap{position:absolute;left:0;top:0;bottom:0;width:6px;}
+.dir-kpi .kpi-num-box{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-left:4px;min-width:44px;}
+.dir-kpi .kpi-number{font-size:2rem;font-weight:800;line-height:1;margin-bottom:0;}
+.dir-kpi .kpi-sublabel{font-size:0.6rem;font-weight:700;color:var(--text3);margin-top:2px;text-transform:uppercase;}
+.dir-kpi .kpi-divider{width:1px;height:32px;background:#dde0e3;margin:0 10px;}
+.dir-kpi .kpi-text-box{display:flex;align-items:center;gap:6px;flex:1;text-align:left;}
+.dir-kpi .kpi-icon{font-size:1rem;color:var(--text2);}
+.dir-kpi .kpi-title{font-size:0.7rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;line-height:1.2;}
 
 .dir-kpi.total { background: #eff6ff !important; border-color: #bfdbfe !important; }
-.dir-kpi.total .kpi-label, .dir-kpi.total .kpi-number { color: #1e3a8a; }
+.dir-kpi.total .kpi-number { color: #1e3a8a; }
+.dir-kpi.total .kpi-icon { color: #1e3a8a; }
+.dir-kpi.total .kpi-title { color: #1e3a8a; }
+.dir-kpi.total .kpi-cap { background: #1e3a8a; }
 
 .dir-kpi.pendientes { background: #fffbeb !important; border-color: #fef3c7 !important; }
-.dir-kpi.pendientes .kpi-label, .dir-kpi.pendientes .kpi-number { color: #d97706; }
+.dir-kpi.pendientes .kpi-number { color: #d97706; }
+.dir-kpi.pendientes .kpi-icon { color: #d97706; }
+.dir-kpi.pendientes .kpi-title { color: #d97706; }
+.dir-kpi.pendientes .kpi-cap { background: #d97706; }
 
 .dir-kpi.cumplidas { background: #ecfdf5 !important; border-color: #a7f3d0 !important; }
-.dir-kpi.cumplidas .kpi-label, .dir-kpi.cumplidas .kpi-number { color: #059669; }
+.dir-kpi.cumplidas .kpi-number { color: #059669; }
+.dir-kpi.cumplidas .kpi-icon { color: #059669; }
+.dir-kpi.cumplidas .kpi-title { color: #059669; }
+.dir-kpi.cumplidas .kpi-cap { background: #059669; }
 
 .dir-kpi.vencidas { background: #fef2f2 !important; border-color: #fecaca !important; }
-.dir-kpi.vencidas .kpi-label, .dir-kpi.vencidas .kpi-number { color: #dc2626; }
+.dir-kpi.vencidas .kpi-number { color: #dc2626; }
+.dir-kpi.vencidas .kpi-icon { color: #dc2626; }
+.dir-kpi.vencidas .kpi-title { color: #dc2626; }
+.dir-kpi.vencidas .kpi-cap { background: #dc2626; }
 
 .dir-chart-box{background:rgba(255,255,255,0.7);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.8);padding:12px 16px;width:280px;flex-shrink:0;display:flex;flex-direction:column;box-shadow:0 10px 25px rgba(0,0,0,0.02);border-radius:12px;}
 .dir-chart-box h3{font-size:.72rem;font-weight:800;color:var(--granate);letter-spacing:.5px;margin-bottom:8px;text-align:left;text-transform:uppercase}
@@ -673,20 +686,52 @@ body.director-mode #app-shell {
             <div class="dir-top-row">
               <div class="dir-kpis">
                 <div class="dir-kpi total">
-                  <div><div class="kpi-label">TOTAL DE ACTIVIDADES</div><div class="kpi-number" id="kpi-total">0</div></div>
-                  <div class="kpi-line blue-line"></div>
+                  <div class="kpi-cap"></div>
+                  <div class="kpi-num-box">
+                    <span class="kpi-number" id="kpi-total">0</span>
+                    <span class="kpi-sublabel">Total</span>
+                  </div>
+                  <div class="kpi-divider"></div>
+                  <div class="kpi-text-box">
+                    <i class="fas fa-list-alt kpi-icon"></i>
+                    <div class="kpi-title">Total de<br>Actividades</div>
+                  </div>
                 </div>
                 <div class="dir-kpi pendientes">
-                  <div><div class="kpi-label">PENDIENTES</div><div class="kpi-number" id="kpi-pendientes">0</div></div>
-                  <div class="kpi-line yellow-line"></div>
+                  <div class="kpi-cap"></div>
+                  <div class="kpi-num-box">
+                    <span class="kpi-number" id="kpi-pendientes">0</span>
+                    <span class="kpi-sublabel">Pend.</span>
+                  </div>
+                  <div class="kpi-divider"></div>
+                  <div class="kpi-text-box">
+                    <i class="far fa-clock kpi-icon"></i>
+                    <div class="kpi-title">Actividades<br>Pendientes</div>
+                  </div>
                 </div>
                 <div class="dir-kpi cumplidas">
-                  <div><div class="kpi-label">CUMPLIDAS</div><div class="kpi-number" id="kpi-cumplidas">0</div></div>
-                  <div class="kpi-line green-line"></div>
+                  <div class="kpi-cap"></div>
+                  <div class="kpi-num-box">
+                    <span class="kpi-number" id="kpi-cumplidas">0</span>
+                    <span class="kpi-sublabel">Cump.</span>
+                  </div>
+                  <div class="kpi-divider"></div>
+                  <div class="kpi-text-box">
+                    <i class="far fa-check-circle kpi-icon"></i>
+                    <div class="kpi-title">Actividades<br>Cumplidas</div>
+                  </div>
                 </div>
                 <div class="dir-kpi vencidas">
-                  <div><div class="kpi-label">VENCIDAS</div><div class="kpi-number" id="kpi-vencidas">0</div></div>
-                  <div class="kpi-line red-line"></div>
+                  <div class="kpi-cap"></div>
+                  <div class="kpi-num-box">
+                    <span class="kpi-number" id="kpi-vencidas">0</span>
+                    <span class="kpi-sublabel">Venc.</span>
+                  </div>
+                  <div class="kpi-divider"></div>
+                  <div class="kpi-text-box">
+                    <i class="fas fa-exclamation-triangle kpi-icon"></i>
+                    <div class="kpi-title">Actividades<br>Vencidas</div>
+                  </div>
                 </div>
               </div>
               <div class="dir-chart-box">
