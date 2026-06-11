@@ -1260,15 +1260,19 @@ app.get('/api/asignaciones', async (req, res) => {
         }
 
         const nivel = validarNivel(req.query.nivel || '');
-        const { estado, buscar, asignador_id } = req.query;
+        const { estado, buscar, asignador_id, mes, anio } = req.query;
         const nivelWhere = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${nivel}')` : '';
         const estadoWhere = estado ? 'AND ase.estado = ?' : '';
         const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)' : '';
         const asignadorWhere = asignador_id ? 'AND a.asignador_id = ?' : '';
+        const mesWhere = mes ? 'AND EXTRACT(MONTH FROM a.fecha_limite) = ?' : '';
+        const anioWhere = anio ? 'AND EXTRACT(YEAR FROM a.fecha_limite) = ?' : '';
         const params = [];
         if (estado) params.push(estado);
         if (buscar) { const q = `%${buscar}%`; params.push(q, q, q); }
         if (asignador_id) params.push(asignador_id);
+        if (mes) params.push(parseInt(mes));
+        if (anio) params.push(parseInt(anio));
         const isSuperAdmin = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
@@ -1287,7 +1291,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${supervisorWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${supervisorWhere} ${mesWhere} ${anioWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
@@ -1748,7 +1752,7 @@ app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
 // ===================== DASHBOARD STATS =====================
 app.get('/api/dashboard/stats', authDirector, async (req, res) => {
     try {
-        const total_inst = await pool.query("SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true");
+        const total_inst = await pool.query("SELECT COUNT(DISTINCT codigo) as c FROM instituciones_educativas WHERE activa = true");
         const total_serv = await pool.query("SELECT COUNT(*) as c FROM ie_niveles iln JOIN instituciones_educativas ie ON iln.ie_id = ie.id WHERE ie.activa = true");
         const por_zona = await pool.query(`
             SELECT COALESCE(ruralidad, 'URBANO') as zona, COUNT(*) as total
@@ -1788,7 +1792,7 @@ app.get('/api/supervisores', async (req, res) => {
 // ===================== EXPORT EXCEL =====================
 app.get('/api/export/asignaciones', async (req, res) => {
     try {
-        const { nivel, estado, buscar, asignador_id } = req.query;
+        const { nivel, estado, buscar, asignador_id, mes, anio } = req.query;
         const params = [];
         let where = 'WHERE 1=1';
         if (nivel && validarNivel(nivel)) {
@@ -1806,6 +1810,14 @@ app.get('/api/export/asignaciones', async (req, res) => {
         if (asignador_id) {
             where += ' AND a.asignador_id = ?';
             params.push(asignador_id);
+        }
+        if (mes) {
+            where += ' AND EXTRACT(MONTH FROM a.fecha_limite) = ?';
+            params.push(parseInt(mes));
+        }
+        if (anio) {
+            where += ' AND EXTRACT(YEAR FROM a.fecha_limite) = ?';
+            params.push(parseInt(anio));
         }
 
         const rows = await db.prepare(`
