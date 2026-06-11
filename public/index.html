@@ -1916,18 +1916,35 @@ function renderDirectorActividadesTable() {
     const pendingCount = rows.filter(r => (r.estado === 'pendiente' || r.estado === 'inconclusa') && !(r.fecha_limite && r.fecha_limite < hoy)).length;
     
     if (pendingCount === 0 && (currentDirectorFilter === 'pendiente' || currentDirectorFilter === 'all')) {
-      emptyArea.innerHTML = `
-        <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap; width:100%;">
-          <div style="flex:1; min-width:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-            <div style="width: 72px; height: 72px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 16px; box-shadow: 0 8px 16px rgba(5,150,105,0.08);">
-              <i class="fas fa-check-circle"></i>
+      const vencidasCount = rows.filter(r => r.estado === 'no_cumplida' || ((r.estado === 'pendiente' || r.estado === 'inconclusa') && r.fecha_limite && r.fecha_limite < hoy)).length;
+      
+      if (vencidasCount === 0) {
+        emptyArea.innerHTML = `
+          <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap; width:100%;">
+            <div style="flex:1; min-width:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+              <div style="width: 72px; height: 72px; background: #ecfdf5; color: #059669; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 16px; box-shadow: 0 8px 16px rgba(5,150,105,0.08);">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">¡Al día con todo!</h4>
+              <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">¡Felicidades! Estás al día con tus actividades pendientes.</p>
             </div>
-            <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">¡Al día con todo!</h4>
-            <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">¡Felicidades! Estás al día con tus actividades pendientes.</p>
+            <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
           </div>
-          <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
-        </div>
-      `;
+        `;
+      } else {
+        emptyArea.innerHTML = `
+          <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:32px; flex-wrap:wrap; width:100%;">
+            <div style="flex:1; min-width:240px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+              <div style="width: 72px; height: 72px; background: #fff7ed; color: #ea580c; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 16px; box-shadow: 0 8px 16px rgba(234,88,12,0.08);">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">Actividades Vencidas</h4>
+              <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">Tienes <strong>${vencidasCount}</strong> actividad(es) vencida(s) o no cumplida(s) este periodo. Por favor, regulariza con tu supervisor.</p>
+            </div>
+            <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
+          </div>
+        `;
+      }
       renderMiniCalendar('dir-mini-calendar-container', rows);
     } else {
       emptyArea.innerHTML = `
