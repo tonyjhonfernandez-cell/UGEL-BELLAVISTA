@@ -1323,8 +1323,8 @@ function renderList(list) {
   }
   document.getElementById('sel-ie-list').innerHTML = h;
 }
-async function goToSupervisorLogin() {
-  try { await api('/api/logout', { method: 'POST' }); } catch (e) {}
+function goToSupervisorLogin() {
+  api('/api/logout', { method: 'POST' }).catch(function(e) {});
   currentUser = null;
   document.body.classList.remove('director-mode');
   document.getElementById('app-shell').style.display = 'none';
