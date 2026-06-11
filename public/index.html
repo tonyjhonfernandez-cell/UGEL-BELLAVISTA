@@ -2175,10 +2175,8 @@ function renderDirectorActividadesTable() {
         </div>
       `;
     }
-    }
     return;
   }
-
   var filteredItems = [];
   if (currentDirectorFilter === 'pendiente') {
     filteredItems = rows.filter(r => (r.estado === 'pendiente' || r.estado === 'inconclusa') && !(r.fecha_limite && r.fecha_limite < hoy));
