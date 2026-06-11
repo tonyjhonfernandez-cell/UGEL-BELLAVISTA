@@ -1729,14 +1729,35 @@ async function loadDirectorMain(ieCodigo) {
     var ctx = document.getElementById('dir-pie-chart');
     if (ctx) {
       if (window.dirChart) window.dirChart.destroy();
+      
+      var ctx2d = ctx.getContext('2d');
+      var gradGreen = ctx2d.createLinearGradient(0, 0, 0, 160);
+      gradGreen.addColorStop(0, '#34d399');
+      gradGreen.addColorStop(1, '#059669');
+
+      var gradYellow = ctx2d.createLinearGradient(0, 0, 0, 160);
+      gradYellow.addColorStop(0, '#fbbf24');
+      gradYellow.addColorStop(1, '#d97706');
+
+      var gradRed = ctx2d.createLinearGradient(0, 0, 0, 160);
+      gradRed.addColorStop(0, '#f87171');
+      gradRed.addColorStop(1, '#dc2626');
+
+      var gradGray = ctx2d.createLinearGradient(0, 0, 0, 160);
+      gradGray.addColorStop(0, '#f3f4f6');
+      gradGray.addColorStop(1, '#e0e0e0');
+
       window.dirChart = new Chart(ctx, {
         type: 'pie',
         data: {
           labels: total > 0 ? ['Cumplidas', 'Pendientes', 'Vencidas'] : ['Sin datos'],
           datasets: [{
             data: total > 0 ? [completadas, pendientes, vencidas] : [1],
-            backgroundColor: total > 0 ? ['#059669', '#d97706', '#dc2626'] : ['#e0e0e0'],
-            borderWidth: 0
+            backgroundColor: total > 0 ? [gradGreen, gradYellow, gradRed] : [gradGray],
+            borderWidth: 1.5,
+            borderColor: '#ffffff',
+            offset: total > 0 ? 8 : 0,
+            hoverOffset: total > 0 ? 16 : 0
           }]
         },
         options: {
@@ -1745,7 +1766,74 @@ async function loadDirectorMain(ieCodigo) {
             legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10, family: 'Inter' } } },
             tooltip: { callbacks: { label: function(tt) { var val = tt.parsed || 0; var pct = total > 0 ? Math.round(val / total * 100) : 0; return tt.label + ': ' + val + ' (' + pct + '%)'; } } }
           }
-        }
+        },
+        plugins: [{
+          id: 'threeDStyle',
+          beforeDatasetsDraw: function(chart) {
+            var ctx = chart.ctx;
+            var meta = chart.getDatasetMeta(0);
+            if (!meta || !meta.data || meta.data.length === 0) return;
+
+            ctx.save();
+            
+            var thickness = 8;
+            var sideWallColors = total > 0 ? ['#046a4a', '#9a5303', '#991b1b'] : ['#b5b5b5'];
+            
+            ctx.shadowColor = 'rgba(15, 23, 42, 0.2)';
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = thickness + 4;
+            
+            meta.data.forEach(function(element, index) {
+              if (!chart.getDataVisibility(index)) return;
+              if (element.outerRadius <= 0 || element.startAngle === element.endAngle) return;
+              
+              var x = element.x;
+              var y = element.y;
+              var outerRadius = element.outerRadius;
+              var startAngle = element.startAngle;
+              var endAngle = element.endAngle;
+              
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.arc(x, y, outerRadius, startAngle, endAngle);
+              ctx.closePath();
+              ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+              ctx.fill();
+            });
+            
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            for (var h = thickness; h > 0; h--) {
+              meta.data.forEach(function(element, index) {
+                if (!chart.getDataVisibility(index)) return;
+                if (element.outerRadius <= 0 || element.startAngle === element.endAngle) return;
+                
+                var x = element.x;
+                var y = element.y + h;
+                var outerRadius = element.outerRadius;
+                var startAngle = element.startAngle;
+                var endAngle = element.endAngle;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.arc(x, y, outerRadius, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = sideWallColors[index] || '#b5b5b5';
+                ctx.fill();
+                
+                ctx.strokeStyle = sideWallColors[index] || '#b5b5b5';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+              });
+            }
+            
+            ctx.restore();
+          }
+        }]
       });
     }
 
