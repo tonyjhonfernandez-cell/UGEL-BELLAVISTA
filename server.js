@@ -162,6 +162,9 @@ async function initDatabase() {
             tiene_secundaria BOOLEAN DEFAULT false,
             tiene_otros BOOLEAN DEFAULT false,
             tipo_otros TEXT,
+            cm_inicial VARCHAR(20),
+            cm_primaria VARCHAR(20),
+            cm_secundaria VARCHAR(20),
             activa BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
         );
@@ -206,6 +209,7 @@ async function initDatabase() {
             estado VARCHAR(20) DEFAULT 'pendiente',
             fecha_completado TIMESTAMP,
             notas_supervisor TEXT,
+            niveles_aplicados TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
 
@@ -221,6 +225,13 @@ async function initDatabase() {
     `);
 
     await applyMigrations();
+
+    try {
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_inicial VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_primaria VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_secundaria VARCHAR(20)");
+        await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
+    } catch (e) {}
 
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
     if (tipos.c == 0) {
@@ -269,6 +280,151 @@ app.get('/api/migrate', async (req, res) => {
         res.json({ ok: true, mensaje: 'Migración completada', stats: stats.rows[0] });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+// Endpoint para importar datos desde Excel (ejecutar en producción)
+app.get('/api/import-excel', async (req, res) => {
+    try {
+        const xlsx = require('xlsx');
+        const path = require('path');
+        const fs = require('fs');
+
+        const codigosPath = path.join(__dirname, 'codigos modulares.xlsx');
+        const supPath = path.join(__dirname, 'DATA COLABORADORES- UGEL BELLAVISTA 2026.xlsx');
+
+        if (!fs.existsSync(codigosPath) || !fs.existsSync(supPath)) {
+            return res.status(404).json({ error: 'Faltan archivos Excel en el servidor' });
+        }
+
+        // 1. IMPORTAR CÓDIGOS MODULARES
+        const cmWorkbook = xlsx.readFile(codigosPath);
+        const dbIes = await pool.query('SELECT id, nombre, codigo FROM instituciones_educativas');
+        
+        function normalizeStr(str) {
+            if (!str) return '';
+            return str.toString()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '');
+        }
+
+        const ieMap = new Map();
+        dbIes.rows.forEach(ie => {
+            ieMap.set(normalizeStr(ie.nombre), ie);
+            const match = ie.nombre.match(/^0*(\d+)/);
+            if (match && match[1]) {
+                ieMap.set(match[1], ie);
+            }
+        });
+
+        const niveles = [
+            { sheet: 'inical', col: 'cm_inicial' },
+            { sheet: 'primaria', col: 'cm_primaria' },
+            { sheet: 'secunadaria', col: 'cm_secundaria' }
+        ];
+
+        let cmUpdates = 0;
+        let unmatched = [];
+
+        for (const nivel of niveles) {
+            if (!cmWorkbook.Sheets[nivel.sheet]) continue;
+            const startRow = nivel.sheet === 'secunadaria' ? 2 : 1; 
+            const rows = xlsx.utils.sheet_to_json(cmWorkbook.Sheets[nivel.sheet], { header: 1 });
+            
+            for (let i = startRow; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length < 9) continue;
+                
+                const codMod = (row[6] || '').toString().trim();
+                const nombreIE = (row[8] || '').toString().trim();
+                
+                if (!codMod || !nombreIE) continue;
+
+                const normName = normalizeStr(nombreIE);
+                let matchedIE = ieMap.get(normName);
+                if (!matchedIE) {
+                    const matchNum = nombreIE.match(/^0*(\d+)/);
+                    if (matchNum && matchNum[1]) {
+                        matchedIE = ieMap.get(matchNum[1]);
+                    }
+                }
+                
+                if (matchedIE) {
+                    await pool.query(`UPDATE instituciones_educativas SET ${nivel.col} = $1 WHERE id = $2`, [codMod, matchedIE.id]);
+                    cmUpdates++;
+                } else {
+                    unmatched.push(nombreIE);
+                }
+            }
+        }
+
+        // 2. IMPORTAR SUPERVISORES
+        const supWorkbook = xlsx.readFile(supPath);
+        const sheetSup = supWorkbook.Sheets[supWorkbook.SheetNames[0]]; 
+        const supRows = xlsx.utils.sheet_to_json(sheetSup, { header: 1 });
+        
+        let supCount = 0;
+        for (let i = 2; i < supRows.length; i++) {
+            const row = supRows[i];
+            if (!row || !row[1] || row[1].toString().trim().toLowerCase() !== 'bellavista') continue;
+            
+            const nombre = (row[3] || '').toString().trim();
+            const apellidos = (row[4] || '').toString().trim();
+            const nombreCompleto = `${nombre} ${apellidos}`.trim();
+            const dni = (row[5] || '').toString().trim();
+            const dependencia = (row[8] || '').toString().trim();
+            const puesto = (row[9] || '').toString().trim();
+            const celular = (row[10] || '').toString().trim();
+            const email = (row[11] || '').toString().trim();
+            
+            if (!nombre || !dni) continue;
+
+            const parts = nombreCompleto.toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+            
+            let uname = 'supervisor';
+            if (parts.length > 0) {
+                const primerNombre = parts[0];
+                const partsApellidos = apellidos.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+                const primerApellido = partsApellidos.length > 0 ? partsApellidos[0] : (parts.length > 1 ? parts[1] : 'sup');
+                uname = `${primerNombre}.${primerApellido}`;
+            }
+
+            const existing = await pool.query("SELECT id FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
+            
+            if (existing.rows.length > 0) {
+                const uId = existing.rows[0].id;
+                let finalUname = uname;
+                let c = 1;
+                while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [finalUname, uId])).rows.length > 0) {
+                    finalUname = uname + (++c);
+                }
+                
+                await pool.query(`
+                    UPDATE usuarios 
+                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = 'supervisor', usuario = $6, password = $7
+                    WHERE id = $8
+                `, [nombreCompleto, dependencia, puesto, celular, email, finalUname, dni, uId]);
+            } else {
+                let finalUname = uname;
+                let c = 1;
+                while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [finalUname])).rows.length > 0) {
+                    finalUname = uname + (++c);
+                }
+
+                await pool.query(`
+                    INSERT INTO usuarios (nombre_completo, dni, rol, dependencia, puesto, telefono, email, usuario, password, activo)
+                    VALUES ($1, $2, 'supervisor', $3, $4, $5, $6, $7, $8, true)
+                `, [nombreCompleto, dni, dependencia, puesto, celular, email, finalUname, dni]);
+            }
+            supCount++;
+        }
+
+        res.json({ ok: true, mensaje: 'Importación Excel completada', cmUpdates, unMatchedCount: unmatched.length, supCount, sampleUnmatched: unmatched.slice(0, 10) });
+    } catch (err) {
+        res.status(500).json({ error: err.message, stack: err.stack });
     }
 });
 
@@ -534,18 +690,22 @@ app.get('/api/tipos-actividad', async (req, res) => {
 
 app.post('/api/actividades', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids, fecha_inicio } = req.body;
+        const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, ie_ids, ies, fecha_inicio } = req.body;
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
 
-        if (ie_ids && ie_ids.length > 0) {
-            for (const ieId of ie_ids) {
-                const result = await db.prepare(
-                    'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id, fecha_inicio) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
-                ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id, inicio);
+        const targetIes = ies || (ie_ids || []).map(id => ({ id, niveles: null }));
 
-                const actividadId = result.lastInsertRowid;
+        if (targetIes && targetIes.length > 0) {
+            const result = await db.prepare(
+                'INSERT INTO actividades (titulo, descripcion, tipo_id, fecha_limite, hora_limite, asignador_id, fecha_inicio) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id'
+            ).run(titulo, descripcion, tipo_id, fecha_limite, hora, req.session.user.id, inicio);
+            const actividadId = result.lastInsertRowid;
 
+            for (const ieData of targetIes) {
+                const ieId = ieData.id;
+                const nivelesAplicados = ieData.niveles ? ieData.niveles.join(',') : null;
+                
                 const ie = await db.prepare('SELECT * FROM instituciones_educativas WHERE id = ?').get(ieId);
                 if (ie) {
                     let director = await db.prepare(
@@ -560,8 +720,8 @@ app.post('/api/actividades', authSupervisor, async (req, res) => {
                     }
 
                     await db.prepare(
-                        'INSERT INTO asignaciones (actividad_id, ie_id, director_id) VALUES (?, ?, ?)'
-                    ).run(actividadId, ieId, director.id);
+                        'INSERT INTO asignaciones (actividad_id, ie_id, director_id, niveles_aplicados) VALUES (?, ?, ?, ?)'
+                    ).run(actividadId, ieId, director.id, nivelesAplicados);
 
                     await db.prepare(
                         'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
@@ -600,8 +760,9 @@ app.get('/api/actividades', authDirector, async (req, res) => {
         } else {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
-                ase.fecha_completado, ase.notas_supervisor,
-                u.nombre_completo as asignador_nombre
+                ase.fecha_completado, ase.notas_supervisor, ase.niveles_aplicados,
+                u.nombre_completo as asignador_nombre,
+                ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN usuarios u ON a.asignador_id = u.id
@@ -757,7 +918,7 @@ app.get('/api/asignaciones', async (req, res) => {
             const asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
@@ -792,7 +953,7 @@ app.get('/api/asignaciones', async (req, res) => {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
@@ -808,7 +969,7 @@ app.get('/api/asignaciones', async (req, res) => {
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite,
                        ta.nombre as tipo_nombre,
-                       ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                       ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        asignador.nombre_completo as asignador_nombre, asignador.dependencia as area, asignador.puesto as subarea, asignador.telefono as asignador_telefono
                 FROM asignaciones ase
                 LEFT JOIN actividades a ON ase.actividad_id = a.id
