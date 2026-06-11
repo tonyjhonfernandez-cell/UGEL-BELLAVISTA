@@ -153,6 +153,7 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg);background-image:
 .bg-danger-light { background: #ffe4e6 !important; color: #be123c !important; }
 .bg-neutral-light { background: #f1f5f9 !important; color: #475569 !important; }
 .bg-purple-light { background: #ede9fe !important; color: #6d28d9 !important; }
+.bg-eba-light { background: #fce7f3 !important; color: #9d174d !important; }
 .bg-success-pill { background: #dcfce7 !important; color: #15803d !important; padding: 3px 8px !important; border-radius: 12px !important; display: inline-block !important; font-weight: 600 !important; }
 
 
@@ -1183,7 +1184,10 @@ body.director-mode #app-shell {
             <h2>Instituciones Educativas</h2>
             <span>Registro de IEs de UGEL Bellavista</span>
           </div>
-          <button class="btn btn-primary btn-sm admin-only" id="btn-nueva-ie" onclick="abrirModalIE()" style="display:none;"><i class="fas fa-plus-circle"></i> Nueva IE</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm admin-only" id="btn-nueva-ie" onclick="abrirModalIE()" style="display:none;"><i class="fas fa-plus-circle"></i> Nueva IE</button>
+            <button class="btn btn-secondary btn-sm admin-only" onclick="abrirModalNiveles()" style="display:none;"><i class="fas fa-layer-group"></i> Niveles</button>
+          </div>
         </div>
         <div class="filter-bar" style="margin-bottom:16px">
           <div class="filter-group" style="flex:1;">
@@ -1194,15 +1198,6 @@ body.director-mode #app-shell {
             <label>Nivel</label>
             <select class="form-select" id="ie-nivel-filter" onchange="loadIEs()">
               <option value="">Todos</option>
-              <option value="inicial">Inicial - Jardín</option>
-              <option value="cuna_jardin">Inicial - Cuna-Jardín</option>
-              <option value="primaria">Primaria</option>
-              <option value="secundaria">Secundaria</option>
-              <option value="ebe">EBE</option>
-              <option value="cetpro">CETPRO</option>
-              <option value="pronoei">PRONOEI</option>
-              <option value="eba">EBA</option>
-              <option value="otros">Otros</option>
             </select>
           </div>
         </div>
@@ -1675,6 +1670,7 @@ function initSupervisorApp() {
   cargarTiposActividad();
   cargarSupervisores();
   loadNotifBadge();
+  loadNiveles();
   
   if (currentUser.rol === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
@@ -3279,60 +3275,30 @@ async function loadIEs() {
           </td>`;
         }
         
-        // Generar filas por cada nivel según el filtro
+        // Generar filas por cada nivel según el filtro (dinámico desde ie.niveles)
         const levelsToRender = [];
-        if (ie.tiene_inicial && (!n || n === 'inicial')) {
-          levelsToRender.push({ name: 'Inicial - Jardín', cm: ie.cm_inicial || '-' });
-        }
-        if (ie.tiene_cuna_jardin && (!n || n === 'cuna_jardin')) {
-          levelsToRender.push({ name: 'Inicial - Cuna-Jardín', cm: ie.cm_cuna_jardin || '-' });
-        }
-        if (ie.tiene_primaria && (!n || n === 'primaria')) {
-          levelsToRender.push({ name: 'Primaria', cm: ie.cm_primaria || '-' });
-        }
-        if (ie.tiene_secundaria && (!n || n === 'secundaria')) {
-          levelsToRender.push({ name: 'Secundaria', cm: ie.cm_secundaria || '-' });
-        }
-        if (ie.tiene_ebe && (!n || n === 'ebe')) {
-          levelsToRender.push({ name: 'EBE', cm: ie.cm_ebe || '-' });
-        }
-        if (ie.tiene_cetpro && (!n || n === 'cetpro')) {
-          levelsToRender.push({ name: 'CETPRO', cm: ie.cm_cetpro || '-' });
-        }
-        if (ie.tiene_pronoei && (!n || n === 'pronoei')) {
-          levelsToRender.push({ name: 'PRONOEI', cm: ie.cm_pronoei || '-' });
-        }
-        if (ie.tiene_eba && (!n || n === 'eba')) {
-          levelsToRender.push({ name: 'EBA', cm: ie.cm_eba || '-' });
-        }
-        if (ie.tiene_otros && (!n || n === 'otros')) {
-          levelsToRender.push({ name: ie.tipo_otros || 'Otros', cm: '-' });
-        }
-        
+        (ie.niveles || []).forEach(function(nv) {
+          if (!n || n === nv.clave) {
+            levelsToRender.push({ name: nv.nombre, cm: nv.codigo_modular || '-', color: nv.color || 'bg-info-light' });
+          }
+        });
+
         // Si no tiene niveles especificados pero coincide con la búsqueda
         if (levelsToRender.length === 0 && !n) {
-          levelsToRender.push({ name: '-', cm: '-' });
+          levelsToRender.push({ name: '-', cm: '-', color: 'bg-neutral-light' });
         }
-        
+
         for (var j = 0; j < levelsToRender.length; j++) {
           const lv = levelsToRender[j];
-          
+
           let zonaClass = 'bg-secondary';
           if (ie.ruralidad === 'URBANO') zonaClass = 'bg-success-light';
           else if (ie.ruralidad && ie.ruralidad.includes('RURAL 3')) zonaClass = 'bg-danger-light';
           else if (ie.ruralidad && ie.ruralidad.includes('RURAL 2')) zonaClass = 'bg-warning-light';
           else if (ie.ruralidad && ie.ruralidad.includes('RURAL 1')) zonaClass = 'bg-info-light';
           else if (ie.ruralidad === 'RURAL') zonaClass = 'bg-warning-light';
-          
-          let levelClass = 'bg-info-light';
-          if (lv.name === 'Inicial - Jardín') levelClass = 'bg-info-light';
-          else if (lv.name === 'Inicial - Cuna-Jardín') levelClass = 'bg-purple-light';
-          else if (lv.name === 'Primaria') levelClass = 'bg-primary-light';
-          else if (lv.name === 'Secundaria') levelClass = 'bg-success-light';
-          else if (lv.name === 'EBE') levelClass = 'bg-danger-light';
-          else if (lv.name === 'CETPRO') levelClass = 'bg-warning-light';
-          else if (lv.name === 'PRONOEI') levelClass = 'bg-neutral-light';
-          else if (lv.name === 'EBA') levelClass = 'bg-info-light';
+
+          const levelClass = lv.color || 'bg-info-light';
           
           let tipoClass = 'bg-neutral-light';
           if (ie.tipo === 'POLIDOCENTE COMPLETO') tipoClass = 'bg-primary-light';
@@ -3387,35 +3353,17 @@ async function loadIEs() {
 
     document.getElementById('ies-table').innerHTML = html;
 
-    // Resumen de conteo por nivel
-    var counts = {
-      'Inicial - Jardín': 0, 'Inicial - Cuna-Jardín': 0, 'Primaria': 0,
-      'Secundaria': 0, 'EBE': 0, 'CETPRO': 0, 'PRONOEI': 0, 'EBA': 0
-    };
+    // Resumen de conteo por nivel (dinámico)
+    var counts = {};
     for (var k = 0; k < ies.length; k++) {
-      var ie2 = ies[k];
-      if (ie2.tiene_inicial) counts['Inicial - Jardín']++;
-      if (ie2.tiene_cuna_jardin) counts['Inicial - Cuna-Jardín']++;
-      if (ie2.tiene_primaria) counts['Primaria']++;
-      if (ie2.tiene_secundaria) counts['Secundaria']++;
-      if (ie2.tiene_ebe) counts['EBE']++;
-      if (ie2.tiene_cetpro) counts['CETPRO']++;
-      if (ie2.tiene_pronoei) counts['PRONOEI']++;
-      if (ie2.tiene_eba) counts['EBA']++;
+      (ies[k].niveles || []).forEach(function(nv) { counts[nv.nombre] = (counts[nv.nombre] || 0) + 1; });
     }
-    var colorMap = {
-      'Inicial - Jardín': 'bg-info-light', 'Inicial - Cuna-Jardín': 'bg-purple-light',
-      'Primaria': 'bg-primary-light', 'Secundaria': 'bg-success-light',
-      'EBE': 'bg-danger-light', 'CETPRO': 'bg-warning-light',
-      'PRONOEI': 'bg-neutral-light', 'EBA': 'bg-info-light'
-    };
     var resumenHtml = '';
-    for (var nv in counts) {
-      if (counts[nv] > 0) {
-        resumenHtml += '<span class="badge ' + colorMap[nv] + '" style="font-size:0.78rem;padding:4px 10px;border-radius:12px;">' +
-          nv + ': <strong>' + counts[nv] + '</strong></span>';
+    (window.nivelesCache || []).forEach(function(nv) {
+      if (counts[nv.nombre]) {
+        resumenHtml += '<span class="badge ' + (nv.color || 'bg-info-light') + '" style="font-size:0.78rem;padding:4px 10px;border-radius:12px;">' + nv.nombre + ': <strong>' + counts[nv.nombre] + '</strong></span>';
       }
-    }
+    });
     document.getElementById('ie-resumen-niveles').innerHTML = resumenHtml;
   } catch (e) { showToast('Error al cargar IEs', 'error'); }
 }
@@ -4354,15 +4302,13 @@ async function toggleActivoUsuario(id, activo) {
 }
 
 async function abrirModalIE(ieId = null) {
-  let ie = { 
-    codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false,
-    tiene_ebe: false, tiene_cetpro: false, tiene_pronoei: false, tiene_eba: false,
-    tiene_otros: false, tipo_otros: '',
+  let ie = {
+    codigo: '', nombre: '', niveles: [],
     ruralidad: 'URBANO', tipo: 'POLIDOCENTE COMPLETO', provincia: 'BELLAVISTA', distrito: '', lugar: '',
     director_nombre: '', director_email: '', director_telefono: ''
   };
   let title = 'Nueva Institución Educativa';
-  
+
   if (ieId) {
     title = 'Editar Institución Educativa';
     try {
@@ -4373,7 +4319,23 @@ async function abrirModalIE(ieId = null) {
       return;
     }
   }
-  
+
+  // Build dynamic nivel checkboxes
+  const nivelesMap = {};
+  (ie.niveles || []).forEach(function(nv) { nivelesMap[nv.nivel_id] = nv.codigo_modular || ''; });
+
+  let nivelesGrid = '';
+  (window.nivelesCache || []).forEach(function(nv) {
+    const checked = nivelesMap.hasOwnProperty(nv.id) ? 'checked' : '';
+    const cm = nivelesMap[nv.id] || '';
+    const display = nivelesMap.hasOwnProperty(nv.id) ? 'block' : 'none';
+    nivelesGrid += `
+      <div>
+        <label style="font-weight: 500;"><input type="checkbox" class="ie-nivel-cb" data-nivel-id="${nv.id}" ${checked} onchange="this.closest('div').querySelector('.ie-cm-input').style.display = this.checked ? 'block' : 'none'"> ${nv.nombre}</label>
+        <input type="text" class="form-control form-control-sm mt-1 ie-cm-input" data-nivel-id="${nv.id}" placeholder="Cód. Modular" value="${cm}" style="display: ${display};">
+      </div>`;
+  });
+
   const body = `
     <form id="ie-form" onsubmit="event.preventDefault()">
       <div class="row">
@@ -4386,7 +4348,7 @@ async function abrirModalIE(ieId = null) {
           <input type="text" class="form-control" id="form-ie-nombre" value="${ie.nombre}" required>
         </div>
       </div>
-      
+
       <div class="row">
         <div class="col-md-6 mb-3">
           <label class="form-label">Zona (Ruralidad)</label>
@@ -4408,7 +4370,7 @@ async function abrirModalIE(ieId = null) {
           </select>
         </div>
       </div>
-      
+
       <div class="row mb-3">
         <div class="col-md-4">
           <label class="form-label">Provincia</label>
@@ -4423,61 +4385,22 @@ async function abrirModalIE(ieId = null) {
           <input type="text" class="form-control" id="form-ie-lugar" value="${ie.lugar || ''}">
         </div>
       </div>
-      
+
       <div class="mb-3">
         <label class="form-label" style="font-weight:600;">Niveles Educativos y Códigos Modulares</label>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px;">
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-inicial" ${ie.tiene_inicial ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-inicial').style.display = this.checked ? 'block' : 'none'"> Inicial - Jardín</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-inicial" placeholder="Cód. Modular" value="${ie.cm_inicial || ''}" style="display: ${ie.tiene_inicial ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-cuna-jardin" ${ie.tiene_cuna_jardin ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-cuna-jardin').style.display = this.checked ? 'block' : 'none'"> Inicial - Cuna-Jardín</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-cuna-jardin" placeholder="Cód. Modular" value="${ie.cm_cuna_jardin || ''}" style="display: ${ie.tiene_cuna_jardin ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-primaria" ${ie.tiene_primaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-primaria').style.display = this.checked ? 'block' : 'none'"> Primaria</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-primaria" placeholder="Cód. Modular" value="${ie.cm_primaria || ''}" style="display: ${ie.tiene_primaria ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-secundaria" ${ie.tiene_secundaria ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-secundaria').style.display = this.checked ? 'block' : 'none'"> Secundaria</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-secundaria" placeholder="Cód. Modular" value="${ie.cm_secundaria || ''}" style="display: ${ie.tiene_secundaria ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-ebe" ${ie.tiene_ebe ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-ebe').style.display = this.checked ? 'block' : 'none'"> EBE</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-ebe" placeholder="Cód. Modular" value="${ie.cm_ebe || ''}" style="display: ${ie.tiene_ebe ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-cetpro" ${ie.tiene_cetpro ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-cetpro').style.display = this.checked ? 'block' : 'none'"> CETPRO</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-cetpro" placeholder="Cód. Modular" value="${ie.cm_cetpro || ''}" style="display: ${ie.tiene_cetpro ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-pronoei" ${ie.tiene_pronoei ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-pronoei').style.display = this.checked ? 'block' : 'none'"> PRONOEI</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-pronoei" placeholder="Cód. Modular" value="${ie.cm_pronoei || ''}" style="display: ${ie.tiene_pronoei ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-eba" ${ie.tiene_eba ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-eba').style.display = this.checked ? 'block' : 'none'"> EBA</label>
-            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-eba" placeholder="Cód. Modular" value="${ie.cm_eba || ''}" style="display: ${ie.tiene_eba ? 'block' : 'none'};">
-          </div>
-          <div>
-            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
-          </div>
+          ${nivelesGrid}
         </div>
       </div>
-      
-      <div class="mb-3" id="form-ie-tipo-otros-group" style="display: ${ie.tiene_otros ? 'block' : 'none'};">
-        <label class="form-label">Especificar Otros Niveles</label>
-        <input type="text" class="form-control" id="form-ie-tipo-otros" value="${ie.tipo_otros || ''}">
-      </div>
-      
+
       <div style="border-top: 1px dashed #cbd5e1; margin: 20px 0;"></div>
       <div style="font-weight: 600; margin-bottom: 12px; color: var(--granate);"><i class="fas fa-user-tie"></i> Datos del Director</div>
-      
+
       <div class="mb-3">
         <label class="form-label">Nombre Completo del Director</label>
         <input type="text" class="form-control" id="form-ie-director-nombre" value="${ie.director_nombre || ''}">
       </div>
-      
+
       <div class="row">
         <div class="col-md-6 mb-3">
           <label class="form-label">Correo Electrónico</label>
@@ -4490,7 +4413,7 @@ async function abrirModalIE(ieId = null) {
       </div>
     </form>
   `;
-  
+
   const footer = `
     <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
     <button class="btn btn-primary" id="btn-guardar-ie" onclick="this.disabled=true; this.textContent='Guardando...'; guardarIE(${ieId}).finally(() => { if(document.getElementById('btn-guardar-ie')) { document.getElementById('btn-guardar-ie').disabled=false; document.getElementById('btn-guardar-ie').textContent='Guardar'; } })">Guardar</button>
@@ -4502,51 +4425,34 @@ async function abrirModalIE(ieId = null) {
 async function guardarIE(ieId = null) {
   const codigo = document.getElementById('form-ie-codigo').value.trim();
   const nombre = document.getElementById('form-ie-nombre').value.trim();
-  const tiene_inicial = document.getElementById('form-ie-inicial').checked;
-  const tiene_cuna_jardin = document.getElementById('form-ie-cuna-jardin').checked;
-  const tiene_primaria = document.getElementById('form-ie-primaria').checked;
-  const tiene_secundaria = document.getElementById('form-ie-secundaria').checked;
-  const tiene_ebe = document.getElementById('form-ie-ebe').checked;
-  const tiene_cetpro = document.getElementById('form-ie-cetpro').checked;
-  const tiene_pronoei = document.getElementById('form-ie-pronoei').checked;
-  const tiene_eba = document.getElementById('form-ie-eba').checked;
-  const tiene_otros = document.getElementById('form-ie-otros').checked;
-  const tipo_otros = document.getElementById('form-ie-tipo-otros').value.trim();
-
-  const cm_inicial = document.getElementById('form-ie-cm-inicial').value.trim();
-  const cm_cuna_jardin = document.getElementById('form-ie-cm-cuna-jardin').value.trim();
-  const cm_primaria = document.getElementById('form-ie-cm-primaria').value.trim();
-  const cm_secundaria = document.getElementById('form-ie-cm-secundaria').value.trim();
-  const cm_ebe = document.getElementById('form-ie-cm-ebe').value.trim();
-  const cm_cetpro = document.getElementById('form-ie-cm-cetpro').value.trim();
-  const cm_pronoei = document.getElementById('form-ie-cm-pronoei').value.trim();
-  const cm_eba = document.getElementById('form-ie-cm-eba').value.trim();
-  
   const ruralidad = document.getElementById('form-ie-ruralidad').value;
   const tipo = document.getElementById('form-ie-tipo').value;
   const provincia = document.getElementById('form-ie-provincia').value.trim();
   const distrito = document.getElementById('form-ie-distrito').value.trim();
   const lugar = document.getElementById('form-ie-lugar').value.trim();
-  
   const director_nombre = document.getElementById('form-ie-director-nombre').value.trim();
   const director_email = document.getElementById('form-ie-director-email').value.trim();
   const director_telefono = document.getElementById('form-ie-director-telefono').value.trim();
-  
+
   if (!codigo || !nombre) {
     showToast('Código y Nombre son obligatorios', 'error');
     return;
   }
-  
+
+  // Collect niveles dynamically
+  const nivelesArr = [];
+  document.querySelectorAll('.ie-nivel-cb:checked').forEach(function(cb) {
+    const nivelId = parseInt(cb.dataset.nivelId);
+    const cmInput = document.querySelector('.ie-cm-input[data-nivel-id="' + nivelId + '"]');
+    nivelesArr.push({ nivel_id: nivelId, codigo_modular: cmInput ? cmInput.value.trim() : '' });
+  });
+
   const body = {
-    codigo, nombre, tiene_inicial, tiene_cuna_jardin, tiene_primaria, tiene_secundaria,
-    tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
-    tiene_otros, tipo_otros,
-    cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
-    cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
-    ruralidad, tipo, provincia, distrito, lugar,
-    director_nombre, director_email, director_telefono
+    codigo, nombre, ruralidad, tipo, provincia, distrito, lugar,
+    director_nombre, director_email, director_telefono,
+    niveles: nivelesArr
   };
-  
+
   try {
     const url = ieId ? '/api/ies/' + ieId : '/api/ies';
     const method = ieId ? 'PUT' : 'POST';
@@ -4580,6 +4486,94 @@ async function confirmarEliminarIE(id) {
 }
 
 // ===================== INIT =====================
+// ===================== NIVELES =====================
+window.nivelesCache = [];
+
+async function loadNiveles() {
+  try {
+    var d = await api('/api/niveles');
+    window.nivelesCache = (d || []).filter(function(n) { return n.activo; });
+    // Populate filter dropdown
+    var sel = document.getElementById('ie-nivel-filter');
+    if (sel) {
+      var html = '<option value="">Todos</option>';
+      window.nivelesCache.forEach(function(n) {
+        html += '<option value="' + n.clave + '">' + n.nombre + '</option>';
+      });
+      sel.innerHTML = html;
+    }
+  } catch(e) { window.nivelesCache = []; }
+}
+
+async function abrirModalNiveles() {
+  const niveles = await api('/api/niveles');
+  window.nivelesCache = niveles;
+  let rows = '';
+  niveles.forEach(function(n) {
+    rows += `<tr>
+      <td><span class="badge ${n.color || 'bg-info-light'}">${n.nombre}</span></td>
+      <td style="font-size:0.8rem; color:#64748b;">${n.clave}</td>
+      <td style="text-align:center;">
+        <button class="btn btn-xs btn-outline me-1" onclick="editarNivel(${n.id}, '${n.nombre.replace(/'/g,"\\'")}', '${n.color || 'bg-info-light'}', ${n.orden})"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-xs btn-outline text-danger" onclick="eliminarNivel(${n.id}, '${n.nombre.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  });
+  const body = `
+    <div style="margin-bottom:12px;">
+      <button class="btn btn-primary btn-sm" onclick="crearNivel()"><i class="fas fa-plus"></i> Nuevo Nivel</button>
+    </div>
+    <table style="width:100%; border-collapse:collapse; font-size:0.87rem;">
+      <thead><tr style="border-bottom:2px solid #e2e8f0;">
+        <th style="padding:6px 8px;">Nombre</th>
+        <th style="padding:6px 8px;">Clave</th>
+        <th style="padding:6px 8px; text-align:center;">Acciones</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+  showModal('Gestión de Niveles Educativos', body, '<button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>');
+}
+
+async function crearNivel() {
+  const nombre = prompt('Nombre del nuevo nivel (ej: Básica Alternativa - Avanzado):');
+  if (!nombre || !nombre.trim()) return;
+  const clave = prompt('Clave interna (solo letras minúsculas y guión bajo, ej: eba_avanzado):');
+  if (!clave || !clave.trim()) return;
+  const colores = ['bg-info-light','bg-primary-light','bg-success-light','bg-danger-light','bg-warning-light','bg-neutral-light','bg-purple-light','bg-eba-light'];
+  const color = prompt('Color del badge (' + colores.join(', ') + '):', 'bg-info-light') || 'bg-info-light';
+  try {
+    await api('/api/niveles', { method: 'POST', body: { nombre: nombre.trim(), clave: clave.trim(), color, orden: 99 } });
+    showToast('Nivel creado', 'success');
+    abrirModalNiveles();
+    loadNiveles();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function editarNivel(id, nombreActual, colorActual, ordenActual) {
+  const nombre = prompt('Nombre del nivel:', nombreActual);
+  if (!nombre || !nombre.trim()) return;
+  const colores = ['bg-info-light','bg-primary-light','bg-success-light','bg-danger-light','bg-warning-light','bg-neutral-light','bg-purple-light','bg-eba-light'];
+  const color = prompt('Color (' + colores.join(', ') + '):', colorActual) || colorActual;
+  const orden = parseInt(prompt('Orden (número para ordenar):', ordenActual)) || ordenActual;
+  try {
+    await api('/api/niveles/' + id, { method: 'PUT', body: { nombre: nombre.trim(), color, orden } });
+    showToast('Nivel actualizado', 'success');
+    abrirModalNiveles();
+    loadNiveles();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+async function eliminarNivel(id, nombre) {
+  if (!confirm('¿Eliminar el nivel "' + nombre + '"? Solo es posible si ninguna IE lo tiene asignado.')) return;
+  try {
+    await api('/api/niveles/' + id, { method: 'DELETE' });
+    showToast('Nivel eliminado', 'success');
+    abrirModalNiveles();
+    loadNiveles();
+  } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
 checkSession();
 </script>
 </body>

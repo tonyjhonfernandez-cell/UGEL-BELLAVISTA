@@ -263,6 +263,72 @@ async function initDatabase() {
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
     } catch (e) {}
 
+    // New dynamic niveles tables
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS niveles_educativos (
+            id SERIAL PRIMARY KEY,
+            nombre TEXT NOT NULL,
+            clave VARCHAR(60) UNIQUE NOT NULL,
+            color VARCHAR(40) DEFAULT 'bg-info-light',
+            orden INTEGER DEFAULT 99,
+            activo BOOLEAN DEFAULT true,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    `);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS ie_niveles (
+            id SERIAL PRIMARY KEY,
+            ie_id INTEGER REFERENCES instituciones_educativas(id) ON DELETE CASCADE,
+            nivel_id INTEGER REFERENCES niveles_educativos(id) ON DELETE CASCADE,
+            codigo_modular VARCHAR(20),
+            UNIQUE(ie_id, nivel_id)
+        )
+    `);
+
+    // Seed default niveles if empty
+    const nivelesCount = await pool.query('SELECT COUNT(*) as c FROM niveles_educativos');
+    if (parseInt(nivelesCount.rows[0].c) === 0) {
+        const defaults = [
+            { nombre: 'Inicial - Jardín', clave: 'inicial', color: 'bg-info-light', orden: 1 },
+            { nombre: 'Inicial - Cuna-Jardín', clave: 'cuna_jardin', color: 'bg-purple-light', orden: 2 },
+            { nombre: 'Primaria', clave: 'primaria', color: 'bg-primary-light', orden: 3 },
+            { nombre: 'Secundaria', clave: 'secundaria', color: 'bg-success-light', orden: 4 },
+            { nombre: 'EBE', clave: 'ebe', color: 'bg-danger-light', orden: 5 },
+            { nombre: 'CETPRO', clave: 'cetpro', color: 'bg-warning-light', orden: 6 },
+            { nombre: 'PRONOEI', clave: 'pronoei', color: 'bg-neutral-light', orden: 7 },
+            { nombre: 'EBA', clave: 'eba', color: 'bg-eba-light', orden: 8 },
+        ];
+        for (const n of defaults) {
+            await pool.query('INSERT INTO niveles_educativos (nombre, clave, color, orden) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [n.nombre, n.clave, n.color, n.orden]);
+        }
+    }
+
+    // Migrate existing IE nivel columns → ie_niveles (one-time, idempotent)
+    const colToNivel = [
+        { col: 'tiene_inicial', cmCol: 'cm_inicial', clave: 'inicial' },
+        { col: 'tiene_cuna_jardin', cmCol: 'cm_cuna_jardin', clave: 'cuna_jardin' },
+        { col: 'tiene_primaria', cmCol: 'cm_primaria', clave: 'primaria' },
+        { col: 'tiene_secundaria', cmCol: 'cm_secundaria', clave: 'secundaria' },
+        { col: 'tiene_ebe', cmCol: 'cm_ebe', clave: 'ebe' },
+        { col: 'tiene_cetpro', cmCol: 'cm_cetpro', clave: 'cetpro' },
+        { col: 'tiene_pronoei', cmCol: 'cm_pronoei', clave: 'pronoei' },
+        { col: 'tiene_eba', cmCol: 'cm_eba', clave: 'eba' },
+    ];
+    for (const mapping of colToNivel) {
+        const nv = await pool.query('SELECT id FROM niveles_educativos WHERE clave = $1', [mapping.clave]);
+        if (nv.rows.length === 0) continue;
+        const nivelId = nv.rows[0].id;
+        try {
+            await pool.query(`
+                INSERT INTO ie_niveles (ie_id, nivel_id, codigo_modular)
+                SELECT id, $1, ${mapping.cmCol}
+                FROM instituciones_educativas
+                WHERE ${mapping.col} = true AND activa = true
+                ON CONFLICT (ie_id, nivel_id) DO NOTHING
+            `, [nivelId]);
+        } catch(e) { /* column may not exist */ }
+    }
+
     const tipos = await db.prepare('SELECT COUNT(*) as c FROM tipos_actividad').get();
     if (tipos.c == 0) {
         const tiposList = ['Tarea', 'Documento', 'Reunión', 'Informe'];
@@ -482,9 +548,10 @@ async function autoExpireAssignments() {
     }
 }
 
-const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria', 'ebe', 'cetpro', 'pronoei', 'eba', 'otros'];
+const NIVELES_VALIDOS = ['inicial', 'cuna_jardin', 'primaria', 'secundaria', 'ebe', 'cetpro', 'pronoei', 'eba', 'otros'];
 function validarNivel(nivel) {
-    return NIVELES_VALIDOS.includes(nivel) ? nivel : '';
+    if (!nivel) return '';
+    return /^[a-z0-9_]{1,60}$/.test(nivel) ? nivel : '';
 }
 
 const authSupervisor = (req, res, next) => {
@@ -566,31 +633,99 @@ app.get('/api/check-session', (req, res) => {
     }
 });
 
+// GET all niveles
+app.get('/api/niveles', async (req, res) => {
+    try {
+        const rows = await db.prepare('SELECT * FROM niveles_educativos ORDER BY orden, id').all();
+        res.json(rows);
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST create nivel (admin only)
+app.post('/api/niveles', authAdmin, async (req, res) => {
+    try {
+        const { nombre, clave, color, orden } = req.body;
+        if (!nombre || !clave) return res.status(400).json({ error: 'Nombre y clave son requeridos' });
+        const claveClean = clave.toLowerCase().replace(/[^a-z0-9_]/g, '_').substring(0, 60);
+        const existing = await db.prepare('SELECT id FROM niveles_educativos WHERE clave = ?').get(claveClean);
+        if (existing) return res.status(400).json({ error: `La clave "${claveClean}" ya existe` });
+        const result = await db.prepare(
+            'INSERT INTO niveles_educativos (nombre, clave, color, orden) VALUES (?, ?, ?, ?)'
+        ).run(nombre.trim(), claveClean, color || 'bg-info-light', orden || 99);
+        res.json({ ok: true, id: result.lastInsertRowid });
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT edit nivel (admin only)
+app.put('/api/niveles/:id', authAdmin, async (req, res) => {
+    try {
+        const { nombre, color, orden } = req.body;
+        if (!nombre) return res.status(400).json({ error: 'Nombre es requerido' });
+        await db.prepare('UPDATE niveles_educativos SET nombre=?, color=?, orden=? WHERE id=?')
+            .run(nombre.trim(), color || 'bg-info-light', orden || 99, req.params.id);
+        res.json({ ok: true });
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE nivel (admin only) — only if no IE uses it
+app.delete('/api/niveles/:id', authAdmin, async (req, res) => {
+    try {
+        const usage = await db.prepare('SELECT COUNT(*) as c FROM ie_niveles WHERE nivel_id = ?').get(req.params.id);
+        if (parseInt(usage.c) > 0) {
+            return res.status(400).json({ error: `No se puede eliminar: ${usage.c} IE(s) tienen este nivel asignado` });
+        }
+        await db.prepare('DELETE FROM niveles_educativos WHERE id = ?').run(req.params.id);
+        res.json({ ok: true });
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/ies', async (req, res) => {
     try {
         const { nivel, buscar } = req.query;
-        let sql = `
+        let whereExtra = '';
+        const params = [];
+
+        if (nivel) {
+            const nivelClean = validarNivel(nivel);
+            if (nivelClean) {
+                whereExtra += ` AND EXISTS (SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id WHERE iln2.ie_id = ie.id AND ne2.clave = '${nivelClean}')`;
+            }
+        }
+        if (buscar) {
+            whereExtra += ' AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR u.nombre_completo ILIKE ?)';
+            const q = `%${buscar}%`;
+            params.push(q, q, q);
+        }
+
+        const ies = await db.prepare(`
             SELECT ie.*,
                    u.id as director_id, u.nombre_completo as director_nombre,
                    u.email as director_email, u.telefono as director_telefono
             FROM instituciones_educativas ie
             LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
-            WHERE ie.activa = true
-        `;
-        const params = [];
-        if (nivel) {
-            const nv = (['inicial', 'cuna_jardin', 'primaria', 'secundaria', 'ebe', 'cetpro', 'pronoei', 'eba', 'otros'].includes(nivel)) ? nivel : '';
-            if (nv) {
-                sql += ` AND ie.tiene_${nv} = true`;
-            }
+            WHERE ie.activa = true ${whereExtra}
+            ORDER BY ie.codigo
+        `).all(...params);
+
+        // Attach niveles to each IE
+        const allIeNiveles = await db.prepare(`
+            SELECT iln.ie_id, ne.id as nivel_id, ne.nombre, ne.clave, ne.color, ne.orden, iln.codigo_modular
+            FROM ie_niveles iln
+            JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            WHERE ne.activo = true
+            ORDER BY ne.orden
+        `).all();
+
+        const nivelMap = {};
+        for (const n of allIeNiveles) {
+            if (!nivelMap[n.ie_id]) nivelMap[n.ie_id] = [];
+            nivelMap[n.ie_id].push({ nivel_id: n.nivel_id, nombre: n.nombre, clave: n.clave, color: n.color, orden: n.orden, codigo_modular: n.codigo_modular });
         }
-        if (buscar) {
-            sql += ' AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR u.nombre_completo ILIKE ?)';
-            const q = `%${buscar}%`;
-            params.push(q, q, q);
+
+        for (const ie of ies) {
+            ie.niveles = nivelMap[ie.id] || [];
         }
-        sql += ' ORDER BY ie.codigo';
-        const ies = await db.prepare(sql).all(...params);
+
         res.json(ies);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -651,7 +786,19 @@ app.post('/api/ies', authAdmin, async (req, res) => {
         );
         
         const newIeId = result.lastInsertRowid;
-        
+
+        // Handle niveles array
+        if (req.body.niveles && Array.isArray(req.body.niveles)) {
+            await db.prepare('DELETE FROM ie_niveles WHERE ie_id = ?').run(newIeId);
+            for (const nv of req.body.niveles) {
+                if (!nv.nivel_id) continue;
+                await pool.query(
+                    'INSERT INTO ie_niveles (ie_id, nivel_id, codigo_modular) VALUES ($1, $2, $3) ON CONFLICT (ie_id, nivel_id) DO UPDATE SET codigo_modular = EXCLUDED.codigo_modular',
+                    [newIeId, nv.nivel_id, nv.codigo_modular || null]
+                );
+            }
+        }
+
         if (director_nombre) {
             const username = 'director.' + codigo;
             await pool.query(`
@@ -669,7 +816,7 @@ app.post('/api/ies', authAdmin, async (req, res) => {
                 director_email || null, director_telefono || null
             ]);
         }
-        
+
         res.json({ ok: true, id: newIeId });
     } catch (err) {
         console.error('Error al crear IE:', err);
@@ -710,6 +857,21 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
             req.params.id
         );
         
+        // Handle niveles array
+        if (req.body.niveles && Array.isArray(req.body.niveles)) {
+            const ieRow = await db.prepare('SELECT id FROM instituciones_educativas WHERE id = ?').get(req.params.id);
+            if (ieRow) {
+                await db.prepare('DELETE FROM ie_niveles WHERE ie_id = ?').run(ieRow.id);
+                for (const nv of req.body.niveles) {
+                    if (!nv.nivel_id) continue;
+                    await pool.query(
+                        'INSERT INTO ie_niveles (ie_id, nivel_id, codigo_modular) VALUES ($1, $2, $3) ON CONFLICT (ie_id, nivel_id) DO UPDATE SET codigo_modular = EXCLUDED.codigo_modular',
+                        [ieRow.id, nv.nivel_id, nv.codigo_modular || null]
+                    );
+                }
+            }
+        }
+
         if (director_nombre) {
             const username = 'director.' + codigo;
             await pool.query(`
@@ -727,7 +889,7 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
                 director_email || null, director_telefono || null
             ]);
         }
-        
+
         res.json({ ok: true });
     } catch (err) {
         console.error('Error al actualizar IE:', err);
@@ -1077,7 +1239,7 @@ app.get('/api/asignaciones', async (req, res) => {
 
         const nivel = validarNivel(req.query.nivel || '');
         const { estado, buscar, asignador_id } = req.query;
-        const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
+        const nivelWhere = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${nivel}')` : '';
         const estadoWhere = estado ? 'AND ase.estado = ?' : '';
         const buscarWhere = buscar ? 'AND (ie.nombre ILIKE ? OR ie.codigo ILIKE ? OR a.titulo ILIKE ?)' : '';
         const asignadorWhere = asignador_id ? 'AND a.asignador_id = ?' : '';
@@ -1131,7 +1293,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
 
         function buildWhere(extra) {
             let w = 'WHERE 1=1';
-            if (nivel) w += ` AND ie.tiene_${nivel} = true`;
+            if (nivel) w += ` AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${nivel}')`;
             if (estado) w += ' AND ase.estado = ?';
             if (extra) w += ' ' + extra;
             return w;
@@ -1180,7 +1342,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 ORDER BY a.created_at DESC LIMIT 10
             `).all(...buildParams());
 
-            const nivelIeWhere = nivel ? `AND tiene_${nivel} = true` : '';
+            const nivelIeWhere = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = instituciones_educativas.id AND ne_f.clave = '${nivel}')` : '';
             const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
             const total_directores = await db.prepare("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'director' AND activo = true").get();
 
@@ -1227,9 +1389,10 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             });
         } else {
             const userId = req.session.user.id;
-            const nivelJoin = nivel ? `INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id AND ie.tiene_${nivel} = true` : '';
-            const nivelWhere = nivel ? `AND ie.tiene_${nivel} = true` : '';
-            const fromDir = `FROM asignaciones ase ${nivelJoin} WHERE ase.director_id = ?`;
+            const nivelExistsOnAseId = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ase.ie_id AND ne_f.clave = '${nivel}')` : '';
+            const nivelJoin = '';
+            const nivelWhere = nivelExistsOnAseId;
+            const fromDir = `FROM asignaciones ase WHERE ase.director_id = ? ${nivelWhere}`;
 
             const total = await db.prepare(`SELECT COUNT(*) as c ${fromDir}`).get(userId);
             const completadas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'completada'`).get(userId);
@@ -1545,8 +1708,8 @@ app.get('/api/export/asignaciones', async (req, res) => {
         const { nivel, estado, buscar, asignador_id } = req.query;
         const params = [];
         let where = 'WHERE 1=1';
-        if (nivel && NIVELES_VALIDOS.includes(nivel)) {
-            where += ' AND ie.tiene_' + nivel + ' = true';
+        if (nivel && validarNivel(nivel)) {
+            where += ` AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${validarNivel(nivel)}')`;
         }
         if (estado) {
             where += ' AND ase.estado = ?';
