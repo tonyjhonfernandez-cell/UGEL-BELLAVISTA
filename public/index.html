@@ -1157,9 +1157,10 @@ body.director-mode #app-shell {
             <table>
               <thead>
                 <tr>
+                  <th>Código Modular</th>
                   <th>Código Local</th>
                   <th>Nombre de IE</th>
-                  <th>Niveles y Códigos Modulares</th>
+                  <th>Nivel</th>
                   <th class="admin-only" style="width:120px; text-align:center; display:none;">Acciones</th>
                 </tr>
               </thead>
@@ -3212,13 +3213,6 @@ async function loadIEs() {
     if (ies.length > 0) {
       for (var i = 0; i < ies.length; i++) {
         var ie = ies[i];
-        var niveles = '';
-        if (ie.tiene_inicial) niveles += '<span class="badge bg-info me-1">Inicial' + (ie.cm_inicial ? ' (' + ie.cm_inicial + ')' : '') + '</span>';
-        if (ie.tiene_primaria) niveles += '<span class="badge bg-primary me-1">Primaria' + (ie.cm_primaria ? ' (' + ie.cm_primaria + ')' : '') + '</span>';
-        if (ie.tiene_secundaria) niveles += '<span class="badge bg-success me-1">Secundaria' + (ie.cm_secundaria ? ' (' + ie.cm_secundaria + ')' : '') + '</span>';
-        if (ie.tiene_otros) niveles += '<span class="badge bg-secondary me-1" title="' + (ie.tipo_otros || 'Otros') + '">' + (ie.tipo_otros || 'Otros') + '</span>';
-        if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria && !ie.tiene_otros) niveles = '<span class="text-muted">-</span>';
-        
         let actionCell = '';
         if (currentUser && currentUser.rol === 'admin') {
           actionCell = `<td style="text-align:center;">
@@ -3227,10 +3221,29 @@ async function loadIEs() {
           </td>`;
         }
         
-        html += '<tr><td>' + ie.codigo + '</td><td>' + ie.nombre + '</td><td>' + niveles + '</td>' + actionCell + '</tr>';
+        let hasLevels = false;
+        if (ie.tiene_inicial) {
+          html += '<tr><td style="font-weight:bold; color:var(--granate);">' + (ie.cm_inicial || '-') + '</td><td style="font-size:0.85em; color:#666;">' + ie.codigo + '</td><td>' + ie.nombre + '</td><td><span class="badge bg-info">Inicial</span></td>' + actionCell + '</tr>';
+          hasLevels = true;
+        }
+        if (ie.tiene_primaria) {
+          html += '<tr><td style="font-weight:bold; color:var(--granate);">' + (ie.cm_primaria || '-') + '</td><td style="font-size:0.85em; color:#666;">' + ie.codigo + '</td><td>' + ie.nombre + '</td><td><span class="badge bg-primary">Primaria</span></td>' + actionCell + '</tr>';
+          hasLevels = true;
+        }
+        if (ie.tiene_secundaria) {
+          html += '<tr><td style="font-weight:bold; color:var(--granate);">' + (ie.cm_secundaria || '-') + '</td><td style="font-size:0.85em; color:#666;">' + ie.codigo + '</td><td>' + ie.nombre + '</td><td><span class="badge bg-success">Secundaria</span></td>' + actionCell + '</tr>';
+          hasLevels = true;
+        }
+        if (ie.tiene_otros) {
+          html += '<tr><td style="font-weight:bold; color:var(--granate);">-</td><td style="font-size:0.85em; color:#666;">' + ie.codigo + '</td><td>' + ie.nombre + '</td><td><span class="badge bg-secondary">' + (ie.tipo_otros || 'Otros') + '</span></td>' + actionCell + '</tr>';
+          hasLevels = true;
+        }
+        if (!hasLevels) {
+           html += '<tr><td style="font-weight:bold; color:var(--granate);">-</td><td style="font-size:0.85em; color:#666;">' + ie.codigo + '</td><td>' + ie.nombre + '</td><td><span class="text-muted">Sin niveles</span></td>' + actionCell + '</tr>';
+        }
       }
     } else {
-      const colSpan = (currentUser && currentUser.rol === 'admin') ? 4 : 3;
+      const colSpan = (currentUser && currentUser.rol === 'admin') ? 5 : 4;
       html = '<tr class="empty"><td colspan="' + colSpan + '">No hay IEs</td></tr>';
     }
     document.getElementById('ies-table').innerHTML = html;
