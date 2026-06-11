@@ -601,8 +601,10 @@ body.director-mode #app-shell {
               <div style="font-weight:800;font-size:1.1rem;color:var(--granate);line-height:1.1;letter-spacing:0.5px">UGEL<br>BELLAVISTA</div>
             </div>
             <h1 style="font-size:1.6rem;font-weight:800;color:var(--granate);letter-spacing:0.5px;text-align:center;margin:0;flex:1">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
-            <div class="dh-right" style="display:flex;align-items:center;gap:10px;width:180px;justify-content:flex-end">
-              <!-- Botón de Iniciar Sesión movido al final de la página -->
+            <div class="dh-right" style="display:flex;align-items:center;gap:10px" id="dir-auth-buttons">
+              <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:var(--granate);color:var(--granate);font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+              </button>
             </div>
           </div>
           <div class="dir-body">
@@ -650,12 +652,7 @@ body.director-mode #app-shell {
                 </div>
               </div>
             </div>
-            <!-- Barra de inicio de sesión / estado de usuario -->
-            <div id="dir-auth-buttons" style="margin-top: 24px; background: #fff; border: 1px solid #dde0e3; padding: 16px 24px; display: flex; justify-content: center; align-items: center; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); border-radius: 4px;">
-              <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:var(--granate);color:var(--granate);font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
-                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-              </button>
-            </div>
+
           </div>
         </div>
       </div>
