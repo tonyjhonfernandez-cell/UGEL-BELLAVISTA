@@ -2293,8 +2293,8 @@ function renderDirectorActividadesTable() {
       return `
         <div class="dir-card-item" onclick="mostrarDetalleActividad(${a.id})">
           <div class="dir-card-body">
+            ${tipo ? `<span class="dir-card-tag">${tipo}</span>` : ''}
             <h4 class="dir-card-title">${titulo}</h4>
-            ${tipo ? `<span class="dir-card-tag" style="margin-top: 2px; margin-bottom: 8px;">${tipo}</span>` : ''}
             ${desc ? `<p class="dir-card-desc" title="${desc.replace(/"/g, '&quot;')}">${desc}</p>` : ''}
           </div>
           <div class="dir-card-footer">
