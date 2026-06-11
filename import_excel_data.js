@@ -66,11 +66,19 @@ async function runImport() {
                     tiene_inicial: false,
                     tiene_primaria: false,
                     tiene_secundaria: false,
+                    tiene_ebe: false,
+                    tiene_cetpro: false,
+                    tiene_pronoei: false,
+                    tiene_eba: false,
                     tiene_otros: false,
                     tipo_otros: null,
                     cm_inicial: null,
                     cm_primaria: null,
                     cm_secundaria: null,
+                    cm_ebe: null,
+                    cm_cetpro: null,
+                    cm_pronoei: null,
+                    cm_eba: null,
                     tipo: '',
                     provincia: '',
                     distrito: '',
@@ -105,6 +113,18 @@ async function runImport() {
             } else if (level.includes('secundaria')) {
                 school.tiene_secundaria = true;
                 school.cm_secundaria = modularCode;
+            } else if (level.includes('ebe') || level === 'educacion basica especial') {
+                school.tiene_ebe = true;
+                school.cm_ebe = modularCode;
+            } else if (level.includes('cetpro') || level.includes('tecnico productiv')) {
+                school.tiene_cetpro = true;
+                school.cm_cetpro = modularCode;
+            } else if (level.includes('pronoei') || level.includes('pronoi')) {
+                school.tiene_pronoei = true;
+                school.cm_pronoei = modularCode;
+            } else if (level.includes('eba') || level.includes('educacion basica alternativa') || level.includes('adulto')) {
+                school.tiene_eba = true;
+                school.cm_eba = modularCode;
             } else {
                 school.tiene_otros = true;
                 school.tipo_otros = String(rawNivel || '').trim();
@@ -149,13 +169,18 @@ async function runImport() {
                     SET nombre = $1, ruralidad = $2, 
                         tiene_inicial = $3, tiene_primaria = $4, tiene_secundaria = $5, tiene_otros = $6, 
                         tipo_otros = $7, cm_inicial = $8, cm_primaria = $9, cm_secundaria = $10,
-                        tipo = $11, provincia = $12, distrito = $13, lugar = $14, activa = true
-                    WHERE codigo = $15
+                        tipo = $11, provincia = $12, distrito = $13, lugar = $14,
+                        tiene_ebe = $15, tiene_cetpro = $16, tiene_pronoei = $17, tiene_eba = $18,
+                        cm_ebe = $19, cm_cetpro = $20, cm_pronoei = $21, cm_eba = $22,
+                        activa = true
+                    WHERE codigo = $23
                 `, [
                     school.nombre, school.ruralidad, 
                     school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
                     school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
                     school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
+                    school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
+                    school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba,
                     school.codigo
                 ]);
                 ieUpdated++;
@@ -165,13 +190,18 @@ async function runImport() {
                         codigo, nombre, ruralidad, 
                         tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, 
                         tipo_otros, cm_inicial, cm_primaria, cm_secundaria,
-                        tipo, provincia, distrito, lugar, activa
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true)
+                        tipo, provincia, distrito, lugar,
+                        tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
+                        cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
+                        activa
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, true)
                 `, [
                     school.codigo, school.nombre, school.ruralidad, 
                     school.tiene_inicial, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
                     school.tipo_otros, school.cm_inicial, school.cm_primaria, school.cm_secundaria,
-                    school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null
+                    school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
+                    school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
+                    school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba
                 ]);
                 ieInserted++;
             }

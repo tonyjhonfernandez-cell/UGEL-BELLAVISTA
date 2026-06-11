@@ -1196,6 +1196,10 @@ body.director-mode #app-shell {
               <option value="inicial">Inicial</option>
               <option value="primaria">Primaria</option>
               <option value="secundaria">Secundaria</option>
+              <option value="ebe">EBE</option>
+              <option value="cetpro">CETPRO</option>
+              <option value="pronoei">PRONOEI</option>
+              <option value="eba">EBA</option>
               <option value="otros">Otros</option>
             </select>
           </div>
@@ -3283,6 +3287,18 @@ async function loadIEs() {
         if (ie.tiene_secundaria && (!n || n === 'secundaria')) {
           levelsToRender.push({ name: 'Secundaria', cm: ie.cm_secundaria || '-' });
         }
+        if (ie.tiene_ebe && (!n || n === 'ebe')) {
+          levelsToRender.push({ name: 'EBE', cm: ie.cm_ebe || '-' });
+        }
+        if (ie.tiene_cetpro && (!n || n === 'cetpro')) {
+          levelsToRender.push({ name: 'CETPRO', cm: ie.cm_cetpro || '-' });
+        }
+        if (ie.tiene_pronoei && (!n || n === 'pronoei')) {
+          levelsToRender.push({ name: 'PRONOEI', cm: ie.cm_pronoei || '-' });
+        }
+        if (ie.tiene_eba && (!n || n === 'eba')) {
+          levelsToRender.push({ name: 'EBA', cm: ie.cm_eba || '-' });
+        }
         if (ie.tiene_otros && (!n || n === 'otros')) {
           levelsToRender.push({ name: ie.tipo_otros || 'Otros', cm: '-' });
         }
@@ -3305,7 +3321,10 @@ async function loadIEs() {
           let levelClass = 'bg-info-light';
           if (lv.name === 'Primaria') levelClass = 'bg-primary-light';
           else if (lv.name === 'Secundaria') levelClass = 'bg-success-light';
-          else if (lv.name && lv.name.includes('PRONOEI')) levelClass = 'bg-neutral-light';
+          else if (lv.name === 'EBE') levelClass = 'bg-danger-light';
+          else if (lv.name === 'CETPRO') levelClass = 'bg-warning-light';
+          else if (lv.name === 'PRONOEI') levelClass = 'bg-neutral-light';
+          else if (lv.name === 'EBA') levelClass = 'bg-info-light';
           
           let tipoClass = 'bg-neutral-light';
           if (ie.tipo === 'POLIDOCENTE COMPLETO') tipoClass = 'bg-primary-light';
@@ -4297,7 +4316,9 @@ async function toggleActivoUsuario(id, activo) {
 
 async function abrirModalIE(ieId = null) {
   let ie = { 
-    codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false, tiene_otros: false, tipo_otros: '',
+    codigo: '', nombre: '', tiene_inicial: false, tiene_primaria: false, tiene_secundaria: false,
+    tiene_ebe: false, tiene_cetpro: false, tiene_pronoei: false, tiene_eba: false,
+    tiene_otros: false, tipo_otros: '',
     ruralidad: 'URBANO', tipo: 'POLIDOCENTE COMPLETO', provincia: 'BELLAVISTA', distrito: '', lugar: '',
     director_nombre: '', director_email: '', director_telefono: ''
   };
@@ -4380,6 +4401,22 @@ async function abrirModalIE(ieId = null) {
             <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-secundaria" placeholder="Cód. Modular" value="${ie.cm_secundaria || ''}" style="display: ${ie.tiene_secundaria ? 'block' : 'none'};">
           </div>
           <div>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-ebe" ${ie.tiene_ebe ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-ebe').style.display = this.checked ? 'block' : 'none'"> EBE</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-ebe" placeholder="Cód. Modular" value="${ie.cm_ebe || ''}" style="display: ${ie.tiene_ebe ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-cetpro" ${ie.tiene_cetpro ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-cetpro').style.display = this.checked ? 'block' : 'none'"> CETPRO</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-cetpro" placeholder="Cód. Modular" value="${ie.cm_cetpro || ''}" style="display: ${ie.tiene_cetpro ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-pronoei" ${ie.tiene_pronoei ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-pronoei').style.display = this.checked ? 'block' : 'none'"> PRONOEI</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-pronoei" placeholder="Cód. Modular" value="${ie.cm_pronoei || ''}" style="display: ${ie.tiene_pronoei ? 'block' : 'none'};">
+          </div>
+          <div>
+            <label style="font-weight: 500;"><input type="checkbox" id="form-ie-eba" ${ie.tiene_eba ? 'checked' : ''} onchange="document.getElementById('form-ie-cm-eba').style.display = this.checked ? 'block' : 'none'"> EBA</label>
+            <input type="text" class="form-control form-control-sm mt-1" id="form-ie-cm-eba" placeholder="Cód. Modular" value="${ie.cm_eba || ''}" style="display: ${ie.tiene_eba ? 'block' : 'none'};">
+          </div>
+          <div>
             <label style="font-weight: 500;"><input type="checkbox" id="form-ie-otros" ${ie.tiene_otros ? 'checked' : ''} onchange="document.getElementById('form-ie-tipo-otros-group').style.display = this.checked ? 'block' : 'none'"> Otros</label>
           </div>
         </div>
@@ -4425,12 +4462,20 @@ async function guardarIE(ieId = null) {
   const tiene_inicial = document.getElementById('form-ie-inicial').checked;
   const tiene_primaria = document.getElementById('form-ie-primaria').checked;
   const tiene_secundaria = document.getElementById('form-ie-secundaria').checked;
+  const tiene_ebe = document.getElementById('form-ie-ebe').checked;
+  const tiene_cetpro = document.getElementById('form-ie-cetpro').checked;
+  const tiene_pronoei = document.getElementById('form-ie-pronoei').checked;
+  const tiene_eba = document.getElementById('form-ie-eba').checked;
   const tiene_otros = document.getElementById('form-ie-otros').checked;
   const tipo_otros = document.getElementById('form-ie-tipo-otros').value.trim();
   
   const cm_inicial = document.getElementById('form-ie-cm-inicial').value.trim();
   const cm_primaria = document.getElementById('form-ie-cm-primaria').value.trim();
   const cm_secundaria = document.getElementById('form-ie-cm-secundaria').value.trim();
+  const cm_ebe = document.getElementById('form-ie-cm-ebe').value.trim();
+  const cm_cetpro = document.getElementById('form-ie-cm-cetpro').value.trim();
+  const cm_pronoei = document.getElementById('form-ie-cm-pronoei').value.trim();
+  const cm_eba = document.getElementById('form-ie-cm-eba').value.trim();
   
   const ruralidad = document.getElementById('form-ie-ruralidad').value;
   const tipo = document.getElementById('form-ie-tipo').value;
@@ -4448,8 +4493,11 @@ async function guardarIE(ieId = null) {
   }
   
   const body = { 
-    codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
+    codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria,
+    tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
+    tiene_otros, tipo_otros,
     cm_inicial, cm_primaria, cm_secundaria,
+    cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
     ruralidad, tipo, provincia, distrito, lugar,
     director_nombre, director_email, director_telefono
   };

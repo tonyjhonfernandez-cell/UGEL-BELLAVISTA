@@ -173,6 +173,14 @@ async function initDatabase() {
             cm_inicial VARCHAR(20),
             cm_primaria VARCHAR(20),
             cm_secundaria VARCHAR(20),
+            tiene_ebe BOOLEAN DEFAULT false,
+            tiene_cetpro BOOLEAN DEFAULT false,
+            tiene_pronoei BOOLEAN DEFAULT false,
+            tiene_eba BOOLEAN DEFAULT false,
+            cm_ebe VARCHAR(20),
+            cm_cetpro VARCHAR(20),
+            cm_pronoei VARCHAR(20),
+            cm_eba VARCHAR(20),
             tipo VARCHAR(100),
             provincia VARCHAR(100),
             distrito VARCHAR(100),
@@ -242,6 +250,14 @@ async function initDatabase() {
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_inicial VARCHAR(20)");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_primaria VARCHAR(20)");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_secundaria VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_ebe BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_cetpro BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_pronoei BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_eba BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_ebe VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cetpro VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_pronoei VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_eba VARCHAR(20)");
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
     } catch (e) {}
 
@@ -464,7 +480,7 @@ async function autoExpireAssignments() {
     }
 }
 
-const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria', 'otros'];
+const NIVELES_VALIDOS = ['inicial', 'primaria', 'secundaria', 'ebe', 'cetpro', 'pronoei', 'eba', 'otros'];
 function validarNivel(nivel) {
     return NIVELES_VALIDOS.includes(nivel) ? nivel : '';
 }
@@ -561,7 +577,7 @@ app.get('/api/ies', async (req, res) => {
         `;
         const params = [];
         if (nivel) {
-            const nv = (['inicial', 'primaria', 'secundaria', 'otros'].includes(nivel)) ? nivel : '';
+            const nv = (['inicial', 'primaria', 'secundaria', 'ebe', 'cetpro', 'pronoei', 'eba', 'otros'].includes(nivel)) ? nivel : '';
             if (nv) {
                 sql += ` AND ie.tiene_${nv} = true`;
             }
@@ -600,7 +616,9 @@ app.post('/api/ies', authAdmin, async (req, res) => {
     try {
         const { 
             codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
+            tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
             cm_inicial, cm_primaria, cm_secundaria,
+            cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
             tipo, provincia, distrito, lugar,
             director_nombre, director_email, director_telefono
         } = req.body;
@@ -612,11 +630,16 @@ app.post('/api/ies', authAdmin, async (req, res) => {
         const result = await db.prepare(`
             INSERT INTO instituciones_educativas (
                 codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
-                cm_inicial, cm_primaria, cm_secundaria, tipo, provincia, distrito, lugar, activa
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
+                tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
+                cm_inicial, cm_primaria, cm_secundaria,
+                cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
+                tipo, provincia, distrito, lugar, activa
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
         `).run(
             codigo, nombre, tiene_inicial || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null,
+            tiene_ebe || false, tiene_cetpro || false, tiene_pronoei || false, tiene_eba || false,
             cm_inicial || null, cm_primaria || null, cm_secundaria || null,
+            cm_ebe || null, cm_cetpro || null, cm_pronoei || null, cm_eba || null,
             tipo || null, provincia || null, distrito || null, lugar || null
         );
         
@@ -651,7 +674,9 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
     try {
         const { 
             codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros, 
+            tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
             cm_inicial, cm_primaria, cm_secundaria,
+            cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
             tipo, provincia, distrito, lugar,
             director_nombre, director_email, director_telefono
         } = req.body;
@@ -661,11 +686,16 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
         await db.prepare(`
             UPDATE instituciones_educativas 
             SET codigo=?, nombre=?, tiene_inicial=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=?, 
-                cm_inicial=?, cm_primaria=?, cm_secundaria=?, tipo=?, provincia=?, distrito=?, lugar=?
+                tiene_ebe=?, tiene_cetpro=?, tiene_pronoei=?, tiene_eba=?,
+                cm_inicial=?, cm_primaria=?, cm_secundaria=?,
+                cm_ebe=?, cm_cetpro=?, cm_pronoei=?, cm_eba=?,
+                tipo=?, provincia=?, distrito=?, lugar=?
             WHERE id=?
         `).run(
             codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
+            tiene_ebe || false, tiene_cetpro || false, tiene_pronoei || false, tiene_eba || false,
             cm_inicial || null, cm_primaria || null, cm_secundaria || null,
+            cm_ebe || null, cm_cetpro || null, cm_pronoei || null, cm_eba || null,
             tipo || null, provincia || null, distrito || null, lugar || null,
             req.params.id
         );
