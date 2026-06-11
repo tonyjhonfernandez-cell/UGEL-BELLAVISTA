@@ -1157,9 +1157,9 @@ body.director-mode #app-shell {
             <table>
               <thead>
                 <tr>
-                  <th>Código Modular</th>
+                  <th>Código Local</th>
                   <th>Nombre de IE</th>
-                  <th>Niveles</th>
+                  <th>Niveles y Códigos Modulares</th>
                   <th class="admin-only" style="width:120px; text-align:center; display:none;">Acciones</th>
                 </tr>
               </thead>
@@ -3213,9 +3213,9 @@ async function loadIEs() {
       for (var i = 0; i < ies.length; i++) {
         var ie = ies[i];
         var niveles = '';
-        if (ie.tiene_inicial) niveles += '<span class="badge bg-info me-1">Inicial</span>';
-        if (ie.tiene_primaria) niveles += '<span class="badge bg-primary me-1">Primaria</span>';
-        if (ie.tiene_secundaria) niveles += '<span class="badge bg-success me-1">Secundaria</span>';
+        if (ie.tiene_inicial) niveles += '<span class="badge bg-info me-1">Inicial' + (ie.cm_inicial ? ' (' + ie.cm_inicial + ')' : '') + '</span>';
+        if (ie.tiene_primaria) niveles += '<span class="badge bg-primary me-1">Primaria' + (ie.cm_primaria ? ' (' + ie.cm_primaria + ')' : '') + '</span>';
+        if (ie.tiene_secundaria) niveles += '<span class="badge bg-success me-1">Secundaria' + (ie.cm_secundaria ? ' (' + ie.cm_secundaria + ')' : '') + '</span>';
         if (ie.tiene_otros) niveles += '<span class="badge bg-secondary me-1" title="' + (ie.tipo_otros || 'Otros') + '">' + (ie.tipo_otros || 'Otros') + '</span>';
         if (!ie.tiene_inicial && !ie.tiene_primaria && !ie.tiene_secundaria && !ie.tiene_otros) niveles = '<span class="text-muted">-</span>';
         
