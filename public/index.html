@@ -4493,9 +4493,9 @@ async function abrirModalIE(ieId = null) {
   
   const footer = `
     <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-    <button class="btn btn-primary" onclick="guardarIE(${ieId})">Guardar</button>
+    <button class="btn btn-primary" id="btn-guardar-ie" onclick="this.disabled=true; this.textContent='Guardando...'; guardarIE(${ieId}).finally(() => { if(document.getElementById('btn-guardar-ie')) { document.getElementById('btn-guardar-ie').disabled=false; document.getElementById('btn-guardar-ie').textContent='Guardar'; } })">Guardar</button>
   `;
-  
+
   showModal(title, body, footer);
 }
 

@@ -629,6 +629,11 @@ app.post('/api/ies', authAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Código y nombre son requeridos' });
         }
 
+        const existing = await db.prepare('SELECT id FROM instituciones_educativas WHERE codigo = ?').get(codigo);
+        if (existing) {
+            return res.status(400).json({ error: `El código "${codigo}" ya existe en la base de datos.` });
+        }
+
         const result = await db.prepare(`
             INSERT INTO instituciones_educativas (
                 codigo, nombre, tiene_inicial, tiene_cuna_jardin, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
