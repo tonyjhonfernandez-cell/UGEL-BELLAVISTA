@@ -123,56 +123,70 @@ async function runUserMigration() {
 }
 
 async function applyMigrations() {
-    try {
-        await pool.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS remitente_id INTEGER REFERENCES usuarios(id)");
-    } catch (e) {
-        // Ignorar
+    // Crear tabla de control de migraciones si no existe
+    await pool.query(`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TIMESTAMP DEFAULT NOW())`);
+    const done = await pool.query('SELECT version FROM schema_migrations');
+    const applied = new Set(done.rows.map(r => r.version));
+
+    // Migración 1: remitente_id en notificaciones
+    if (!applied.has(1)) {
+        try { await pool.query("ALTER TABLE notificaciones ADD COLUMN IF NOT EXISTS remitente_id INTEGER REFERENCES usuarios(id)"); } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (1) ON CONFLICT DO NOTHING');
     }
-    try {
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) UNIQUE");
-        await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
-    } catch (e) {
-        // Ignorar
+    // Migración 2: columnas usuario/password en usuarios
+    if (!applied.has(2)) {
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100) UNIQUE"); } catch(e){}
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT"); } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (2) ON CONFLICT DO NOTHING');
     }
-    try {
-        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS fecha_inicio DATE");
-        await pool.query("UPDATE actividades SET fecha_inicio = fecha_limite WHERE fecha_inicio IS NULL");
-    } catch (e) {
-        // Ignorar
+    // Migración 3: fecha_inicio en actividades
+    if (!applied.has(3)) {
+        try {
+            await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS fecha_inicio DATE");
+            await pool.query("UPDATE actividades SET fecha_inicio = fecha_limite WHERE fecha_inicio IS NULL");
+        } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (3) ON CONFLICT DO NOTHING');
     }
-    try {
-        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tipo VARCHAR(100)");
-        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS provincia VARCHAR(100)");
-        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS distrito VARCHAR(100)");
-        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS lugar VARCHAR(150)");
-    } catch (e) {
-        // Ignorar
+    // Migración 4: columnas tipo/provincia/distrito/lugar en instituciones
+    if (!applied.has(4)) {
+        try {
+            await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tipo VARCHAR(100)");
+            await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS provincia VARCHAR(100)");
+            await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS distrito VARCHAR(100)");
+            await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS lugar VARCHAR(150)");
+        } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (4) ON CONFLICT DO NOTHING');
     }
-    try {
-        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS link_url TEXT");
-        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
-    } catch (e) { /* Ignorar */ }
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS listas_ie (
-                id SERIAL PRIMARY KEY,
-                nombre TEXT NOT NULL,
-                ie_ids TEXT NOT NULL,
-                creador_id INTEGER REFERENCES usuarios(id),
-                created_at TIMESTAMP DEFAULT NOW()
-            )
-        `);
-    } catch (e) { /* Ignorar */ }
-    try {
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS cap_data (
+    // Migración 5: link_url/niveles_aplicados en actividades
+    if (!applied.has(5)) {
+        try {
+            await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS link_url TEXT");
+            await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
+        } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (5) ON CONFLICT DO NOTHING');
+    }
+    // Migración 6: tabla listas_ie
+    if (!applied.has(6)) {
+        try {
+            await pool.query(`CREATE TABLE IF NOT EXISTS listas_ie (
+                id SERIAL PRIMARY KEY, nombre TEXT NOT NULL, ie_ids TEXT NOT NULL,
+                creador_id INTEGER REFERENCES usuarios(id), created_at TIMESTAMP DEFAULT NOW()
+            )`);
+        } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (6) ON CONFLICT DO NOTHING');
+    }
+    // Migración 7: tabla cap_data
+    if (!applied.has(7)) {
+        try {
+            await pool.query(`CREATE TABLE IF NOT EXISTS cap_data (
                 id INTEGER PRIMARY KEY DEFAULT 1,
                 datos JSONB NOT NULL DEFAULT '[]',
                 subido_por TEXT,
                 updated_at TIMESTAMP DEFAULT NOW()
-            )
-        `);
-    } catch (e) { /* Ignorar */ }
+            )`);
+        } catch(e){}
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (7) ON CONFLICT DO NOTHING');
+    }
 }
 
 async function initDatabase() {
@@ -370,19 +384,32 @@ async function initDatabase() {
     await runUserMigration();
 }
 
+// Cache de inicialización: evita correr initDatabase() en cada request (crítico en Vercel serverless)
+let dbInitialized = false;
+let dbInitPromise = null;
+
+function ensureDb() {
+    if (dbInitialized) return Promise.resolve();
+    if (dbInitPromise) return dbInitPromise;
+    dbInitPromise = initDatabase()
+        .then(() => { dbInitialized = true; dbInitPromise = null; })
+        .catch(err => { dbInitPromise = null; throw err; });
+    return dbInitPromise;
+}
+
 // Middleware: asegurar que la BD esté lista antes de cada petición a /api
 app.use('/api', async (req, res, next) => {
     try {
-        await initDatabase();
+        await ensureDb();
         next();
     } catch (err) {
         console.error('DB init error en middleware:', err);
-        res.status(500).json({ error: 'Error al inicializar la base de datos' });
+        res.status(500).json({ error: 'Error al inicializar la base de datos: ' + err.message });
     }
 });
 
 // También iniciar al arrancar (para entornos no-serverless)
-initDatabase().catch(err => console.error('DB init error:', err));
+ensureDb().catch(err => console.error('DB init error:', err));
 syncPasswords().catch(err => console.error('syncPasswords error:', err));
 
 // Endpoint para forzar migración manual (útil en Vercel después de deploy)
