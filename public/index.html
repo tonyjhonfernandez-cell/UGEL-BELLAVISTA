@@ -52,6 +52,7 @@
 body{font-family:'Inter',sans-serif;background-color:var(--bg-main);color:var(--text1);-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
+@media print{.top-bar,.sidebar,.no-print,#cap-upload-section{display:none!important}.main{margin-left:0!important;padding:0!important}#cap-contenedor-reporte{box-shadow:none!important;border:none!important;padding:0!important}#cap-report-panel{display:block!important}}
 
 /* LOGIN */
 #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:url('https://i.pinimg.com/736x/61/48/5f/61485f98b0e2bea5cee22da64c8031da.jpg') center/cover no-repeat;padding:20px;position:relative;overflow:hidden}
@@ -1533,6 +1534,78 @@ body.director-mode #app-shell {
         </div></div>
       </div>
 
+      <!-- ==================== CAP ==================== -->
+      <div class="view-section" id="view-cap">
+        <div class="page-hd">
+          <div><h2>CAP - Cuadro de Asignación de Personal</h2><span>Consulta el personal asignado por institución educativa (DATA NEXUS)</span></div>
+        </div>
+
+        <!-- Upload section: admin/tony.fernandez only -->
+        <div id="cap-upload-section" style="display:none; margin-bottom:20px;">
+          <div class="t-card" style="border:2px dashed var(--primary);background:rgba(99,102,241,0.04);">
+            <div style="padding:20px;">
+              <h5 style="font-size:.9rem;font-weight:700;color:var(--primary);margin-bottom:8px;"><i class="fas fa-upload"></i> Actualizar DATA NEXUS</h5>
+              <p style="font-size:.8rem;color:var(--text3);margin-bottom:12px;">Sube el archivo Excel (.xls / .xlsx) exportado del sistema Nexus. La data quedará disponible para todos los usuarios en esta sesión.</p>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <input type="file" id="cap-archivo-nexus" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="font-size:.82rem;">
+                <button class="btn btn-primary btn-sm" onclick="capProcesarExcel()"><i class="fas fa-sync-alt"></i> Cargar y Procesar</button>
+                <span id="cap-status-msg" style="font-size:.8rem;font-weight:600;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="filter-bar" style="margin-bottom:16px;">
+          <div class="filter-group" style="flex:1;min-width:200px;">
+            <label>Nombre de IE</label>
+            <input type="text" class="form-control" id="cap-input-ie" placeholder="Ej: San Martín..." oninput="capBuscar()">
+          </div>
+          <div class="filter-group">
+            <label>Código Modular</label>
+            <input type="text" class="form-control" id="cap-input-modular" placeholder="Cód. modular" oninput="capBuscar()">
+          </div>
+          <div class="filter-group">
+            <label>Código de Plaza</label>
+            <input type="text" class="form-control" id="cap-input-plaza" placeholder="Cód. plaza" oninput="capBuscar()">
+          </div>
+        </div>
+
+        <!-- Results table (search view) -->
+        <div id="cap-search-panel">
+          <div class="t-card">
+            <div class="t-wrap">
+              <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                <thead>
+                  <tr style="background:#f8fafc;">
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Cód. Modular</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Institución Educativa</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Nivel / Programa</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Órgano Intermedio</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="cap-tbody-resultados">
+                  <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAP Report panel -->
+        <div id="cap-report-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+            <button class="btn btn-secondary btn-sm" onclick="capVolverBusqueda()"><i class="fas fa-arrow-left"></i> Volver a resultados</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" style="background:#10b981;color:#fff;" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+              <button class="btn btn-sm" style="background:#ef4444;color:#fff;" onclick="capDescargarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+          </div>
+          <div id="cap-contenedor-reporte" style="background:#fff;padding:28px 36px;border:1px solid #ccc;box-shadow:0 0 10px rgba(0,0,0,0.08);color:#000;font-family:Arial,sans-serif;"></div>
+        </div>
+      </div>
+
     </div><!-- /main -->
   </div><!-- /app-wrap -->
 </div><!-- /app-shell -->
@@ -1548,6 +1621,7 @@ body.director-mode #app-shell {
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
 // ===================== GLOBALS =====================
@@ -1970,6 +2044,7 @@ function buildSidebar() {
   if (currentUser.rol === 'director') {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
@@ -1982,6 +2057,7 @@ function buildSidebar() {
       html += '<div class="label">Gestión</div>';
       html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
     }
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
   }
 
   html += '<div class="label">Cuenta</div>';
@@ -2022,7 +2098,8 @@ var viewTitles = {
   'directores': 'Directores',
   'ies': 'IEs',
   'notificaciones': 'Notificaciones',
-  'perfil': 'Mi Perfil'
+  'perfil': 'Mi Perfil',
+  'cap': 'CAP'
 };
 
 function cambiarVista(vista, el) {
@@ -2057,6 +2134,7 @@ function loadViewData(vista) {
     case 'notificaciones': loadNotificaciones(); loadDirectoresForNotif(); break;
     case 'perfil': loadPerfil(); break;
     case 'admin-usuarios': loadAdminUsuarios(); break;
+    case 'cap': capInitView(); break;
   }
 }
 
@@ -5534,6 +5612,247 @@ function descargarReporteIE() {
 }
 
 checkSession();
+
+// ===================== CAP =====================
+var capDataGlobal = [];
+
+function capInitView() {
+  var isAdmin = currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez');
+  var uploadSec = document.getElementById('cap-upload-section');
+  if (uploadSec) uploadSec.style.display = isAdmin ? 'block' : 'none';
+  capVolverBusqueda();
+}
+
+function capVolverBusqueda() {
+  document.getElementById('cap-search-panel').style.display = 'block';
+  document.getElementById('cap-report-panel').style.display = 'none';
+  capBuscar();
+}
+
+function capProcesarExcel() {
+  var input = document.getElementById('cap-archivo-nexus');
+  var msg = document.getElementById('cap-status-msg');
+  if (!input.files.length) {
+    msg.textContent = 'Selecciona un archivo Excel primero.';
+    msg.style.color = '#dc2626';
+    return;
+  }
+  msg.textContent = 'Procesando...';
+  msg.style.color = '#6366f1';
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: 'array' });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      var headerRow = -1;
+      for (var i = 0; i < Math.min(15, raw.length); i++) {
+        var rowStr = raw[i].join('').toUpperCase();
+        if (rowStr.includes('CODMOD I.E.') || rowStr.includes('CODIGO DE PLAZA')) {
+          headerRow = i; break;
+        }
+      }
+      var rows = [];
+      if (headerRow !== -1) {
+        var headers = raw[headerRow];
+        for (var j = headerRow + 1; j < raw.length; j++) {
+          if (raw[j].join('').trim() === '') continue;
+          var obj = {};
+          headers.forEach(function(h, idx) { if (h && h.toString().trim()) obj[h.toString().trim()] = raw[j][idx]; });
+          rows.push(obj);
+        }
+      } else {
+        rows = XLSX.utils.sheet_to_json(ws);
+      }
+      capDataGlobal = rows;
+      msg.textContent = '✓ ' + rows.length + ' registros cargados.';
+      msg.style.color = '#10b981';
+      capBuscar();
+    } catch(err) {
+      msg.textContent = 'Error al leer el Excel.';
+      msg.style.color = '#dc2626';
+    }
+  };
+  reader.readAsArrayBuffer(input.files[0]);
+}
+
+function capBuscar() {
+  var tbody = document.getElementById('cap-tbody-resultados');
+  if (!tbody) return;
+  if (!capDataGlobal.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>';
+    return;
+  }
+  var valIE = (document.getElementById('cap-input-ie').value || '').toUpperCase().trim();
+  var valMod = (document.getElementById('cap-input-modular').value || '').trim();
+  var valPlaza = (document.getElementById('cap-input-plaza').value || '').toUpperCase().trim();
+
+  var filtered = capDataGlobal.filter(function(f) {
+    var plaza = (f['CODIGO DE PLAZA'] || '').toString().trim().toUpperCase();
+    if (plaza.startsWith('T9') || plaza.startsWith('C9')) return false;
+    if ((f['SUB-TIPO DE TRABAJADOR'] || '').toString().trim().toUpperCase() === 'PEC') return false;
+    var ieNombre = (f['NOMBRE DE LA INSTITUCION EDUCATIVA'] || '').toString().toUpperCase();
+    var codMod = (f['CODMOD I.E.'] || '').toString();
+    return (!valIE || ieNombre.includes(valIE)) &&
+           (!valMod || codMod.includes(valMod)) &&
+           (!valPlaza || plaza.includes(valPlaza));
+  });
+
+  var seen = new Set();
+  var html = '';
+  filtered.forEach(function(f) {
+    var key = (f['CODMOD I.E.'] || '') + '||' + (f['NIVEL EDUCATIVO'] || '');
+    if (!seen.has(key) && f['CODMOD I.E.']) {
+      seen.add(key);
+      var cm = (f['CODMOD I.E.'] || '').toString().replace(/'/g, '');
+      var nv = (f['NIVEL EDUCATIVO'] || '').toString().replace(/'/g, '');
+      html += '<tr>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + f['CODMOD I.E.'] + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;">' + (f['NOMBRE DE LA INSTITUCION EDUCATIVA'] || '') + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + (f['NIVEL EDUCATIVO'] || '') + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.78rem;color:var(--text3);">' + (f['NOMBRE DEL ORGANO INTERMEDIO'] || '') + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' +
+          '<button class="btn btn-primary btn-sm" onclick="capGenerarReporte(\'' + cm + '\',\'' + nv + '\')"><i class="fas fa-eye"></i> Ver CAP</button>' +
+        '</td></tr>';
+    }
+  });
+  if (!html) html = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron resultados.</td></tr>';
+  tbody.innerHTML = html;
+}
+
+function capGenerarReporte(codMod, nivel) {
+  document.getElementById('cap-search-panel').style.display = 'none';
+  document.getElementById('cap-report-panel').style.display = 'block';
+
+  var plazas = capDataGlobal.filter(function(f) {
+    var p = (f['CODIGO DE PLAZA'] || '').toString().trim().toUpperCase();
+    return f['CODMOD I.E.'] == codMod &&
+           f['NIVEL EDUCATIVO'] == nivel &&
+           (f['SUB-TIPO DE TRABAJADOR'] || '').toString().trim().toUpperCase() !== 'PEC' &&
+           !p.startsWith('T9') && !p.startsWith('C9');
+  });
+
+  var contenedor = document.getElementById('cap-contenedor-reporte');
+  if (!plazas.length) {
+    contenedor.innerHTML = '<p style="padding:20px;color:var(--text3);">No hay plazas válidas (se excluyeron PEC, T9 y C9).</p>';
+    return;
+  }
+
+  var ordenSubtipos = ['DIRECTIVO','JERARQUICO','DOCENTE','AUXILIAR DE EDUCACION',
+    'ESPECIALISTAS ADMINISTRATIVOS E INSTITUCIONALES DE LAS UGEL','AUXILIAR','TECNICO'];
+
+  var grupos = {};
+  plazas.forEach(function(p) {
+    var st = (p['SUB-TIPO DE TRABAJADOR'] || 'OTROS').toString().trim().toUpperCase();
+    if (!grupos[st]) grupos[st] = [];
+    grupos[st].push(p);
+  });
+
+  var conteo = {};
+  plazas.forEach(function(p) {
+    var c = (p['CODIGO DE PLAZA'] || '').toString().trim().toUpperCase();
+    if (c) conteo[c] = (conteo[c] || 0) + 1;
+  });
+
+  var subtipos = Object.keys(grupos).sort(function(a, b) {
+    var ia = ordenSubtipos.indexOf(a); var ib = ordenSubtipos.indexOf(b);
+    if (ia === -1) ia = 999; if (ib === -1) ib = 999;
+    return ia - ib;
+  });
+
+  var ieNombre = plazas[0]['NOMBRE DE LA INSTITUCION EDUCATIVA'] || '';
+  var html = '<div style="display:flex;align-items:center;padding-bottom:10px;margin-bottom:15px;border-bottom:2px solid #000;">' +
+    '<div style="flex:1;">' +
+      '<h1 style="margin:0;font-size:1.1em;font-weight:bold;text-transform:uppercase;">UGEL BELLAVISTA</h1>' +
+      '<p style="margin:3px 0;font-size:.85em;">Programa: Educación Básica</p>' +
+      '<p style="margin:3px 0;font-size:.85em;">Nivel Educativo: ' + nivel + '</p>' +
+      '<p style="margin:3px 0;font-size:.85em;">Institución Educativa: ' + ieNombre + '</p>' +
+    '</div>' +
+  '</div>';
+
+  var colores = {}; var colorIdx = 0;
+
+  subtipos.forEach(function(st) {
+    html += '<div style="font-size:.85em;font-weight:bold;margin:15px 0 5px;text-transform:uppercase;color:#1e293b;">' + st + '</div>';
+    html += '<table style="width:100%;border-collapse:collapse;font-size:9px;margin-bottom:10px;">' +
+      '<thead><tr style="background:#f0f0f0;">' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;width:20px;">N°</th>' +
+        '<th style="border:1px solid #000;padding:4px;">Apellidos y Nombres</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Código Plaza</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Cód. Mod.</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Situación</th>' +
+        '<th style="border:1px solid #000;padding:4px;">Cargo</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Tipo</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">C.R.</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">J.L.</th>' +
+        '<th style="border:1px solid #000;padding:4px;">Motivo Vacante</th>' +
+      '</tr></thead><tbody>';
+
+    var grupo = grupos[st].slice().sort(function(a, b) {
+      return (a['CODIGO DE PLAZA'] || '').toString().trim().localeCompare((b['CODIGO DE PLAZA'] || '').toString().trim());
+    });
+
+    var num = 0; var prevPlaza = '';
+    grupo.forEach(function(fila) {
+      var codP = (fila['CODIGO DE PLAZA'] || '').toString().trim().toUpperCase();
+      if (codP !== prevPlaza) { num++; prevPlaza = codP; }
+
+      var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
+      var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
+      var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['CODIGO MODULAR'] || '';
+      var sit = fila['SITUACION LABORAL'] || '';
+      var cargo = fila['CARGO'] || fila['TIPO DE TRABAJADOR'] || '';
+      var tipo = fila['TIPO DE REGISTRO'] || '';
+      var jl = fila['JORNADA LABORAL'] || '';
+      var motivo = fila['MOTIVO DE VACANTE'] || '';
+      var cr = fila['CATEGORIA REMUNERATIVA'] || fila['ESCALA HISTORIAL'] || fila['DESCRIPCION ESCALA'] || '';
+
+      var rowStyle = 'border:1px solid #000;padding:4px;';
+      var bgStyle = '';
+      if (conteo[codP] > 1) {
+        if (colores[codP] === undefined) { colores[codP] = colorIdx++; }
+        var hue = Math.floor((colores[codP] * 137.508) % 360);
+        bgStyle = 'background:hsl(' + hue + ',85%,93%);';
+        rowStyle = 'border:1.5px dashed hsl(' + hue + ',80%,35%);padding:4px;';
+      }
+
+      html += '<tr style="' + bgStyle + '">' +
+        '<td style="' + rowStyle + 'text-align:center;font-weight:bold;">' + num + '</td>' +
+        '<td style="' + rowStyle + 'font-weight:bold;">' + nombre + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + codP + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + doc + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + sit + '</td>' +
+        '<td style="' + rowStyle + '">' + cargo + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + tipo + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + cr + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + jl + '</td>' +
+        '<td style="' + rowStyle + 'font-size:.9em;">' + motivo + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table>';
+  });
+
+  contenedor.innerHTML = html;
+  contenedor.setAttribute('data-iename', ieNombre);
+}
+
+function capDescargarPDF() {
+  var el = document.getElementById('cap-contenedor-reporte');
+  var ieNombre = el.getAttribute('data-iename') || 'IE';
+  var opt = {
+    margin: [10,10,10,10],
+    filename: 'CAP_' + ieNombre + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+  };
+  if (typeof html2pdf !== 'undefined') {
+    html2pdf().set(opt).from(el).save();
+  } else {
+    alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
+  }
+}
 </script>
 </body>
 </html>
