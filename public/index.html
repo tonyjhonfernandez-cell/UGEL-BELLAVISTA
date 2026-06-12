@@ -4484,9 +4484,10 @@ async function loadAvanceMensual() {
 
     // Historical Chart rendering (only when an IE is selected)
     var historicoCard = document.getElementById('avance-historico-card');
+    var selectedIEId = selectedAvanceIEId;
     if (selectedIEId && historicoCard) {
       historicoCard.style.display = 'block';
-      
+
       // Filter all rows for this IE (regardless of month)
       var ieRows = rows.filter(function(a) {
         return String(a.ie_id) === String(selectedIEId) && a.fecha_limite;
