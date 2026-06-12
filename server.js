@@ -1752,15 +1752,49 @@ app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
 // ===================== DASHBOARD STATS =====================
 app.get('/api/dashboard/stats', authDirector, async (req, res) => {
     try {
-        const total_inst = await pool.query("SELECT COUNT(DISTINCT codigo) as c FROM instituciones_educativas WHERE activa = true");
-        const total_serv = await pool.query("SELECT COUNT(*) as c FROM ie_niveles iln JOIN instituciones_educativas ie ON iln.ie_id = ie.id WHERE ie.activa = true");
+        // Locales: IEs sin contar PRONOEI (cada código local = 1 IE)
+        const total_inst = await pool.query(`
+            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true
+            AND NOT EXISTS (
+                SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id
+                WHERE iln2.ie_id = ie.id AND ne2.clave = 'pronoei'
+                AND NOT EXISTS (
+                    SELECT 1 FROM ie_niveles iln3 JOIN niveles_educativos ne3 ON iln3.nivel_id = ne3.id
+                    WHERE iln3.ie_id = ie.id AND ne3.clave != 'pronoei'
+                )
+            )
+        `);
+        // Servicios: códigos modulares excluyendo PRONOEI
+        const total_serv = await pool.query(`
+            SELECT COUNT(*) as c FROM ie_niveles iln
+            JOIN instituciones_educativas ie ON iln.ie_id = ie.id
+            JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            WHERE ie.activa = true AND ne.clave != 'pronoei'
+        `);
+        // PRONOEI separado
+        const total_pronoei = await pool.query(`
+            SELECT COUNT(*) as c FROM ie_niveles iln
+            JOIN instituciones_educativas ie ON iln.ie_id = ie.id
+            JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            WHERE ie.activa = true AND ne.clave = 'pronoei'
+        `);
         const por_zona = await pool.query(`
-            SELECT COALESCE(ruralidad, 'URBANO') as zona, COUNT(*) as total
+            SELECT COALESCE(ruralidad, 'URBANO') as zona, COUNT(DISTINCT codigo) as total
             FROM instituciones_educativas WHERE activa = true
+            AND codigo NOT IN (
+                SELECT DISTINCT ie2.codigo FROM instituciones_educativas ie2
+                JOIN ie_niveles iln2 ON iln2.ie_id = ie2.id
+                JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id
+                WHERE ne2.clave = 'pronoei'
+                AND NOT EXISTS (
+                    SELECT 1 FROM ie_niveles iln3 JOIN niveles_educativos ne3 ON iln3.nivel_id = ne3.id
+                    WHERE iln3.ie_id = ie2.id AND ne3.clave != 'pronoei'
+                )
+            )
             GROUP BY ruralidad ORDER BY ruralidad
         `);
         const por_tipo = await pool.query(`
-            SELECT COALESCE(tipo, 'NO APLICA') as tipo, COUNT(*) as total
+            SELECT COALESCE(tipo, 'NO APLICA') as tipo, COUNT(DISTINCT codigo) as total
             FROM instituciones_educativas WHERE activa = true
             GROUP BY tipo ORDER BY tipo
         `);
@@ -1771,6 +1805,7 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
         res.json({
             total_instituciones: parseInt(total_inst.rows[0].c),
             total_servicios: parseInt(total_serv.rows[0].c),
+            total_pronoei: parseInt(total_pronoei.rows[0].c),
             por_zona: zonaMap,
             por_tipo: tipoMap
         });
