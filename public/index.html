@@ -4639,7 +4639,8 @@ async function loadAvanceMensual() {
       return new Date(a.fecha_limite).getTime() - new Date(b.fecha_limite).getTime();
     });
 
-    document.getElementById('avance-count-badge').textContent = activitiesList.length + ' Actividades';
+    var badge = document.getElementById('avance-count-badge');
+    if (badge) badge.textContent = activitiesList.length + ' Actividades';
 
     var listHtml = '';
     if (activitiesList.length > 0) {
@@ -4716,7 +4717,8 @@ async function loadAvanceMensual() {
         '<p style="font-weight:700; font-size:0.8rem; text-transform:uppercase; margin:0;">No se registran actividades para este mes</p>' +
       '</div>';
     }
-    document.getElementById('avance-activities-list').innerHTML = listHtml;
+    var actList = document.getElementById('avance-activities-list');
+    if (actList) actList.innerHTML = listHtml;
   } catch (e) {
     showToast('Error al cargar avance: ' + e.message, 'error');
   }
