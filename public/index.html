@@ -1338,6 +1338,7 @@ body.director-mode #app-shell {
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px;text-align:center;color:var(--text3);">#</th>
                   <th>Institución Educativa</th>
                   <th>Códigos (Local/Mod)</th>
                   <th>Ubicación</th>
@@ -3773,6 +3774,8 @@ async function loadIEs() {
         }
 
         html += '<tr>' +
+          // Col #
+          '<td style="vertical-align:top;text-align:center;padding-top:14px;font-size:0.78rem;font-weight:700;color:var(--text3);white-space:nowrap;">' + (renderedRows + 1) + '</td>' +
           // Col 1: Nombre + niveles
           '<td style="vertical-align:top;">' +
             '<div style="font-weight:700;color:#1e293b;font-size:0.88rem;line-height:1.3;">' + nombrePrincipal + '</div>' +
