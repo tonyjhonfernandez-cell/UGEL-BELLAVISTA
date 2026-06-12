@@ -241,6 +241,20 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg-main);color:var(--
 .chart-card .ctitle i{color:var(--primary);font-size:.88rem}
 .chart-card .chart-wrap{height:220px;position:relative}
 .chart-card .chart-wrap canvas{width:100%!important;height:100%!important}
+.chart-card .chart-title{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:16px}
+
+/* KPI v2 */
+.kpi-card-v2{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:24px 28px;display:flex;align-items:center;gap:20px;border-left:4px solid var(--primary);position:relative;overflow:hidden}
+.kpi-card-v2 .kpi-num{font-size:2.8rem;font-weight:800;line-height:1;color:var(--text1)}
+.kpi-card-v2 .kpi-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:4px}
+.kpi-card-v2 .kpi-sub{font-size:.75rem;color:var(--text3);margin-top:4px}
+.kpi-card-v2 .kpi-icon-bg{font-size:3rem;opacity:.08;position:absolute;right:20px;top:50%;transform:translateY(-50%)}
+
+/* CONSOLIDADO ROW */
+.consol-row{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 18px;margin-bottom:10px;cursor:pointer;transition:box-shadow .15s;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.consol-row:hover{box-shadow:var(--shadow-md)}
+.consol-row .cr-title{font-weight:700;font-size:.86rem;color:var(--text1);flex:1;min-width:180px}
+.consol-row .cr-meta{font-size:.7rem;color:var(--text3);margin-top:2px}
 
 /* BUTTONS */
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:var(--radius-sm);font-size:.8rem;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;text-decoration:none;letter-spacing:.1px}
@@ -1185,6 +1199,116 @@ body.director-mode #app-shell {
         </div>
       </div>
 
+      <!-- ==================== CONSOLIDADO ==================== -->
+      <div class="view-section" id="view-consolidado">
+        <div class="page-hd">
+          <div>
+            <h2>Consolidado de Actividades</h2>
+            <span>Registro mensual de cumplimiento por actividad</span>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar" style="margin-bottom:20px;">
+          <div class="filter-group" style="flex:1;min-width:200px;">
+            <label>Buscar actividad</label>
+            <input type="text" class="form-control" id="consol-buscar" placeholder="Buscar actividad..." oninput="loadConsolidado()">
+          </div>
+          <div class="filter-group" style="min-width:180px;">
+            <label>Filtrar por IE</label>
+            <input type="text" class="form-control" id="consol-ie-buscar" placeholder="Nombre o código IE..." oninput="loadConsolidado()">
+          </div>
+          <div class="filter-group">
+            <label>Mes</label>
+            <select class="form-select" id="consol-mes" onchange="loadConsolidado()">
+              <option value="">Todos</option>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Año</label>
+            <select class="form-select" id="consol-anio" onchange="loadConsolidado()">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select class="form-select" id="consol-estado-filter" onchange="loadConsolidado()">
+              <option value="">Todos</option>
+              <option value="completada">Completada</option>
+              <option value="inconclusa">Inconclusa</option>
+              <option value="no_cumplida">No Cumplida</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Activity list -->
+        <div id="consol-list">
+          <div style="text-align:center;padding:40px;color:var(--text3);">Cargando...</div>
+        </div>
+      </div>
+
+      <!-- Modal: Detalle consolidado -->
+      <div class="modal-overlay" id="modal-consolidado-detalle">
+        <div class="modal-box modal-lg">
+          <div class="modal-hd">
+            <h5 id="consol-modal-title">Detalle de Actividad</h5>
+            <button class="modal-close" onclick="document.getElementById('modal-consolidado-detalle').classList.remove('show')">&times;</button>
+          </div>
+          <div class="modal-bd" style="padding:0;">
+            <div style="padding:16px 22px;border-bottom:1px solid var(--border);background:#f8fafc;">
+              <div id="consol-modal-meta" style="font-size:.8rem;color:var(--text3);"></div>
+            </div>
+            <div style="padding:14px 22px;">
+              <!-- Sub-filters -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
+                <div class="filter-group" style="flex:1;min-width:160px;">
+                  <label>Buscar IE</label>
+                  <input type="text" class="form-control" id="consol-det-buscar" placeholder="Nombre o código..." oninput="loadConsolidadoDetalle()">
+                </div>
+                <div class="filter-group">
+                  <label>Estado</label>
+                  <select class="form-select" id="consol-det-estado" onchange="loadConsolidadoDetalle()">
+                    <option value="">Todas</option>
+                    <option value="completada">Completadas</option>
+                    <option value="inconclusa">Inconclusas</option>
+                    <option value="no_cumplida">No Cumplidas</option>
+                    <option value="pendiente">Pendientes</option>
+                  </select>
+                </div>
+                <button class="btn btn-outline-success btn-sm" id="consol-det-excel-btn" onclick="descargarConsolidadoExcel()">
+                  <i class="fas fa-file-excel"></i> Descargar Excel
+                </button>
+              </div>
+              <div class="t-wrap" style="max-height:420px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#f8fafc;">
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">#</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">IE Nombre</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Código</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Nivel</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Estado</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">F. Completado</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="consol-det-tbody">
+                    <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3);">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SUPERVISOR: MONITOREO ==================== -->
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1841,6 +1965,7 @@ function buildSidebar() {
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
+    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar Actividad</a>';
     html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-tasks"></i> Monitoreo</a>';
     if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
@@ -1882,6 +2007,7 @@ var viewTitles = {
   'dashboard-supervisor': 'Dashboard General',
   'asignar-actividad': 'Asignar',
   'avance-mensual': 'Avance Mensual',
+  'consolidado': 'Consolidado',
   'monitoreo': 'Monitoreo',
   'directores': 'Directores',
   'ies': 'IEs',
@@ -1914,6 +2040,7 @@ function loadViewData(vista) {
     case 'dashboard-supervisor': loadDashboardSupervisor(); break;
     case 'asignar-actividad': loadIEsForAsignar(); break;
     case 'avance-mensual': loadAvanceMensual(); break;
+    case 'consolidado': loadConsolidado(); break;
     case 'monitoreo': loadMonitoreo(); break;
     case 'directores': loadDirectores(); break;
     case 'ies': loadIEs(); break;
@@ -4134,26 +4261,7 @@ async function loadAvanceMensual() {
     loadControlMensual();
     // Load dashboard stats cards
     try {
-      var stats = await api('/api/dashboard/stats');
-      var zonaHtml = Object.entries(stats.por_zona || {}).map(function(e) {
-        return '<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:#f3f4f6; border-radius:6px; font-size:0.72rem; font-weight:700; color:#374151;">' + e[0] + ': <span style="color:var(--granate);">' + e[1] + '</span></span>';
-      }).join('');
-      var tipoHtml = Object.entries(stats.por_tipo || {}).map(function(e) {
-        return '<span style="display:inline-block; margin:2px 4px; padding:2px 8px; background:#f3f4f6; border-radius:6px; font-size:0.72rem; font-weight:700; color:#374151;">' + e[0] + ': <span style="color:var(--granate);">' + e[1] + '</span></span>';
-      }).join('');
-      var sc = document.getElementById('dashboard-stats-cards');
-      if (sc) {
-        sc.innerHTML =
-          '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:20px;">' +
-            '<div class="kpi-card granate" style="margin:0;"><div class="kpi-icon"><i class="fas fa-school"></i></div><div class="kpi-body"><div class="kpi-label">Locales Educativos</div><div class="kpi-value">' + (stats.total_instituciones || 0) + '</div><div class="kpi-sub">IEs por código local (sin PRONOEI)</div></div></div>' +
-            '<div class="kpi-card green" style="margin:0;"><div class="kpi-icon"><i class="fas fa-graduation-cap"></i></div><div class="kpi-body"><div class="kpi-label">Servicios Educativos</div><div class="kpi-value">' + (stats.total_servicios || 0) + '</div><div class="kpi-sub">Códigos modulares (sin PRONOEI)</div></div></div>' +
-            '<div class="kpi-card" style="margin:0;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;"><div class="kpi-icon" style="background:rgba(255,255,255,0.15);"><i class="fas fa-child" style="color:#fff;"></i></div><div class="kpi-body"><div class="kpi-label" style="color:rgba(255,255,255,0.8);">Total PRONOEI</div><div class="kpi-value" style="color:#fff;">' + (stats.total_pronoei || 0) + '</div><div class="kpi-sub" style="color:rgba(255,255,255,0.7);">Programas no escolarizados</div></div></div>' +
-          '</div>' +
-          '<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-bottom:20px;">' +
-            '<div class="t-card" style="margin:0; padding:14px 18px;"><div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:5px;"></i> Distribución por Zona</div><div style="display:flex;flex-wrap:wrap;gap:6px;">' + (zonaHtml || '<span style="color:var(--text3);font-size:.8rem;">Sin datos</span>') + '</div></div>' +
-            '<div class="t-card" style="margin:0; padding:14px 18px;"><div style="font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;"><i class="fas fa-sitemap" style="color:var(--primary);margin-right:5px;"></i> Por Tipo de IE</div><div style="display:flex;flex-wrap:wrap;gap:6px;">' + (tipoHtml || '<span style="color:var(--text3);font-size:.8rem;">Sin datos</span>') + '</div></div>' +
-          '</div>';
-      }
+      await loadDashboardIEStats();
     } catch(se) { /* stats optional */ }
 
     var inputAvance = document.getElementById('avance-ie-search');
@@ -5129,6 +5237,243 @@ async function eliminarNivel(id, nombre) {
     abrirModalNiveles();
     loadNiveles();
   } catch(err) { showToast('Error: ' + err.message, 'error'); }
+}
+
+// ===================== DASHBOARD IE STATS =====================
+var dashIEFilters = { nivel: '', zona: '', tipo: '' };
+
+async function loadDashboardIEStats() {
+  var sc = document.getElementById('dashboard-stats-cards');
+  if (!sc) return;
+  var qs = new URLSearchParams();
+  if (dashIEFilters.nivel) qs.set('nivel', dashIEFilters.nivel);
+  if (dashIEFilters.zona) qs.set('zona', dashIEFilters.zona);
+  if (dashIEFilters.tipo) qs.set('tipo', dashIEFilters.tipo);
+  var stats = await api('/api/dashboard/stats?' + qs.toString());
+
+  // Build KPI row 1
+  var kpiHtml =
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">' +
+      '<div class="kpi-card-v2" style="border-left-color:#6366f1;">' +
+        '<div style="flex:1;"><div class="kpi-lbl">Locales Educativos</div><div class="kpi-num">' + (stats.total_instituciones || 0) + '</div><div class="kpi-sub">IEs por código local (sin PRONOEI)</div></div>' +
+        '<i class="fas fa-school kpi-icon-bg"></i>' +
+      '</div>' +
+      '<div class="kpi-card-v2" style="border-left-color:#10b981;">' +
+        '<div style="flex:1;"><div class="kpi-lbl">Servicios Educativos</div><div class="kpi-num" style="color:#10b981;">' + (stats.total_servicios || 0) + '</div><div class="kpi-sub">Códigos modulares (sin PRONOEI)</div></div>' +
+        '<i class="fas fa-graduation-cap kpi-icon-bg"></i>' +
+      '</div>' +
+      '<div class="kpi-card-v2" style="border-left-color:#7c3aed;">' +
+        '<div style="flex:1;"><div class="kpi-lbl">Total PRONOEI</div><div class="kpi-num" style="color:#7c3aed;">' + (stats.total_pronoei || 0) + '</div><div class="kpi-sub">Programas no escolarizados</div></div>' +
+        '<i class="fas fa-child kpi-icon-bg"></i>' +
+      '</div>' +
+    '</div>';
+
+  // Row 2: two charts side by side
+  var chartsHtml =
+    '<div class="dash-grid" style="margin-bottom:20px;">' +
+      '<div class="chart-card"><div class="chart-title"><i class="fas fa-map-marker-alt" style="color:var(--primary);margin-right:6px;"></i>Distribución por Zona</div><div class="chart-wrap" style="height:240px;position:relative;"><canvas id="chart-zona-dash"></canvas></div></div>' +
+      '<div class="chart-card"><div class="chart-title"><i class="fas fa-sitemap" style="color:var(--primary);margin-right:6px;"></i>IEs por Tipo</div><div class="chart-wrap" style="height:240px;position:relative;"><canvas id="chart-tipo-dash"></canvas></div></div>' +
+    '</div>';
+
+  // Row 3: filter bar + download
+  var nivelesOpts = '<option value="">Todos los niveles</option>';
+  if (window.nivelesCache) {
+    window.nivelesCache.filter(function(n){ return n.clave !== 'pronoei'; }).forEach(function(n){
+      nivelesOpts += '<option value="' + n.clave + '"' + (dashIEFilters.nivel === n.clave ? ' selected' : '') + '>' + n.nombre + '</option>';
+    });
+  }
+  var zonaOpts = ['','URBANO','RURAL','RURAL 1','RURAL 2','RURAL 3'].map(function(z){
+    return '<option value="' + z + '"' + (dashIEFilters.zona === z ? ' selected' : '') + '>' + (z || 'Todas las zonas') + '</option>';
+  }).join('');
+  var tipoOpts = ['','POLIDOCENTE COMPLETO','MULTIGRADO','UNIDOCENTE'].map(function(t){
+    return '<option value="' + t + '"' + (dashIEFilters.tipo === t ? ' selected' : '') + '>' + (t || 'Todos los tipos') + '</option>';
+  }).join('');
+
+  var filterHtml =
+    '<div class="filter-bar" style="margin-bottom:20px;">' +
+      '<div class="filter-group"><label>Nivel</label><select class="form-select" onchange="dashIEFilters.nivel=this.value;loadDashboardIEStats()">' + nivelesOpts + '</select></div>' +
+      '<div class="filter-group"><label>Zona</label><select class="form-select" onchange="dashIEFilters.zona=this.value;loadDashboardIEStats()">' + zonaOpts + '</select></div>' +
+      '<div class="filter-group"><label>Tipo</label><select class="form-select" onchange="dashIEFilters.tipo=this.value;loadDashboardIEStats()">' + tipoOpts + '</select></div>' +
+      '<div class="filter-group" style="justify-content:flex-end;margin-top:auto;">' +
+        '<button class="btn btn-outline-success btn-sm" onclick="descargarExcelIEs()"><i class="fas fa-file-excel"></i> Descargar Lista de IEs</button>' +
+      '</div>' +
+    '</div>';
+
+  sc.innerHTML = kpiHtml + chartsHtml + filterHtml;
+
+  // Render Zona donut chart
+  var zonaLabels = Object.keys(stats.por_zona || {});
+  var zonaData = Object.values(stats.por_zona || {});
+  var zonaColors = ['#10b981','#f59e0b','#3b82f6','#8b5cf6','#ef4444','#06b6d4','#f97316'];
+  if (window.chartZona) { try { window.chartZona.destroy(); } catch(e){} }
+  var ctxZona = document.getElementById('chart-zona-dash');
+  if (ctxZona && zonaLabels.length > 0) {
+    window.chartZona = new Chart(ctxZona.getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: zonaLabels, datasets: [{ data: zonaData, backgroundColor: zonaColors.slice(0, zonaLabels.length), borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { size: 11 }, boxWidth: 12 } } }
+      }
+    });
+  }
+
+  // Render Tipo horizontal bar chart
+  var tipoLabels = Object.keys(stats.por_tipo || {});
+  var tipoData = Object.values(stats.por_tipo || {});
+  var tipoColors = { 'POLIDOCENTE COMPLETO': '#6366f1', 'MULTIGRADO': '#f59e0b', 'UNIDOCENTE': '#ef4444', 'NO APLICA': '#94a3b8' };
+  var tipoBgs = tipoLabels.map(function(l){ return tipoColors[l] || '#94a3b8'; });
+  if (window.chartTipo) { try { window.chartTipo.destroy(); } catch(e){} }
+  var ctxTipo = document.getElementById('chart-tipo-dash');
+  if (ctxTipo && tipoLabels.length > 0) {
+    window.chartTipo = new Chart(ctxTipo.getContext('2d'), {
+      type: 'bar',
+      data: { labels: tipoLabels, datasets: [{ data: tipoData, backgroundColor: tipoBgs, borderRadius: 4, borderSkipped: false }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+}
+
+function descargarExcelIEs() {
+  var qs = new URLSearchParams();
+  if (dashIEFilters.nivel) qs.set('nivel', dashIEFilters.nivel);
+  if (dashIEFilters.zona) qs.set('zona', dashIEFilters.zona);
+  if (dashIEFilters.tipo) qs.set('tipo', dashIEFilters.tipo);
+  descargarExcel('/api/export/instituciones?' + qs.toString());
+}
+
+// ===================== CONSOLIDADO =====================
+var currentConsoladoActividadId = null;
+
+async function loadConsolidado() {
+  var listEl = document.getElementById('consol-list');
+  if (!listEl) return;
+  var buscar = (document.getElementById('consol-buscar') || {}).value || '';
+  var ieBuscar = (document.getElementById('consol-ie-buscar') || {}).value || '';
+  var mes = (document.getElementById('consol-mes') || {}).value || '';
+  var anio = (document.getElementById('consol-anio') || {}).value || '';
+  var estadoFilter = (document.getElementById('consol-estado-filter') || {}).value || '';
+
+  var qs = new URLSearchParams();
+  if (buscar) qs.set('buscar', buscar);
+  if (mes) qs.set('mes', mes);
+  if (anio) qs.set('anio', anio);
+
+  try {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">Cargando...</div>';
+    var rows = await api('/api/consolidado?' + qs.toString());
+    if (!rows || rows.length === 0) {
+      listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">No se encontraron actividades.</div>';
+      return;
+    }
+
+    var meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    var html = '';
+    rows.forEach(function(r) {
+      // If IE buscar filter active, skip if not matching (client-side)
+      // (IE filter is applied in detail modal; here we show all activities)
+      var fecha = r.fecha_limite ? r.fecha_limite.substring(0,10) : '';
+      var parts = fecha.split('-');
+      var mesLabel = parts[1] ? (meses[parseInt(parts[1],10)-1] + ' ' + parts[0]) : '';
+      var total = parseInt(r.total) || 0;
+      var completadas = parseInt(r.completadas) || 0;
+      var inconclusas = parseInt(r.inconclusas) || 0;
+      var noCumplidas = parseInt(r.no_cumplidas) || 0;
+      var pendientes = parseInt(r.pendientes) || 0;
+      var pct = total > 0 ? Math.round(completadas / total * 100) : 0;
+
+      // Filter by estado if set
+      if (estadoFilter) {
+        if (estadoFilter === 'completada' && completadas === 0) return;
+        if (estadoFilter === 'inconclusa' && inconclusas === 0) return;
+        if (estadoFilter === 'no_cumplida' && noCumplidas === 0) return;
+        if (estadoFilter === 'pendiente' && pendientes === 0) return;
+      }
+
+      html +=
+        '<div class="consol-row" onclick="abrirDetalleConsolidado(' + r.id + ',\'' + (r.titulo||'').replace(/'/g,"\\'") + '\',\'' + fecha + '\',\'' + (r.descripcion||'').replace(/'/g,"\\'").replace(/\n/g,' ') + '\')">' +
+          (mesLabel ? '<span style="background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:.7rem;font-weight:700;color:var(--text2);flex-shrink:0;">' + mesLabel + '</span>' : '') +
+          '<div style="flex:1;min-width:180px;">' +
+            '<div class="cr-title">' + (r.titulo || '') + '</div>' +
+            '<div class="cr-meta">Asignado por: ' + (r.asignador_nombre || '—') + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+            '<span style="font-size:.72rem;font-weight:600;color:var(--text3);">' + total + ' IEs</span>' +
+            (completadas > 0 ? '<span class="badge badge-completada">' + completadas + ' Completadas</span>' : '') +
+            (inconclusas > 0 ? '<span class="badge badge-inconclusa">' + inconclusas + ' Inconclusas</span>' : '') +
+            (noCumplidas > 0 ? '<span class="badge badge-no_cumplida">' + noCumplidas + ' No Cumplidas</span>' : '') +
+            (pendientes > 0 ? '<span class="badge badge-pendiente">' + pendientes + ' Pendientes</span>' : '') +
+            '<span style="font-size:.75rem;font-weight:700;color:var(--primary);">' + pct + '%</span>' +
+          '</div>' +
+          '<i class="fas fa-chevron-right" style="color:var(--text3);font-size:.75rem;flex-shrink:0;"></i>' +
+        '</div>';
+    });
+
+    listEl.innerHTML = html || '<div style="text-align:center;padding:40px;color:var(--text3);">No hay actividades con ese filtro.</div>';
+  } catch(e) {
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">Error al cargar: ' + e.message + '</div>';
+  }
+}
+
+function abrirDetalleConsolidado(id, titulo, fecha, desc) {
+  currentConsoladoActividadId = id;
+  document.getElementById('consol-modal-title').textContent = titulo;
+  var fechaFmt = fecha ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-PE', {day:'2-digit',month:'long',year:'numeric'}) : '';
+  document.getElementById('consol-modal-meta').innerHTML =
+    (fechaFmt ? '<span><i class="fas fa-calendar" style="margin-right:5px;color:var(--primary);"></i>Fecha límite: <strong>' + fechaFmt + '</strong></span>' : '') +
+    (desc ? '<div style="margin-top:6px;color:var(--text2);">' + desc + '</div>' : '');
+  document.getElementById('consol-det-buscar').value = '';
+  document.getElementById('consol-det-estado').value = '';
+  document.getElementById('modal-consolidado-detalle').classList.add('show');
+  loadConsolidadoDetalle();
+}
+
+async function loadConsolidadoDetalle() {
+  var tbody = document.getElementById('consol-det-tbody');
+  if (!tbody || !currentConsoladoActividadId) return;
+  var buscar = (document.getElementById('consol-det-buscar') || {}).value || '';
+  var estado = (document.getElementById('consol-det-estado') || {}).value || '';
+  var qs = new URLSearchParams();
+  if (buscar) qs.set('buscar', buscar);
+  if (estado) qs.set('estado', estado);
+  try {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">Cargando...</td></tr>';
+    var rows = await api('/api/consolidado/' + currentConsoladoActividadId + '?' + qs.toString());
+    if (!rows || rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">Sin resultados.</td></tr>';
+      return;
+    }
+    var html = '';
+    rows.forEach(function(r, i) {
+      var fechaComp = r.fecha_completado ? new Date(r.fecha_completado).toLocaleDateString('es-PE') : '—';
+      html += '<tr>' +
+        '<td style="padding:9px 12px;font-size:.8rem;border-bottom:1px solid #f1f5f9;">' + (i+1) + '</td>' +
+        '<td style="padding:9px 12px;font-size:.8rem;border-bottom:1px solid #f1f5f9;font-weight:600;">' + (r.ie_nombre || '') + '</td>' +
+        '<td style="padding:9px 12px;font-size:.8rem;border-bottom:1px solid #f1f5f9;">' + (r.ie_codigo || '') + '</td>' +
+        '<td style="padding:9px 12px;font-size:.75rem;border-bottom:1px solid #f1f5f9;color:var(--text3);">' + (r.nivel_nombre || '—') + '</td>' +
+        '<td style="padding:9px 12px;border-bottom:1px solid #f1f5f9;"><span class="badge badge-' + (r.estado||'pendiente') + '">' + (r.estado||'pendiente') + '</span></td>' +
+        '<td style="padding:9px 12px;font-size:.8rem;border-bottom:1px solid #f1f5f9;color:var(--text3);">' + fechaComp + '</td>' +
+        '<td style="padding:9px 12px;font-size:.78rem;border-bottom:1px solid #f1f5f9;color:var(--text2);max-width:200px;">' + (r.notas_supervisor || '—') + '</td>' +
+      '</tr>';
+    });
+    tbody.innerHTML = html;
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--danger);">Error: ' + e.message + '</td></tr>';
+  }
+}
+
+function descargarConsolidadoExcel() {
+  if (!currentConsoladoActividadId) return;
+  descargarExcel('/api/export/consolidado/' + currentConsoladoActividadId);
 }
 
 checkSession();

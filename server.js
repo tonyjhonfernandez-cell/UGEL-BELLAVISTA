@@ -1752,9 +1752,25 @@ app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
 // ===================== DASHBOARD STATS =====================
 app.get('/api/dashboard/stats', authDirector, async (req, res) => {
     try {
+        const { nivel, zona, tipo } = req.query;
+        // Build extra WHERE conditions for filters
+        let extraWhere = '';
+        if (nivel) {
+            const safeNivel = nivel.replace(/[^a-z0-9_]/gi, '');
+            extraWhere += ` AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${safeNivel}')`;
+        }
+        if (zona) {
+            const safeZona = zona.replace(/['"\\;]/g, '');
+            extraWhere += ` AND ie.ruralidad = '${safeZona}'`;
+        }
+        if (tipo) {
+            const safeTipo = tipo.replace(/['"\\;]/g, '');
+            extraWhere += ` AND ie.tipo = '${safeTipo}'`;
+        }
+
         // Locales: IEs sin contar PRONOEI (cada código local = 1 IE)
         const total_inst = await pool.query(`
-            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true
+            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true${extraWhere}
             AND NOT EXISTS (
                 SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id
                 WHERE iln2.ie_id = ie.id AND ne2.clave = 'pronoei'
@@ -1769,18 +1785,18 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
             SELECT COUNT(*) as c FROM ie_niveles iln
             JOIN instituciones_educativas ie ON iln.ie_id = ie.id
             JOIN niveles_educativos ne ON iln.nivel_id = ne.id
-            WHERE ie.activa = true AND ne.clave != 'pronoei'
+            WHERE ie.activa = true AND ne.clave != 'pronoei'${extraWhere}
         `);
         // PRONOEI separado
         const total_pronoei = await pool.query(`
             SELECT COUNT(*) as c FROM ie_niveles iln
             JOIN instituciones_educativas ie ON iln.ie_id = ie.id
             JOIN niveles_educativos ne ON iln.nivel_id = ne.id
-            WHERE ie.activa = true AND ne.clave = 'pronoei'
+            WHERE ie.activa = true AND ne.clave = 'pronoei'${extraWhere}
         `);
         const por_zona = await pool.query(`
             SELECT COALESCE(ruralidad, 'URBANO') as zona, COUNT(DISTINCT codigo) as total
-            FROM instituciones_educativas WHERE activa = true
+            FROM instituciones_educativas ie WHERE activa = true${extraWhere}
             AND codigo NOT IN (
                 SELECT DISTINCT ie2.codigo FROM instituciones_educativas ie2
                 JOIN ie_niveles iln2 ON iln2.ie_id = ie2.id
@@ -1795,7 +1811,7 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
         `);
         const por_tipo = await pool.query(`
             SELECT COALESCE(tipo, 'NO APLICA') as tipo, COUNT(DISTINCT codigo) as total
-            FROM instituciones_educativas WHERE activa = true
+            FROM instituciones_educativas ie WHERE activa = true${extraWhere}
             GROUP BY tipo ORDER BY tipo
         `);
         const zonaMap = {};
@@ -1810,6 +1826,186 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
             por_tipo: tipoMap
         });
     } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===================== CONSOLIDADO =====================
+app.get('/api/consolidado', authDirector, async (req, res) => {
+    try {
+        const { mes, anio, buscar } = req.query;
+        const user = req.session.user;
+        const params = [];
+        let where = 'WHERE 1=1';
+
+        // Visibility: admin and tony.fernandez see all, supervisors see only theirs
+        if (user.rol === 'supervisor' && user.usuario !== 'tony.fernandez') {
+            where += ' AND a.asignador_id = $' + (params.length + 1);
+            params.push(user.id);
+        }
+        if (mes) {
+            where += ' AND EXTRACT(MONTH FROM a.fecha_limite) = $' + (params.length + 1);
+            params.push(parseInt(mes));
+        }
+        if (anio) {
+            where += ' AND EXTRACT(YEAR FROM a.fecha_limite) = $' + (params.length + 1);
+            params.push(parseInt(anio));
+        }
+        if (buscar) {
+            where += ' AND a.titulo ILIKE $' + (params.length + 1);
+            params.push('%' + buscar + '%');
+        }
+
+        const rows = await pool.query(`
+            SELECT a.id, a.titulo, a.descripcion, a.fecha_limite, a.link_url,
+                   u.nombre_completo as asignador_nombre,
+                   COUNT(ase.id) as total,
+                   COUNT(CASE WHEN ase.estado='completada' THEN 1 END) as completadas,
+                   COUNT(CASE WHEN ase.estado='inconclusa' THEN 1 END) as inconclusas,
+                   COUNT(CASE WHEN ase.estado='no_cumplida' THEN 1 END) as no_cumplidas,
+                   COUNT(CASE WHEN ase.estado='pendiente' THEN 1 END) as pendientes
+            FROM actividades a
+            LEFT JOIN asignaciones ase ON ase.actividad_id = a.id
+            LEFT JOIN usuarios u ON a.asignador_id = u.id
+            ${where}
+            GROUP BY a.id, a.titulo, a.descripcion, a.fecha_limite, a.link_url, u.nombre_completo
+            ORDER BY a.fecha_limite DESC
+        `, params);
+
+        res.json(rows.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/consolidado/:actividadId', authDirector, async (req, res) => {
+    try {
+        const { actividadId } = req.params;
+        const { buscar, estado } = req.query;
+        const params = [parseInt(actividadId)];
+        let where = 'WHERE ase.actividad_id = $1';
+        if (estado) {
+            where += ' AND ase.estado = $' + (params.length + 1);
+            params.push(estado);
+        }
+        if (buscar) {
+            where += ' AND (ie.nombre ILIKE $' + (params.length + 1) + ' OR ie.codigo ILIKE $' + (params.length + 2) + ')';
+            const p = '%' + buscar + '%';
+            params.push(p, p);
+        }
+        const rows = await pool.query(`
+            SELECT ase.id, ase.estado, ase.fecha_completado, ase.notas_supervisor,
+                   ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                   u.nombre_completo as director_nombre,
+                   STRING_AGG(DISTINCT ne.nombre, ', ' ORDER BY ne.nombre) as nivel_nombre
+            FROM asignaciones ase
+            JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
+            LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            ${where}
+            GROUP BY ase.id, ase.estado, ase.fecha_completado, ase.notas_supervisor,
+                     ie.nombre, ie.codigo, u.nombre_completo
+            ORDER BY ie.nombre
+        `, params);
+        res.json(rows.rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) => {
+    try {
+        const { actividadId } = req.params;
+        // Get activity info
+        const actRes = await pool.query('SELECT titulo, fecha_limite FROM actividades WHERE id = $1', [parseInt(actividadId)]);
+        const act = actRes.rows[0] || { titulo: 'Actividad', fecha_limite: null };
+
+        const rows = await pool.query(`
+            SELECT ase.estado, ase.fecha_completado, ase.notas_supervisor,
+                   ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                   u.nombre_completo as director_nombre,
+                   STRING_AGG(DISTINCT ne.nombre, ', ' ORDER BY ne.nombre) as nivel_nombre
+            FROM asignaciones ase
+            JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
+            LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            WHERE ase.actividad_id = $1
+            GROUP BY ase.estado, ase.fecha_completado, ase.notas_supervisor,
+                     ie.nombre, ie.codigo, u.nombre_completo
+            ORDER BY ie.nombre
+        `, [parseInt(actividadId)]);
+
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Consolidado');
+
+        ws.columns = [
+            { header: '#', key: 'num', width: 5 },
+            { header: 'CÓDIGO LOCAL', key: 'codigo', width: 14 },
+            { header: 'INSTITUCIÓN EDUCATIVA', key: 'nombre', width: 44 },
+            { header: 'DIRECTOR', key: 'director', width: 28 },
+            { header: 'NIVEL(ES)', key: 'nivel', width: 24 },
+            { header: 'ESTADO', key: 'estado', width: 16 },
+            { header: 'FECHA COMPLETADO', key: 'fecha', width: 20 },
+            { header: 'NOTAS', key: 'notas', width: 36 },
+        ];
+
+        const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+        const headerAlign = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        const thinBorder = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+        const cellBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+
+        const hRow = ws.getRow(1);
+        hRow.height = 30;
+        ws.columns.forEach((col, i) => {
+            const cell = hRow.getCell(i + 1);
+            cell.value = col.header;
+            cell.fill = headerFill;
+            cell.font = headerFont;
+            cell.alignment = headerAlign;
+            cell.border = cellBorder;
+        });
+
+        const estadoStyles = {
+            completada: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }, font: { color: { argb: 'FF2E7D32' }, bold: true, name: 'Calibri', size: 10 } },
+            pendiente:  { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF3E0' } }, font: { color: { argb: 'FFE65100' }, bold: true, name: 'Calibri', size: 10 } },
+            inconclusa: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE0B2' } }, font: { color: { argb: 'FFF57C00' }, bold: true, name: 'Calibri', size: 10 } },
+            no_cumplida:{ fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }, font: { color: { argb: 'FFC62828' }, bold: true, name: 'Calibri', size: 10 } }
+        };
+
+        rows.rows.forEach((r, i) => {
+            const rowNum = i + 2;
+            const row = ws.getRow(rowNum);
+            const bg = rowNum % 2 === 0 ? 'FFF8F9FF' : 'FFFFFFFF';
+            row.values = [
+                i + 1, r.ie_codigo, r.ie_nombre, r.director_nombre || '',
+                r.nivel_nombre || '', r.estado,
+                r.fecha_completado ? new Date(r.fecha_completado).toLocaleDateString('es-PE') : '',
+                r.notas_supervisor || ''
+            ];
+            row.height = 20;
+            row.eachCell({ includeEmpty: true }, (cell, ci) => {
+                cell.border = cellBorder;
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                if (ci === 6 && estadoStyles[r.estado]) {
+                    cell.fill = estadoStyles[r.estado].fill;
+                    cell.font = estadoStyles[r.estado].font;
+                } else {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                    cell.font = { name: 'Calibri', size: 10 };
+                }
+            });
+        });
+
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        const safeTitle = (act.titulo || 'consolidado').replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="consolidado_${safeTitle}.xlsx"`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error export consolidado:', err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ===================== SUPERVISORES (para filtros) =====================
@@ -1827,12 +2023,26 @@ app.get('/api/supervisores', async (req, res) => {
 // ===================== EXPORT EXCEL =====================
 app.get('/api/export/instituciones', authAdmin, async (req, res) => {
     try {
+        const { nivel, zona, tipo } = req.query;
+        let extraWhere = '';
+        if (nivel) {
+            const safeNivel = nivel.replace(/[^a-z0-9_]/gi, '');
+            extraWhere += ` AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ie.id AND ne_f.clave = '${safeNivel}')`;
+        }
+        if (zona) {
+            const safeZona = zona.replace(/['"\\;]/g, '');
+            extraWhere += ` AND ie.ruralidad = '${safeZona}'`;
+        }
+        if (tipo) {
+            const safeTipo = tipo.replace(/['"\\;]/g, '');
+            extraWhere += ` AND ie.tipo = '${safeTipo}'`;
+        }
         const ies = await pool.query(`
             SELECT ie.codigo, ie.nombre, ie.ruralidad, ie.tipo, ie.provincia, ie.distrito, ie.lugar,
                    ie.activa, u.nombre_completo as director, u.email as director_email, u.telefono as director_telefono
             FROM instituciones_educativas ie
             LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
-            WHERE ie.activa = true
+            WHERE ie.activa = true${extraWhere}
             ORDER BY ie.codigo
         `);
         const ieNiveles = await pool.query(`
