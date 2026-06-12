@@ -3694,87 +3694,116 @@ async function loadIEs() {
     }
     
     let renderedRows = 0;
-    
-    if (ies.length > 0) {
-      for (var i = 0; i < ies.length; i++) {
-        var ie = ies[i];
-        
+
+    // Agrupar IEs por código local (una IE = un código local)
+    const ieMap = {};
+    const ieOrder = [];
+    for (var i = 0; i < ies.length; i++) {
+      var ie = ies[i];
+      if (!ieMap[ie.codigo]) {
+        ieMap[ie.codigo] = { ie: ie, niveles: [] };
+        ieOrder.push(ie.codigo);
+      }
+      // Merge niveles filtrados
+      (ie.niveles || []).forEach(function(nv) {
+        if (!n || n === nv.clave) {
+          // Avoid duplicates
+          var already = ieMap[ie.codigo].niveles.some(function(x) { return x.nivel_id === nv.nivel_id; });
+          if (!already) ieMap[ie.codigo].niveles.push(nv);
+        }
+      });
+    }
+
+    if (ieOrder.length > 0) {
+      for (var i = 0; i < ieOrder.length; i++) {
+        var entry = ieMap[ieOrder[i]];
+        var ie = entry.ie;
+        var nivelesIE = entry.niveles;
+
+        // Skip if filter active and no matching niveles
+        if (n && nivelesIE.length === 0) continue;
+
         let actionCell = '';
         if (currentUser && currentUser.rol === 'admin') {
-          actionCell = `<td style="text-align:center;">
+          actionCell = `<td style="text-align:center;vertical-align:top;padding-top:14px;">
             <button class="btn btn-xs btn-outline me-1" onclick="abrirModalIE(${ie.id})"><i class="fas fa-edit"></i></button>
             <button class="btn btn-xs btn-outline text-danger" onclick="eliminarIE(${ie.id}, '${ie.nombre.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
           </td>`;
         }
-        
-        // Generar filas por cada nivel según el filtro (dinámico desde ie.niveles)
-        const levelsToRender = [];
-        (ie.niveles || []).forEach(function(nv) {
-          if (!n || n === nv.clave) {
-            levelsToRender.push({ name: nv.nombre, cm: nv.codigo_modular || '-', color: nv.color || 'bg-info-light' });
+
+        let zonaClass = 'bg-secondary';
+        if (ie.ruralidad === 'URBANO') zonaClass = 'bg-success-light';
+        else if (ie.ruralidad && ie.ruralidad.includes('RURAL 3')) zonaClass = 'bg-danger-light';
+        else if (ie.ruralidad && ie.ruralidad.includes('RURAL 2')) zonaClass = 'bg-warning-light';
+        else if (ie.ruralidad && ie.ruralidad.includes('RURAL 1')) zonaClass = 'bg-info-light';
+        else if (ie.ruralidad === 'RURAL') zonaClass = 'bg-warning-light';
+
+        let tipoClass = 'bg-neutral-light';
+        if (ie.tipo === 'POLIDOCENTE COMPLETO') tipoClass = 'bg-primary-light';
+        else if (ie.tipo === 'MULTIGRADO') tipoClass = 'bg-warning-light';
+        else if (ie.tipo === 'UNIDOCENTE') tipoClass = 'bg-danger-light';
+
+        // Nombre principal = primer nivel o el nombre de la IE
+        var nombrePrincipal = ie.nombre;
+
+        // Construir lista de niveles con código modular
+        var nivelesHtml = '';
+        if (nivelesIE.length > 0) {
+          nivelesHtml = '<div style="margin-top:5px;display:flex;flex-direction:column;gap:3px;">';
+          for (var j = 0; j < nivelesIE.length; j++) {
+            var nv = nivelesIE[j];
+            nivelesHtml +=
+              '<div style="display:flex;align-items:center;gap:6px;">' +
+                '<span class="badge ' + (nv.color || 'bg-info-light') + '" style="font-size:0.63rem;padding:1px 6px;white-space:nowrap;">' + nv.nombre + '</span>' +
+                (nv.codigo_modular && nv.codigo_modular !== '-'
+                  ? '<span style="font-size:0.72rem;color:#64748b;">CM: <span style="font-weight:600;color:#475569;">' + nv.codigo_modular + '</span></span>'
+                  : '<span style="font-size:0.72rem;color:#94a3b8;">Sin cód. modular</span>') +
+              '</div>';
           }
-        });
-
-        // Si no tiene niveles especificados pero coincide con la búsqueda
-        if (levelsToRender.length === 0 && !n) {
-          levelsToRender.push({ name: '-', cm: '-', color: 'bg-neutral-light' });
+          nivelesHtml += '</div>';
+        } else {
+          nivelesHtml = '<div style="margin-top:4px;"><span class="badge bg-neutral-light" style="font-size:0.63rem;">Sin nivel asignado</span></div>';
         }
 
-        for (var j = 0; j < levelsToRender.length; j++) {
-          const lv = levelsToRender[j];
-
-          let zonaClass = 'bg-secondary';
-          if (ie.ruralidad === 'URBANO') zonaClass = 'bg-success-light';
-          else if (ie.ruralidad && ie.ruralidad.includes('RURAL 3')) zonaClass = 'bg-danger-light';
-          else if (ie.ruralidad && ie.ruralidad.includes('RURAL 2')) zonaClass = 'bg-warning-light';
-          else if (ie.ruralidad && ie.ruralidad.includes('RURAL 1')) zonaClass = 'bg-info-light';
-          else if (ie.ruralidad === 'RURAL') zonaClass = 'bg-warning-light';
-
-          const levelClass = lv.color || 'bg-info-light';
-          
-          let tipoClass = 'bg-neutral-light';
-          if (ie.tipo === 'POLIDOCENTE COMPLETO') tipoClass = 'bg-primary-light';
-          else if (ie.tipo === 'MULTIGRADO') tipoClass = 'bg-warning-light';
-          else if (ie.tipo === 'UNIDOCENTE') tipoClass = 'bg-danger-light';
-
-          html += '<tr>' +
-            // Col 1: Institución Educativa (Nivel, Tipo)
-            '<td>' +
-              '<div style="font-weight: 600; color: #1e293b; font-size: 0.88rem; line-height: 1.25;">' + ie.nombre + '</div>' +
-              '<div style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">' +
-                '<span class="badge ' + levelClass + '" style="font-size: 0.68rem; padding: 2px 6px;">' + lv.name + '</span>' +
-                '<span class="badge ' + tipoClass + '" style="font-size: 0.68rem; padding: 2px 6px;">' + (ie.tipo || 'NO APLICA') + '</span>' +
-              '</div>' +
-            '</td>' +
-            // Col 2: Códigos (Local / Mod)
-            '<td style="white-space: nowrap;">' +
-              '<div style="font-size: 0.8rem; color: #64748b;">Local: <span style="font-weight:600; color:#334155;">' + ie.codigo + '</span></div>' +
-              '<div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">Mod: <span style="font-weight:600; color:#334155;">' + lv.cm + '</span></div>' +
-            '</td>' +
-            // Col 3: Ubicación (Lugar / Distrito / Prov)
-            '<td>' +
-              '<div style="font-weight: 500; color: #334155; font-size: 0.82rem; line-height: 1.25;">' + (ie.lugar || '-') + '</div>' +
-              '<div style="font-size: 0.76rem; color: #64748b; margin-top: 2px;">' + (ie.distrito || '-') + ' / ' + (ie.provincia || '-') + '</div>' +
-            '</td>' +
-            // Col 4: Director e Información de Contacto
-            '<td>' +
-              '<div style="font-weight: 600; color: #334155; font-size: 0.82rem;">' + (ie.director_nombre || 'Sin director') + '</div>' +
-              '<div style="font-size: 0.76rem; color: #64748b; margin-top: 2px; display: flex; flex-direction: column; gap: 1px; line-height: 1.2;">' +
-                (ie.director_telefono ? '<span><i class="fas fa-phone-alt" style="font-size:0.7rem; width:12px; color: #94a3b8;"></i> ' + ie.director_telefono + '</span>' : '') +
-                (ie.director_email ? '<span><i class="far fa-envelope" style="font-size:0.7rem; width:12px; color: #94a3b8;"></i> ' + ie.director_email + '</span>' : '') +
-              '</div>' +
-            '</td>' +
-            // Col 5: Zona y Estado
-            '<td>' +
-              '<div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">' +
-                '<span class="badge ' + zonaClass + '" style="font-size: 0.68rem; padding: 2px 6px;">' + (ie.ruralidad || 'URBANO') + '</span>' +
-                '<span class="bg-success-pill" style="font-size: 0.65rem; padding: 1px 6px;">Activa</span>' +
-              '</div>' +
-            '</td>' +
-            actionCell +
-            '</tr>';
-          renderedRows++;
+        // Col 2: Código local + modulares
+        var codigosHtml =
+          '<div style="font-size:0.8rem;color:#64748b;">Local: <span style="font-weight:700;color:#334155;">' + ie.codigo + '</span></div>';
+        if (nivelesIE.length > 1) {
+          codigosHtml += '<div style="font-size:0.7rem;color:#94a3b8;margin-top:2px;">' + nivelesIE.length + ' servicios</div>';
         }
+
+        html += '<tr>' +
+          // Col 1: Nombre + niveles
+          '<td style="vertical-align:top;">' +
+            '<div style="font-weight:700;color:#1e293b;font-size:0.88rem;line-height:1.3;">' + nombrePrincipal + '</div>' +
+            '<div style="margin-top:3px;"><span class="badge ' + tipoClass + '" style="font-size:0.63rem;padding:1px 6px;">' + (ie.tipo || 'NO APLICA') + '</span></div>' +
+            nivelesHtml +
+          '</td>' +
+          // Col 2: Códigos
+          '<td style="vertical-align:top;white-space:nowrap;">' + codigosHtml + '</td>' +
+          // Col 3: Ubicación
+          '<td style="vertical-align:top;">' +
+            '<div style="font-weight:500;color:#334155;font-size:0.82rem;line-height:1.25;">' + (ie.lugar || '-') + '</div>' +
+            '<div style="font-size:0.76rem;color:#64748b;margin-top:2px;">' + (ie.distrito || '-') + ' / ' + (ie.provincia || '-') + '</div>' +
+          '</td>' +
+          // Col 4: Director
+          '<td style="vertical-align:top;">' +
+            '<div style="font-weight:600;color:#334155;font-size:0.82rem;">' + (ie.director_nombre || 'Sin director') + '</div>' +
+            '<div style="font-size:0.76rem;color:#64748b;margin-top:2px;display:flex;flex-direction:column;gap:1px;line-height:1.2;">' +
+              (ie.director_telefono ? '<span><i class="fas fa-phone-alt" style="font-size:0.7rem;width:12px;color:#94a3b8;"></i> ' + ie.director_telefono + '</span>' : '') +
+              (ie.director_email ? '<span><i class="far fa-envelope" style="font-size:0.7rem;width:12px;color:#94a3b8;"></i> ' + ie.director_email + '</span>' : '') +
+            '</div>' +
+          '</td>' +
+          // Col 5: Zona
+          '<td style="vertical-align:top;">' +
+            '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start;">' +
+              '<span class="badge ' + zonaClass + '" style="font-size:0.68rem;padding:2px 6px;">' + (ie.ruralidad || 'URBANO') + '</span>' +
+              '<span class="bg-success-pill" style="font-size:0.65rem;padding:1px 6px;">Activa</span>' +
+            '</div>' +
+          '</td>' +
+          actionCell +
+          '</tr>';
+        renderedRows++;
       }
     }
     
