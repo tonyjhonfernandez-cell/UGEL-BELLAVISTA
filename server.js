@@ -163,6 +163,16 @@ async function applyMigrations() {
             )
         `);
     } catch (e) { /* Ignorar */ }
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS cap_data (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                datos JSONB NOT NULL DEFAULT '[]',
+                subido_por TEXT,
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+    } catch (e) { /* Ignorar */ }
 }
 
 async function initDatabase() {
@@ -2174,6 +2184,32 @@ app.get('/api/supervisores', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// ===================== CAP DATA =====================
+app.get('/api/cap/data', authDirector, async (req, res) => {
+    try {
+        const r = await pool.query('SELECT datos, subido_por, updated_at FROM cap_data WHERE id = 1');
+        if (r.rows.length === 0) return res.json({ datos: [], subido_por: null, updated_at: null });
+        res.json(r.rows[0]);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/cap/upload', authDirector, async (req, res) => {
+    const user = req.session.user;
+    if (user.rol !== 'admin' && user.usuario !== 'tony.fernandez') {
+        return res.status(403).json({ error: 'Solo administradores pueden actualizar la DATA CAP' });
+    }
+    try {
+        const { datos } = req.body;
+        if (!Array.isArray(datos)) return res.status(400).json({ error: 'Datos inválidos' });
+        await pool.query(`
+            INSERT INTO cap_data (id, datos, subido_por, updated_at)
+            VALUES (1, $1::jsonb, $2, NOW())
+            ON CONFLICT (id) DO UPDATE SET datos = EXCLUDED.datos, subido_por = EXCLUDED.subido_por, updated_at = NOW()
+        `, [JSON.stringify(datos), user.nombre_completo || user.usuario]);
+        res.json({ ok: true, total: datos.length });
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // ===================== EXPORT EXCEL =====================

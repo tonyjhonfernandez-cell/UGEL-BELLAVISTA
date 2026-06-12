@@ -5577,11 +5577,30 @@ checkSession();
 // ===================== CAP =====================
 var capDataGlobal = [];
 
-function capInitView() {
+async function capInitView() {
   var isAdmin = currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez');
   var uploadSec = document.getElementById('cap-upload-section');
   if (uploadSec) uploadSec.style.display = isAdmin ? 'block' : 'none';
+  // Load data from server if not yet loaded
+  if (!capDataGlobal.length) {
+    await capCargarDelServidor();
+  }
   capVolverBusqueda();
+}
+
+async function capCargarDelServidor() {
+  try {
+    var r = await api('/api/cap/data');
+    if (r && Array.isArray(r.datos) && r.datos.length) {
+      capDataGlobal = r.datos;
+      var msg = document.getElementById('cap-status-msg');
+      if (msg) {
+        var fecha = r.updated_at ? new Date(r.updated_at).toLocaleDateString('es-PE') : '';
+        msg.textContent = '✓ ' + capDataGlobal.length + ' registros cargados' + (fecha ? ' (' + fecha + ')' : '') + (r.subido_por ? ' — por ' + r.subido_por : '');
+        msg.style.color = '#10b981';
+      }
+    }
+  } catch(e) { /* Silencioso */ }
 }
 
 function capVolverBusqueda() {
@@ -5627,11 +5646,28 @@ function capProcesarExcel() {
         rows = XLSX.utils.sheet_to_json(ws);
       }
       capDataGlobal = rows;
-      msg.textContent = '✓ ' + rows.length + ' registros cargados.';
-      msg.style.color = '#10b981';
       capBuscar();
+      msg.textContent = 'Guardando en servidor...';
+      msg.style.color = '#6366f1';
+      fetch('/api/cap/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datos: rows })
+      }).then(function(r){ return r.json().then(function(j){ return {ok: r.ok, j: j}; }); })
+        .then(function(res) {
+          if (res.ok) {
+            msg.textContent = '✓ ' + rows.length + ' registros guardados. Todos los usuarios pueden verlos.';
+            msg.style.color = '#10b981';
+          } else {
+            msg.textContent = '✓ Cargado. Error al guardar: ' + (res.j.error || '');
+            msg.style.color = '#f59e0b';
+          }
+        }).catch(function() {
+          msg.textContent = '✓ ' + rows.length + ' registros cargados localmente.';
+          msg.style.color = '#f59e0b';
+        });
     } catch(err) {
-      msg.textContent = 'Error al leer el Excel.';
+      msg.textContent = 'Error al leer el Excel: ' + err.message;
       msg.style.color = '#dc2626';
     }
   };
