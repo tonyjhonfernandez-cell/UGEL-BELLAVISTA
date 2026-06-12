@@ -1836,11 +1836,7 @@ app.get('/api/consolidado', authDirector, async (req, res) => {
         const params = [];
         let where = 'WHERE 1=1';
 
-        // Visibility: admin and tony.fernandez see all, supervisors see only theirs
-        if (user.rol === 'supervisor' && user.usuario !== 'tony.fernandez') {
-            where += ' AND a.asignador_id = $' + (params.length + 1);
-            params.push(user.id);
-        }
+        // All authenticated users see all activities in Consolidado
         if (mes) {
             where += ' AND EXTRACT(MONTH FROM a.fecha_limite) = $' + (params.length + 1);
             params.push(parseInt(mes));
@@ -2181,7 +2177,7 @@ app.get('/api/supervisores', async (req, res) => {
 });
 
 // ===================== EXPORT EXCEL =====================
-app.get('/api/export/instituciones', authAdmin, async (req, res) => {
+app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
     try {
         const { nivel, zona, tipo } = req.query;
         let extraWhere = '';
