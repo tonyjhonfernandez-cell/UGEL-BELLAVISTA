@@ -1079,10 +1079,30 @@ body.director-mode #app-shell {
         </div>
 
 
+        <!-- Filtro de actividad -->
+        <div class="filter-bar" style="margin-bottom:20px;">
+          <div class="filter-group" style="flex:1;min-width:220px;">
+            <label>Actividad</label>
+            <select class="form-select" id="dash-filtro-actividad" onchange="loadAvanceMensual()">
+              <option value="">Todas las actividades</option>
+            </select>
+          </div>
+          <div class="filter-group" style="min-width:160px;">
+            <label>Mes</label>
+            <select class="form-select" id="dash-filtro-mes" onchange="loadAvanceMensual()">
+              <option value="">Todos los meses</option>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+        </div>
+
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:24px; margin-bottom:24px;" id="avance-layout-grid">
           <!-- Gráfico -->
           <div class="chart-card" style="margin-bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
-            <div class="ctitle" style="margin-bottom:16px; text-align:center; width:100%;"><i class="fas fa-chart-pie"></i> Estado del Mes</div>
+            <div class="ctitle" style="margin-bottom:16px; text-align:center; width:100%;"><i class="fas fa-chart-pie"></i> Estado General</div>
             <div style="width:200px; height:200px; position:relative;">
               <canvas id="chart-avance-mensual"></canvas>
               <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
@@ -3485,13 +3505,23 @@ function filterMonModalTable(q) {
   if (grp) renderMonModalRows(grp.ies, q);
 }
 
-function monModalCambiarEstado(id, est) {
-  var title = est === 'completada' ? 'Marcar COMPLETADA' : 'Marcar INCONCLUSA';
-  var btnCls = est === 'completada' ? 'btn-success' : 'btn-warning';
-  var placeholder = est === 'inconclusa' ? 'Escriba qué falta para cumplir la actividad...' : 'Observaciones (opcional)...';
+async function monModalCambiarEstado(id, est) {
+  // Completada: directo sin modal
+  if (est === 'completada') {
+    try {
+      await api('/api/asignaciones/' + id + '/estado', { method: 'PUT', body: { estado: 'completada', notas_supervisor: '' } });
+      showToast('Marcada como completada', 'success');
+      var grp = window._monCurrentGroup;
+      if (grp) { var ie = grp.ies.find(function(x){return x.id===id;}); if(ie) ie.estado='completada'; renderMonModalRows(grp.ies, ''); }
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    return;
+  }
+  var title = 'Marcar INCONCLUSA';
+  var btnCls = 'btn-warning';
+  var placeholder = 'Escriba qué falta para cumplir la actividad...';
   showModal(title,
     '<div class="mb-3"><label class="form-label">Notas / Observaciones</label><textarea class="form-control" id="notas-supervisor" rows="3" placeholder="' + placeholder + '"></textarea></div>' +
-    (est === 'inconclusa' ? '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:.78rem;color:#c2410c;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>Se reflejará como inconclusa en el reporte de cumplimiento.</div>' : ''),
+    '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:10px 14px;font-size:.78rem;color:#c2410c;"><i class="fas fa-info-circle" style="margin-right:6px;"></i>Se reflejará como inconclusa en el reporte de cumplimiento.</div>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn ' + btnCls + '" onclick="monModalConfirmarEstado(' + id + ',\'' + est + '\')">Confirmar</button>');
 }
 
@@ -4333,28 +4363,37 @@ async function loadAvanceMensual() {
     var d = await api('/api/asignaciones');
     var rows = d.asignaciones || d || [];
 
-    var selectedIEId = selectedAvanceIEId;
+    // Populate actividad dropdown on first load
+    var actSel = document.getElementById('dash-filtro-actividad');
+    if (actSel && actSel.options.length <= 1) {
+      var actMap = {};
+      rows.forEach(function(a) {
+        var id = a.actividad_id || a.id;
+        var t = a.actividad_titulo || a.titulo || '';
+        if (id && t && !actMap[id]) actMap[id] = t;
+      });
+      Object.keys(actMap).forEach(function(id) {
+        var o = document.createElement('option');
+        o.value = id; o.textContent = actMap[id];
+        actSel.appendChild(o);
+      });
+    }
+
+    var filtroActividad = (actSel && actSel.value) ? String(actSel.value) : '';
+    var filtroMes = document.getElementById('dash-filtro-mes') ? document.getElementById('dash-filtro-mes').value : '';
+
     var filteredRows = rows.filter(function(a) {
       if (!a.fecha_limite) return false;
-      var limitDate = a.fecha_limite;
-      var dateStr = '';
-      if (limitDate instanceof Date) {
-        var y = limitDate.getFullYear();
-        var m = limitDate.getMonth() + 1;
-        var d = limitDate.getDate();
-        dateStr = y + '-' + (m < 10 ? '0' + m : m) + '-' + (d < 10 ? '0' + d : d);
-      } else if (typeof limitDate === 'string') {
-        dateStr = limitDate.substring(0, 10);
-      } else {
-        dateStr = String(limitDate || '').substring(0, 10);
+      if (filtroActividad) {
+        var aid = String(a.actividad_id || a.id || '');
+        if (aid !== filtroActividad) return false;
       }
-      var parts = dateStr.split('-');
-      var monthIndex = parseInt(parts[1], 10) - 1;
-      
-      if (selectedIEId && String(a.ie_id) !== String(selectedIEId)) {
-        return false;
+      if (filtroMes) {
+        var dateStr = typeof a.fecha_limite === 'string' ? a.fecha_limite.substring(0,10) : String(a.fecha_limite||'').substring(0,10);
+        var mes = parseInt(dateStr.split('-')[1], 10);
+        if (mes !== parseInt(filtroMes, 10)) return false;
       }
-      return monthIndex === avanceSelectedMonth;
+      return true;
     });
 
     // Deduplicate assignments by ie_id + activity title + deadline, prioritizing completed status
