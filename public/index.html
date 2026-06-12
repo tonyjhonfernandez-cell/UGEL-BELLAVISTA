@@ -3558,20 +3558,21 @@ async function confirmarEliminarAsignacion(asignacionId, actividadId) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
  
-function cambiarEstadoAsignacion(id, est) {
-  var title = 'Marcar COMPLETADA';
-  var btnClass = 'btn-success';
-  var placeholder = 'Observaciones...';
-  
-  if (est === 'no_cumplida') {
-    title = 'Marcar NO CUMPLIDA (VENCIDA)';
-    btnClass = 'btn-danger';
-  } else if (est === 'inconclusa') {
-    title = 'Marcar INCONCLUSA';
-    btnClass = 'btn-warning';
-    placeholder = 'Escriba qué es lo que falta para cumplir la actividad...';
+async function cambiarEstadoAsignacion(id, est) {
+  // Completada: directo sin modal
+  if (est === 'completada') {
+    try {
+      await api('/api/asignaciones/' + id + '/estado', { method: 'PUT', body: { estado: 'completada', notas_supervisor: '' } });
+      showToast('Marcada como completada', 'success');
+      loadMonitoreo();
+    } catch (e) { showToast('Error: ' + e.message, 'error'); }
+    return;
   }
-  
+
+  var title = est === 'no_cumplida' ? 'Marcar NO CUMPLIDA (VENCIDA)' : 'Marcar INCONCLUSA';
+  var btnClass = est === 'no_cumplida' ? 'btn-danger' : 'btn-warning';
+  var placeholder = est === 'inconclusa' ? 'Escriba qué es lo que falta para cumplir la actividad...' : 'Observaciones...';
+
   showModal(title,
     '<div class="mb-3"><label class="form-label">Notas / Observaciones</label><textarea class="form-control" id="notas-supervisor" rows="3" placeholder="' + placeholder + '"></textarea></div>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn ' + btnClass + '" onclick="confirmarEstado(' + id + ',\'' + est + '\')">Confirmar</button>');
@@ -3587,9 +3588,7 @@ async function confirmarEstado(id, est) {
     showToast('Estado actualizado', 'success');
     closeModal();
     loadMonitoreo();
-  } catch (e) { 
-    showToast('Error: ' + e.message, 'error'); 
-  }
+  } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 async function verDetalleAsignacion(id) {
