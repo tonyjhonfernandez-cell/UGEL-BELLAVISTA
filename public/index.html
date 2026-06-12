@@ -1073,12 +1073,8 @@ body.director-mode #app-shell {
       <div class="view-section" id="view-avance-mensual">
         <div id="dashboard-stats-cards"></div>
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div>
-              <h2>Dashboard</h2>
-              <span>Consolidado provincial e informe de actividades por mes</span>
-            </div>
-            <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones')" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+          <div>
+            <h2>Dashboard</h2>
           </div>
         </div>
 
@@ -1125,28 +1121,6 @@ body.director-mode #app-shell {
           </div>
         </div>
 
-        <!-- Tarjeta del Histórico Anual (solo visible al seleccionar IE) -->
-        <div class="chart-card" id="avance-historico-card" style="display:none; margin-bottom:24px; padding:24px;">
-          <div class="ctitle" style="margin-bottom:16px;"><i class="fas fa-history"></i> Avance Histórico Anual de Cumplimiento</div>
-          <div class="row" style="align-items: center; display: flex; flex-wrap: wrap;">
-            <div class="col-lg-8 col-12" style="height:250px; position:relative; min-height: 250px;">
-              <canvas id="chart-avance-historico"></canvas>
-            </div>
-            <div class="col-lg-4 col-12" id="avance-historico-stats" style="padding: 10px 20px;">
-              <!-- Overall stats for the school -->
-            </div>
-          </div>
-        </div>
-
-        <div class="t-card">
-          <div class="t-hd" style="display:flex; justify-content:space-between; align-items:center;">
-            <span><i class="fas fa-tasks"></i> Actividades del Mes</span>
-            <span class="badge badge-primary" id="avance-count-badge">0 Actividades</span>
-          </div>
-          <div style="padding:20px; display:flex; flex-direction:column; gap:16px;" id="avance-activities-list">
-            <!-- Rendered via Javascript -->
-          </div>
-        </div>
 
       </div>
 
@@ -1607,6 +1581,7 @@ body.director-mode #app-shell {
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
