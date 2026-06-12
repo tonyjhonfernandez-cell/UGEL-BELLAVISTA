@@ -54,7 +54,7 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg-main);color:var(--
 ::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
 
 /* LOGIN */
-#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:url('https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=1920&q=80') center/cover no-repeat;padding:20px;position:relative;overflow:hidden}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:url('https://i.pinimg.com/736x/61/48/5f/61485f98b0e2bea5cee22da64c8031da.jpg') center/cover no-repeat;padding:20px;position:relative;overflow:hidden}
 #login-screen::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(15,23,42,0.82) 0%,rgba(30,27,75,0.78) 50%,rgba(49,46,129,0.72) 100%);pointer-events:none}
 .login-card{background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);border-radius:20px;padding:40px 36px;width:100%;max-width:420px;box-shadow:0 25px 60px rgba(0,0,0,0.45);position:relative;z-index:1}
 .login-logo{width:90px;height:90px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 4px 20px rgba(0,0,0,0.12);overflow:hidden;padding:6px}
@@ -87,7 +87,7 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg-main);color:var(--
 
 /* LAYOUT */
 .app-wrap{display:flex;min-height:calc(100vh - 60px)}
-.sidebar{width:230px;background:var(--sidebar-bg);padding:16px 12px 20px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar{width:230px;background:var(--sidebar-bg);padding:16px 12px 20px;flex-shrink:0;overflow-y:auto;display:flex;flex-direction:column;position:fixed;top:60px;left:0;height:calc(100vh - 60px);z-index:199}
 .sidebar a{display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--sidebar-text);text-decoration:none;font-size:.82rem;font-weight:500;border-radius:var(--radius-sm);transition:all .15s;margin-bottom:2px;border-left:3px solid transparent}
 .sidebar a i{width:18px;text-align:center;font-size:.88rem;color:var(--sidebar-text);transition:color .15s}
 .sidebar a:hover{background:rgba(255,255,255,0.06);color:#e2e8f0;border-left-color:rgba(99,102,241,0.4)}
@@ -103,7 +103,7 @@ body{font-family:'Inter',sans-serif;background-color:var(--bg-main);color:var(--
 .sidebar-user-footer .su-info{flex:1;min-width:0}
 .sidebar-user-footer .su-name{font-size:.75rem;font-weight:600;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sidebar-user-footer .su-role{font-size:.62rem;color:#64748b}
-.main{flex:1;padding:28px 32px;overflow-y:auto;background:var(--bg-main)}
+.main{flex:1;padding:28px 32px;overflow-y:auto;background:var(--bg-main);margin-left:230px}
 .page-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
 .page-hd h2{font-size:1.25rem;font-weight:800;letter-spacing:-.4px;color:var(--text1)}
 .page-hd span{font-size:.78rem;color:var(--text3);flex:1}
@@ -1161,42 +1161,6 @@ body.director-mode #app-shell {
           </div>
         </div>
 
-        <!-- ========== D6: CONTROL TOTAL DE ACTIVIDADES POR MES ========== -->
-        <div class="t-card" style="margin-top:24px;">
-          <div class="t-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-            <span><i class="fas fa-table"></i> Control Total de Actividades por Mes</span>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-              <select class="form-select" id="ctrl-mes" style="width:140px;padding:6px 10px;font-size:.8rem;" onchange="loadControlMensual()">
-                <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
-                <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
-                <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
-                <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-              </select>
-              <select class="form-select" id="ctrl-anio" style="width:100px;padding:6px 10px;font-size:.8rem;" onchange="loadControlMensual()">
-                <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
-              </select>
-              <button class="btn btn-sm btn-outline-success" id="btn-ctrl-excel" onclick="descargarCtrlExcel()"><i class="fas fa-file-excel"></i> Descargar Excel</button>
-            </div>
-          </div>
-          <div class="t-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Actividad</th>
-                  <th style="text-align:center;width:100px;">IEs Asignadas</th>
-                  <th style="text-align:center;width:110px;">Completadas</th>
-                  <th style="text-align:center;width:110px;">Inconclusas</th>
-                  <th style="text-align:center;width:110px;">No Cumplidas</th>
-                  <th style="text-align:center;width:100px;">Pendientes</th>
-                  <th style="text-align:center;width:90px;">% Cumpl.</th>
-                </tr>
-              </thead>
-              <tbody id="ctrl-mensual-tbody">
-                <tr class="empty"><td colspan="7">Seleccione mes y año para cargar</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       <!-- ==================== CONSOLIDADO ==================== -->
@@ -1205,6 +1169,22 @@ body.director-mode #app-shell {
           <div>
             <h2>Consolidado de Actividades</h2>
             <span>Registro mensual de cumplimiento por actividad</span>
+          </div>
+          <button class="btn btn-primary" onclick="descargarConsolidadoGlobal()" style="display:flex;align-items:center;gap:8px;font-weight:700;border-radius:20px;padding:8px 20px;">
+            <i class="fas fa-download"></i> Descargar todas las actividades (Excel)
+          </button>
+        </div>
+
+        <!-- Global date range filter -->
+        <div class="filter-bar" style="margin-bottom:12px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:12px 16px;">
+          <div style="font-size:.72rem;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:6px;">Rango de fechas para descarga global</div>
+          <div class="filter-group">
+            <label>Desde</label>
+            <input type="date" class="form-control" id="consol-fecha-inicio">
+          </div>
+          <div class="filter-group">
+            <label>Hasta</label>
+            <input type="date" class="form-control" id="consol-fecha-fin">
           </div>
         </div>
 
@@ -1251,6 +1231,31 @@ body.director-mode #app-shell {
         <!-- Activity list -->
         <div id="consol-list">
           <div style="text-align:center;padding:40px;color:var(--text3);">Cargando...</div>
+        </div>
+
+        <!-- IE Report section -->
+        <div class="t-card" style="margin-top:24px;">
+          <div class="t-hd"><i class="fas fa-school"></i> Reporte por Institución Educativa</div>
+          <div style="padding:18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+            <div class="filter-group" style="flex:1;min-width:220px;">
+              <label>Buscar IE (nombre o código)</label>
+              <input type="text" class="form-control" id="consol-ie-codigo" placeholder="Código o nombre de IE..." list="consol-ie-datalist" oninput="filtrarIEDatalist(this.value)">
+              <datalist id="consol-ie-datalist"></datalist>
+            </div>
+            <div class="filter-group">
+              <label>Desde</label>
+              <input type="date" class="form-control" id="consol-ie-desde">
+            </div>
+            <div class="filter-group">
+              <label>Hasta</label>
+              <input type="date" class="form-control" id="consol-ie-hasta">
+            </div>
+            <div class="filter-group" style="margin-bottom:0;">
+              <button class="btn btn-outline-success" onclick="descargarReporteIE()" style="display:flex;align-items:center;gap:6px;font-weight:700;border-radius:20px;padding:8px 18px;">
+                <i class="fas fa-file-excel"></i> Descargar Excel por IE
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1960,6 +1965,11 @@ function buildSidebar() {
   if (currentUser.rol === 'admin') {
     html += '<div class="label">Administración</div>';
     html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
+  }
+
+  if (currentUser.rol === 'director') {
+    html += '<div class="label">Principal</div>';
+    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
@@ -5357,6 +5367,7 @@ var currentConsoladoActividadId = null;
 async function loadConsolidado() {
   var listEl = document.getElementById('consol-list');
   if (!listEl) return;
+  poblarIEDatalist();
   var buscar = (document.getElementById('consol-buscar') || {}).value || '';
   var ieBuscar = (document.getElementById('consol-ie-buscar') || {}).value || '';
   var mes = (document.getElementById('consol-mes') || {}).value || '';
@@ -5474,6 +5485,52 @@ async function loadConsolidadoDetalle() {
 function descargarConsolidadoExcel() {
   if (!currentConsoladoActividadId) return;
   descargarExcel('/api/export/consolidado/' + currentConsoladoActividadId);
+}
+
+function descargarConsolidadoGlobal() {
+  var qs = new URLSearchParams();
+  var fi = (document.getElementById('consol-fecha-inicio') || {}).value || '';
+  var ff = (document.getElementById('consol-fecha-fin') || {}).value || '';
+  var mes = (document.getElementById('consol-mes') || {}).value || '';
+  var anio = (document.getElementById('consol-anio') || {}).value || '';
+  if (fi) qs.set('fecha_inicio', fi);
+  if (ff) qs.set('fecha_fin', ff);
+  if (mes) qs.set('mes', mes);
+  if (anio) qs.set('anio', anio);
+  descargarExcel('/api/export/consolidado-global?' + qs.toString());
+}
+
+// Populate IE datalist for the IE report section
+var _consolIEList = [];
+async function poblarIEDatalist() {
+  try {
+    if (_consolIEList.length) return;
+    var ies = await api('/api/ies');
+    _consolIEList = ies || [];
+    var dl = document.getElementById('consol-ie-datalist');
+    if (!dl) return;
+    dl.innerHTML = _consolIEList.map(function(ie) {
+      return '<option value="' + (ie.codigo || '') + '">' + (ie.nombre || '') + '</option>';
+    }).join('');
+  } catch(e) {}
+}
+
+function filtrarIEDatalist(val) {
+  // just trigger datalist, native browser handles filtering
+}
+
+function descargarReporteIE() {
+  var codigo = (document.getElementById('consol-ie-codigo') || {}).value || '';
+  if (!codigo) { alert('Ingrese un código o nombre de IE'); return; }
+  // If user typed a name instead of code, try to find code from list
+  var match = _consolIEList.find(function(ie) { return ie.nombre === codigo || ie.codigo === codigo; });
+  var ieCode = match ? match.codigo : codigo;
+  var qs = new URLSearchParams({ ie_codigo: ieCode });
+  var desde = (document.getElementById('consol-ie-desde') || {}).value || '';
+  var hasta = (document.getElementById('consol-ie-hasta') || {}).value || '';
+  if (desde) qs.set('fecha_inicio', desde);
+  if (hasta) qs.set('fecha_fin', hasta);
+  descargarExcel('/api/export/consolidado-ie?' + qs.toString());
 }
 
 checkSession();

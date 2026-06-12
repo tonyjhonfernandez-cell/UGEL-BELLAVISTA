@@ -2008,6 +2008,166 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
     }
 });
 
+// ===================== EXPORT CONSOLIDADO GLOBAL =====================
+app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
+    try {
+        const { fecha_inicio, fecha_fin, mes, anio } = req.query;
+        let where = 'WHERE 1=1';
+        const params = [];
+        if (fecha_inicio) { params.push(fecha_inicio); where += ` AND a.fecha_limite >= $${params.length}`; }
+        if (fecha_fin) { params.push(fecha_fin); where += ` AND a.fecha_limite <= $${params.length}`; }
+        if (mes && anio) { params.push(parseInt(mes), parseInt(anio)); where += ` AND EXTRACT(MONTH FROM a.fecha_limite) = $${params.length-1} AND EXTRACT(YEAR FROM a.fecha_limite) = $${params.length}`; }
+        const isAdmin = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        if (!isAdmin && req.session.user.rol === 'supervisor') {
+            params.push(req.session.user.id);
+            where += ` AND a.asignador_id = $${params.length}`;
+        }
+        const rows = await pool.query(`
+            SELECT a.titulo, a.fecha_limite, a.descripcion,
+                   ie.codigo as ie_codigo, ie.nombre as ie_nombre,
+                   u.nombre_completo as director,
+                   ase.estado, ase.fecha_completado, ase.notas_supervisor
+            FROM actividades a
+            JOIN asignaciones ase ON ase.actividad_id = a.id
+            JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            ${where}
+            ORDER BY a.fecha_limite DESC, ie.nombre
+        `, params);
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        const ws = wb.addWorksheet('Consolidado');
+        ws.columns = [
+            { header: '#', key: 'num', width: 5 },
+            { header: 'ACTIVIDAD', key: 'actividad', width: 40 },
+            { header: 'FECHA LÍMITE', key: 'fecha', width: 14 },
+            { header: 'IE CÓDIGO', key: 'codigo', width: 12 },
+            { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie', width: 42 },
+            { header: 'DIRECTOR', key: 'director', width: 30 },
+            { header: 'ESTADO', key: 'estado', width: 14 },
+            { header: 'FECHA COMPLETADO', key: 'fecha_comp', width: 18 },
+            { header: 'NOTAS', key: 'notas', width: 40 },
+        ];
+        const hFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        const hFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+        const border = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+        const cellBorder = { top: border, left: border, bottom: border, right: border };
+        const hRow = ws.getRow(1); hRow.height = 28;
+        ws.columns.forEach((col, i) => {
+            const c = hRow.getCell(i+1);
+            c.value = col.header; c.fill = hFill; c.font = hFont;
+            c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = cellBorder;
+        });
+        const estadoColors = { completada: 'FF16a34a', inconclusa: 'FFf97316', no_cumplida: 'FFdc2626', pendiente: 'FF64748b' };
+        rows.rows.forEach((row, i) => {
+            const r = ws.addRow([
+                i+1, row.titulo,
+                row.fecha_limite ? new Date(row.fecha_limite).toLocaleDateString('es-PE') : '',
+                row.ie_codigo, row.ie_nombre, row.director || '',
+                (row.estado || 'pendiente').replace('_',' ').toUpperCase(),
+                row.fecha_completado ? new Date(row.fecha_completado).toLocaleDateString('es-PE') : '',
+                row.notas_supervisor || ''
+            ]);
+            const bg = i % 2 === 0 ? 'FFF8F9FF' : 'FFFFFFFF';
+            r.eachCell({ includeEmpty: true }, cell => {
+                cell.border = cellBorder;
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                cell.font = { name: 'Calibri', size: 10 };
+            });
+            const estadoCell = r.getCell(7);
+            const color = estadoColors[row.estado] || 'FF64748b';
+            estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
+        });
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="consolidado_actividades.xlsx"');
+        await wb.xlsx.write(res);
+        res.end();
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
+// ===================== EXPORT CONSOLIDADO POR IE =====================
+app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
+    try {
+        const { ie_codigo, fecha_inicio, fecha_fin } = req.query;
+        if (!ie_codigo) return res.status(400).json({ error: 'ie_codigo requerido' });
+        const params = [ie_codigo];
+        let where = 'WHERE ie.codigo = $1';
+        if (fecha_inicio) { params.push(fecha_inicio); where += ` AND a.fecha_limite >= $${params.length}`; }
+        if (fecha_fin) { params.push(fecha_fin); where += ` AND a.fecha_limite <= $${params.length}`; }
+        const rows = await pool.query(`
+            SELECT a.titulo, a.fecha_limite, a.descripcion, a.link_url,
+                   ie.codigo as ie_codigo, ie.nombre as ie_nombre,
+                   u.nombre_completo as director,
+                   ase.estado, ase.fecha_completado, ase.notas_supervisor
+            FROM actividades a
+            JOIN asignaciones ase ON ase.actividad_id = a.id
+            JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            LEFT JOIN usuarios u ON ase.director_id = u.id
+            ${where}
+            ORDER BY a.fecha_limite DESC
+        `, params);
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        const ieName = rows.rows[0]?.ie_nombre || ie_codigo;
+        const ws = wb.addWorksheet('Reporte IE');
+        ws.columns = [
+            { header: '#', key: 'num', width: 5 },
+            { header: 'ACTIVIDAD', key: 'actividad', width: 42 },
+            { header: 'DESCRIPCIÓN', key: 'desc', width: 40 },
+            { header: 'FECHA LÍMITE', key: 'fecha', width: 14 },
+            { header: 'ESTADO', key: 'estado', width: 14 },
+            { header: 'FECHA COMPLETADO', key: 'fecha_comp', width: 18 },
+            { header: 'NOTAS', key: 'notas', width: 40 },
+        ];
+        const hFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        const hFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+        const border = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+        const cellBorder = { top: border, left: border, bottom: border, right: border };
+        ws.mergeCells('A1:G1');
+        const titleCell = ws.getCell('A1');
+        titleCell.value = 'REPORTE DE ACTIVIDADES - ' + ieName.toUpperCase();
+        titleCell.font = { bold: true, size: 13, name: 'Calibri', color: { argb: 'FF1e293b' } };
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFe0e7ff' } };
+        ws.getRow(1).height = 28;
+        const hRow = ws.getRow(2); hRow.height = 26;
+        ws.columns.forEach((col, i) => {
+            const c = hRow.getCell(i+1);
+            c.value = col.header; c.fill = hFill; c.font = hFont;
+            c.alignment = { horizontal: 'center', vertical: 'middle' }; c.border = cellBorder;
+        });
+        const estadoColors = { completada: 'FF16a34a', inconclusa: 'FFf97316', no_cumplida: 'FFdc2626', pendiente: 'FF64748b' };
+        rows.rows.forEach((row, i) => {
+            const r = ws.addRow([
+                i+1, row.titulo, row.descripcion || '',
+                row.fecha_limite ? new Date(row.fecha_limite).toLocaleDateString('es-PE') : '',
+                (row.estado || 'pendiente').replace('_',' ').toUpperCase(),
+                row.fecha_completado ? new Date(row.fecha_completado).toLocaleDateString('es-PE') : '',
+                row.notas_supervisor || ''
+            ]);
+            const bg = i % 2 === 0 ? 'FFF8F9FF' : 'FFFFFFFF';
+            r.eachCell({ includeEmpty: true }, cell => {
+                cell.border = cellBorder;
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                cell.font = { name: 'Calibri', size: 10 };
+            });
+            const estadoCell = r.getCell(5);
+            const color = estadoColors[row.estado] || 'FF64748b';
+            estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
+        });
+        ws.views = [{ state: 'frozen', ySplit: 2 }];
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="reporte_ie_${ie_codigo}.xlsx"`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
 // ===================== SUPERVISORES (para filtros) =====================
 app.get('/api/supervisores', async (req, res) => {
     try {
