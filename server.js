@@ -416,6 +416,8 @@ syncPasswords().catch(err => console.error('syncPasswords error:', err));
 app.get('/api/migrate', async (req, res) => {
     try {
         await runUserMigration();
+        // Restablecer contraseña del admin a 'admin' siempre
+        await pool.query("UPDATE usuarios SET password = 'admin', usuario = 'admin' WHERE rol = 'admin'");
         const stats = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE usuario IS NOT NULL AND usuario != '') AS con_usuario,
