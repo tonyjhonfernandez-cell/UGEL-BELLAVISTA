@@ -790,32 +790,48 @@ app.post('/api/ies', authAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Código y nombre son requeridos' });
         }
 
-        const existing = await db.prepare('SELECT id FROM instituciones_educativas WHERE codigo = ?').get(codigo);
-        if (existing) {
-            return res.status(400).json({ error: `El código "${codigo}" ya existe en la base de datos.` });
+        // Detect EBA-only: all selected niveles are EBA type
+        let codigoFinal = codigo;
+        const niveles = req.body.niveles || [];
+        if (niveles.length > 0) {
+            const ebaRows = await pool.query("SELECT id FROM niveles_educativos WHERE clave ILIKE '%eba%'");
+            const ebaIds = new Set(ebaRows.rows.map(r => r.id));
+            const isEbaOnly = niveles.every(nv => ebaIds.has(Number(nv.nivel_id)));
+            if (isEbaOnly) {
+                // Use modular code as identifier so same local code can coexist
+                const ebaMod = niveles[0]?.codigo_modular?.trim();
+                if (!ebaMod) return res.status(400).json({ error: 'Para EBA independiente debe ingresar el código modular EBA' });
+                codigoFinal = ebaMod;
+            }
         }
 
-        const result = await db.prepare(`
+        const existing = await pool.query('SELECT id FROM instituciones_educativas WHERE codigo = $1', [codigoFinal]);
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: `El código "${codigoFinal}" ya existe en la base de datos.` });
+        }
+
+        const result = await pool.query(`
             INSERT INTO instituciones_educativas (
                 codigo, nombre, tiene_inicial, tiene_cuna_jardin, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros,
                 tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
                 cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
                 cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
                 tipo, provincia, distrito, lugar, activa
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
-        `).run(
-            codigo, nombre, tiene_inicial || false, tiene_cuna_jardin || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null,
-            tiene_ebe || false, tiene_cetpro || false, tiene_pronoei || false, tiene_eba || false,
-            cm_inicial || null, cm_cuna_jardin || null, cm_primaria || null, cm_secundaria || null,
-            cm_ebe || null, cm_cetpro || null, cm_pronoei || null, cm_eba || null,
-            tipo || null, provincia || null, distrito || null, lugar || null
-        );
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true)
+            RETURNING id
+        `, [
+            codigoFinal, nombre, tiene_inicial||false, tiene_cuna_jardin||false, tiene_primaria||false, tiene_secundaria||false, tiene_otros||false, tipo_otros||null,
+            tiene_ebe||false, tiene_cetpro||false, tiene_pronoei||false, tiene_eba||false,
+            cm_inicial||null, cm_cuna_jardin||null, cm_primaria||null, cm_secundaria||null,
+            cm_ebe||null, cm_cetpro||null, cm_pronoei||null, cm_eba||null,
+            tipo||null, provincia||null, distrito||null, lugar||null
+        ]);
         
-        const newIeId = result.lastInsertRowid;
+        const newIeId = result.rows[0].id;
 
         // Handle niveles array
         if (req.body.niveles && Array.isArray(req.body.niveles)) {
-            await db.prepare('DELETE FROM ie_niveles WHERE ie_id = ?').run(newIeId);
+            await pool.query('DELETE FROM ie_niveles WHERE ie_id = $1', [newIeId]);
             for (const nv of req.body.niveles) {
                 if (!nv.nivel_id) continue;
                 await pool.query(
@@ -826,7 +842,7 @@ app.post('/api/ies', authAdmin, async (req, res) => {
         }
 
         if (director_nombre) {
-            const username = 'director.' + codigo;
+            const username = 'director.' + codigoFinal;
             await pool.query(`
                 INSERT INTO usuarios (
                     nombre_completo, ie_codigo, rol, usuario, password, email, telefono, activo
@@ -838,7 +854,7 @@ app.post('/api/ies', authAdmin, async (req, res) => {
                     telefono = EXCLUDED.telefono,
                     activo = true
             `, [
-                director_nombre, codigo, username, codigo,
+                director_nombre, codigoFinal, username, codigoFinal,
                 director_email || null, director_telefono || null
             ]);
         }

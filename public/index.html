@@ -5042,7 +5042,7 @@ async function abrirModalIE(ieId = null) {
     const display = nivelesMap.hasOwnProperty(nv.id) ? 'block' : 'none';
     nivelesGrid += `
       <div>
-        <label style="font-weight: 500;"><input type="checkbox" class="ie-nivel-cb" data-nivel-id="${nv.id}" ${checked} onchange="this.closest('div').querySelector('.ie-cm-input').style.display = this.checked ? 'block' : 'none'"> ${nv.nombre}</label>
+        <label style="font-weight: 500;"><input type="checkbox" class="ie-nivel-cb" data-nivel-id="${nv.id}" ${checked} onchange="this.closest('div').querySelector('.ie-cm-input').style.display=this.checked?'block':'none';checkEbaOnly()"> ${nv.nombre}</label>
         <input type="text" class="form-control form-control-sm mt-1 ie-cm-input" data-nivel-id="${nv.id}" placeholder="Cód. Modular" value="${cm}" style="display: ${display};">
       </div>`;
   });
@@ -5099,8 +5099,11 @@ async function abrirModalIE(ieId = null) {
 
       <div class="mb-3">
         <label class="form-label" style="font-weight:600;">Niveles Educativos y Códigos Modulares</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f8fafc; padding: 12px; border-radius: 8px;" id="niveles-grid-container">
           ${nivelesGrid}
+        </div>
+        <div id="eba-only-notice" style="display:none;margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:.82rem;color:#1d4ed8;">
+          <i class="fas fa-info-circle"></i> <strong>EBA Independiente:</strong> Se usará el <strong>código modular</strong> ingresado arriba como identificador único de esta IE. El código local ingresado es solo referencia. Esto permite tener EBA Avanzado y EBA Inicial/Intermedio como servicios separados con el mismo código local físico.
         </div>
       </div>
 
@@ -5131,6 +5134,16 @@ async function abrirModalIE(ieId = null) {
   `;
 
   showModal(title, body, footer);
+}
+
+function checkEbaOnly() {
+  var notice = document.getElementById('eba-only-notice');
+  if (!notice) return;
+  var checked = document.querySelectorAll('.ie-nivel-cb:checked');
+  if (checked.length === 0) { notice.style.display = 'none'; return; }
+  var ebaClaves = (window.nivelesCache || []).filter(function(n){ return n.clave && n.clave.toLowerCase().includes('eba'); }).map(function(n){ return n.id; });
+  var allEba = Array.from(checked).every(function(cb){ return ebaClaves.includes(parseInt(cb.dataset.nivelId)); });
+  notice.style.display = allEba ? 'block' : 'none';
 }
 
 async function guardarIE(ieId = null) {
