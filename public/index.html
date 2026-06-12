@@ -4396,12 +4396,14 @@ async function loadAvanceMensual() {
     var total = filteredRows.length;
     var pct = total > 0 ? Math.round((cumplidas / total) * 100) : 0;
 
-    document.getElementById('avance-kpi-cumplidas').textContent = cumplidas;
-    document.getElementById('avance-kpi-pendientes').textContent = pendientes;
-    document.getElementById('avance-kpi-vencidas').textContent = vencidas;
-    document.getElementById('avance-chart-pct').textContent = pct + '%';
+    var elC = document.getElementById('avance-kpi-cumplidas'); if (elC) elC.textContent = cumplidas;
+    var elP = document.getElementById('avance-kpi-pendientes'); if (elP) elP.textContent = pendientes;
+    var elV = document.getElementById('avance-kpi-vencidas'); if (elV) elV.textContent = vencidas;
+    var elPct = document.getElementById('avance-chart-pct'); if (elPct) elPct.textContent = pct + '%';
 
-    var ctx = document.getElementById('chart-avance-mensual').getContext('2d');
+    var canvasEl = document.getElementById('chart-avance-mensual');
+    if (!canvasEl) { throw new Error('canvas no encontrado'); }
+    var ctx = canvasEl.getContext('2d');
     if (chartAvanceMensualObj) {
       chartAvanceMensualObj.destroy();
     }
@@ -4443,7 +4445,7 @@ async function loadAvanceMensual() {
 
     // Historical Chart rendering (only when an IE is selected)
     var historicoCard = document.getElementById('avance-historico-card');
-    if (selectedIEId) {
+    if (selectedIEId && historicoCard) {
       historicoCard.style.display = 'block';
       
       // Filter all rows for this IE (regardless of month)
@@ -4589,7 +4591,7 @@ async function loadAvanceMensual() {
           }
         }
       });
-    } else {
+    } else if (historicoCard) {
       historicoCard.style.display = 'none';
     }
 
