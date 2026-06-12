@@ -1113,11 +1113,11 @@ body.director-mode #app-shell {
           </div>
           
           <!-- Tarjetas KPI -->
-          <div style="display:flex; flex-direction:column; gap:16px; justify-content:space-between;">
+          <div style="display:flex; flex-direction:column; gap:12px; justify-content:space-between;">
             <div class="kpi-card green" style="margin-bottom:0; flex:1;">
               <div class="kpi-icon" style="background:var(--green-bg); color:var(--green);"><i class="fas fa-check-circle"></i></div>
               <div class="kpi-body">
-                <div class="kpi-label">Actividades Cumplidas</div>
+                <div class="kpi-label">Cumplidas</div>
                 <div class="kpi-value" id="avance-kpi-cumplidas">0</div>
                 <div class="kpi-sub">Tareas completadas</div>
               </div>
@@ -1125,15 +1125,23 @@ body.director-mode #app-shell {
             <div class="kpi-card amber" style="margin-bottom:0; flex:1;">
               <div class="kpi-icon" style="background:var(--amber-bg); color:var(--amber);"><i class="fas fa-clock"></i></div>
               <div class="kpi-body">
-                <div class="kpi-label">Actividades Pendientes</div>
+                <div class="kpi-label">Pendientes</div>
                 <div class="kpi-value" id="avance-kpi-pendientes">0</div>
                 <div class="kpi-sub">En plazo de entrega</div>
+              </div>
+            </div>
+            <div class="kpi-card" style="margin-bottom:0; flex:1; border-left:4px solid #f97316;">
+              <div class="kpi-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-minus-circle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Inconclusas</div>
+                <div class="kpi-value" id="avance-kpi-inconclusas">0</div>
+                <div class="kpi-sub">Enviadas con observación</div>
               </div>
             </div>
             <div class="kpi-card red" style="margin-bottom:0; flex:1;">
               <div class="kpi-icon" style="background:var(--red-bg); color:var(--red);"><i class="fas fa-exclamation-triangle"></i></div>
               <div class="kpi-body">
-                <div class="kpi-label">Actividades Vencidas</div>
+                <div class="kpi-label">Vencidas</div>
                 <div class="kpi-value" id="avance-kpi-vencidas">0</div>
                 <div class="kpi-sub">Fuera de plazo / no cumplidas</div>
               </div>
@@ -4424,11 +4432,13 @@ async function loadAvanceMensual() {
     var cumplidas = 0;
     var pendientes = 0;
     var vencidas = 0;
+    var inconclusas = 0;
 
     for (var i = 0; i < filteredRows.length; i++) {
       var a = filteredRows[i];
       if (a.estado === 'completada') cumplidas++;
       else if (a.estado === 'no_cumplida') vencidas++;
+      else if (a.estado === 'inconclusa') inconclusas++;
       else pendientes++;
     }
 
@@ -4437,6 +4447,7 @@ async function loadAvanceMensual() {
 
     var elC = document.getElementById('avance-kpi-cumplidas'); if (elC) elC.textContent = cumplidas;
     var elP = document.getElementById('avance-kpi-pendientes'); if (elP) elP.textContent = pendientes;
+    var elI = document.getElementById('avance-kpi-inconclusas'); if (elI) elI.textContent = inconclusas;
     var elV = document.getElementById('avance-kpi-vencidas'); if (elV) elV.textContent = vencidas;
     var elPct = document.getElementById('avance-chart-pct'); if (elPct) elPct.textContent = pct + '%';
 
@@ -4453,6 +4464,7 @@ async function loadAvanceMensual() {
 
     if (cumplidas > 0) { dataVals.push(cumplidas); dataColors.push('#10b981'); dataLabels.push('Cumplido'); }
     if (pendientes > 0) { dataVals.push(pendientes); dataColors.push('#f59e0b'); dataLabels.push('Pendiente'); }
+    if (inconclusas > 0) { dataVals.push(inconclusas); dataColors.push('#f97316'); dataLabels.push('Inconclusa'); }
     if (vencidas > 0) { dataVals.push(vencidas); dataColors.push('#ef4444'); dataLabels.push('Vencido'); }
 
     if (dataVals.length === 0) {
