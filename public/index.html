@@ -1317,6 +1317,7 @@ body.director-mode #app-shell {
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-primary btn-sm admin-only" id="btn-nueva-ie" onclick="abrirModalIE()" style="display:none;"><i class="fas fa-plus-circle"></i> Nueva IE</button>
+            <button class="btn btn-sm admin-only" onclick="exportarIEs()" style="display:none;background:#10b981;color:#fff;border:none;margin-left:8px;"><i class="fas fa-file-excel"></i> Exportar Excel</button>
             <button class="btn btn-secondary btn-sm admin-only" onclick="abrirModalNiveles()" style="display:none;"><i class="fas fa-layer-group"></i> Niveles</button>
           </div>
         </div>
@@ -5015,6 +5016,10 @@ async function guardarIE(ieId = null) {
   } catch (err) {
     showToast('Error: ' + err.message, 'error');
   }
+}
+
+function exportarIEs() {
+  window.location.href = '/api/export/instituciones';
 }
 
 function eliminarIE(id, nombre) {

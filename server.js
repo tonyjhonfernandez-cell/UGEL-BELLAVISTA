@@ -1825,6 +1825,108 @@ app.get('/api/supervisores', async (req, res) => {
 });
 
 // ===================== EXPORT EXCEL =====================
+app.get('/api/export/instituciones', authAdmin, async (req, res) => {
+    try {
+        const ies = await pool.query(`
+            SELECT ie.codigo, ie.nombre, ie.ruralidad, ie.tipo, ie.provincia, ie.distrito, ie.lugar,
+                   ie.activa, u.nombre_completo as director, u.email as director_email, u.telefono as director_telefono
+            FROM instituciones_educativas ie
+            LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
+            WHERE ie.activa = true
+            ORDER BY ie.codigo
+        `);
+        const ieNiveles = await pool.query(`
+            SELECT iln.ie_id, ne.nombre as nivel_nombre, ne.clave, iln.codigo_modular,
+                   ie.codigo as ie_codigo
+            FROM ie_niveles iln
+            JOIN instituciones_educativas ie ON iln.ie_id = ie.id
+            JOIN niveles_educativos ne ON iln.nivel_id = ne.id
+            WHERE ie.activa = true
+            ORDER BY ne.orden
+        `);
+        // Map niveles by ie_codigo
+        const nivelesMap = {};
+        for (const n of ieNiveles.rows) {
+            if (!nivelesMap[n.ie_codigo]) nivelesMap[n.ie_codigo] = [];
+            nivelesMap[n.ie_codigo].push({ nivel: n.nivel_nombre, cm: n.codigo_modular || '' });
+        }
+
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Instituciones Educativas');
+
+        ws.columns = [
+            { header: '#',                      key: 'num',       width: 5  },
+            { header: 'CÓDIGO LOCAL',           key: 'codigo',    width: 14 },
+            { header: 'INSTITUCIÓN EDUCATIVA',  key: 'nombre',    width: 44 },
+            { header: 'NIVEL(ES)',              key: 'niveles',   width: 38 },
+            { header: 'CÓDIGO(S) MODULAR(ES)',  key: 'cms',       width: 30 },
+            { header: 'ZONA',                   key: 'ruralidad', width: 14 },
+            { header: 'TIPO',                   key: 'tipo',      width: 24 },
+            { header: 'PROVINCIA',              key: 'provincia', width: 16 },
+            { header: 'DISTRITO',               key: 'distrito',  width: 16 },
+            { header: 'LUGAR',                  key: 'lugar',     width: 20 },
+            { header: 'DIRECTOR',               key: 'director',  width: 34 },
+            { header: 'EMAIL',                  key: 'email',     width: 28 },
+            { header: 'TELÉFONO',               key: 'telefono',  width: 16 },
+        ];
+
+        const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+        const headerAlign = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        const thinBorder = { style: 'thin', color: { argb: 'FFDDDDDD' } };
+        const cellBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+
+        const hRow = ws.getRow(1);
+        hRow.height = 30;
+        ws.columns.forEach((col, i) => {
+            const cell = hRow.getCell(i + 1);
+            cell.value = col.header;
+            cell.fill = headerFill;
+            cell.font = headerFont;
+            cell.alignment = headerAlign;
+            cell.border = cellBorder;
+        });
+
+        let rowNum = 2;
+        for (let i = 0; i < ies.rows.length; i++) {
+            const ie = ies.rows[i];
+            const nivs = nivelesMap[ie.codigo] || [];
+            const nivelesStr = nivs.map(n => n.nivel).join('\n');
+            const cmsStr = nivs.map(n => n.cm || '-').join('\n');
+            const row = ws.getRow(rowNum);
+            row.values = [
+                i + 1, ie.codigo, ie.nombre, nivelesStr, cmsStr,
+                ie.ruralidad || '', ie.tipo || '', ie.provincia || '',
+                ie.distrito || '', ie.lugar || '',
+                ie.director || '', ie.director_email || '', ie.director_telefono || ''
+            ];
+            row.height = Math.max(16, nivs.length * 16);
+            const bg = rowNum % 2 === 0 ? 'FFF8F9FF' : 'FFFFFFFF';
+            row.eachCell({ includeEmpty: true }, cell => {
+                cell.border = cellBorder;
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                cell.font = { name: 'Calibri', size: 10 };
+            });
+            rowNum++;
+        }
+
+        // Freeze header
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="instituciones_educativas.xlsx"');
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error export IEs:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/export/asignaciones', async (req, res) => {
     try {
         const { nivel, estado, buscar, asignador_id, mes, anio } = req.query;
