@@ -329,6 +329,7 @@ async function checkSession() {
 
 // ===================== INIT =====================
 function initDirectorApp() {
+  document.body.classList.add('director-mode');
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = 'none';
   document.getElementById('sidebar').style.display = 'none';
@@ -366,6 +367,7 @@ function initDirectorApp() {
   loadDirectorMain();
 }
 function initSupervisorApp() {
+  document.body.classList.remove('director-mode');
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = '';
   document.getElementById('sidebar').style.display = '';
