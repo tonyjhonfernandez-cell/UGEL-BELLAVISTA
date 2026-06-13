@@ -40,10 +40,10 @@
   --bg: #f8fafc;
   --card: #ffffff;
   --text: #0f172a;
-  --granate: #6366f1;
-  --granate-hover: #4f46e5;
-  --granate-light: rgba(99, 102, 241, 0.08);
-  --granate-grad: linear-gradient(135deg, #6366f1, #4f46e5);
+  --granate: #7A1E2C;
+  --granate-hover: #5b151f;
+  --granate-light: rgba(122, 30, 44, 0.08);
+  --granate-grad: linear-gradient(135deg, #7A1E2C, #5b151f);
   --dorado: #f59e0b;
   --dorado-light: rgba(245, 158, 11, 0.08);
   --green: #10b981;
@@ -1865,7 +1865,7 @@ body.director-mode #app-shell {
 
 .dir-layout {
   min-height: 100vh;
-  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.02) 0%, rgba(243, 244, 246, 0.3) 90%), #f3f4f6 !important;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cpath d='M0 40 L40 0 L80 40 L40 80 Z' fill='none' stroke='rgba(122,30,44,0.022)' stroke-width='1.5'/%3E%3Cpath d='M0 0 L80 80 M80 0 L0 80' fill='none' stroke='rgba(122,30,44,0.012)' stroke-width='1'/%3E%3Cpath d='M20 20 L60 20 L60 60 L20 60 Z' fill='none' stroke='rgba(122,30,44,0.018)' stroke-width='1.2'/%3E%3Cpath d='M40 0 L40 80 M0 40 L80 40' fill='none' stroke='rgba(122,30,44,0.012)' stroke-width='1'/%3E%3Ccircle cx='40' cy='40' r='5' fill='none' stroke='rgba(122,30,44,0.03)' stroke-width='1.5'/%3E%3C/svg%3E") repeat, linear-gradient(135deg, #eef2f7 0%, #d5dee6 100%) !important;
 }
 
 .dir-header {
@@ -2158,14 +2158,14 @@ body.director-mode #app-shell {
 
 .input-highlight {
   animation: pulse-border-highlight 1.5s infinite;
-  border: 2px solid var(--primary) !important;
-  background: #eef2ff !important;
+  border: 2px solid var(--granate) !important;
+  background: rgba(122, 30, 44, 0.04) !important;
 }
 
 @keyframes pulse-border-highlight {
-  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(122, 30, 44, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(122, 30, 44, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(122, 30, 44, 0); }
 }
 
 .dir-tooltip {
@@ -2173,7 +2173,7 @@ body.director-mode #app-shell {
   top: 72px;
   left: 50%;
   transform: translateX(-50%) translateY(-100%);
-  background: var(--primary-grad);
+  background: var(--granate-grad);
   color: #ffffff;
   padding: 8px 16px;
   border-radius: 20px;
@@ -2194,7 +2194,7 @@ body.director-mode #app-shell {
   transform: translateX(-50%);
   border-width: 5px 5px 0;
   border-style: solid;
-  border-color: var(--primary-dark) transparent;
+  border-color: var(--granate-hover) transparent;
   display: block;
   width: 0;
 }
