@@ -1859,6 +1859,11 @@ body.director-mode {
   background: #eef2f7;
 }
 
+body.director-mode .main {
+  margin-left: 0 !important;
+  padding: 0 !important;
+}
+
 body.director-mode #app-shell {
   display: block;
 }
