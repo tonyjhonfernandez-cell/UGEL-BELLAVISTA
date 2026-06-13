@@ -1,43 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const { seedDatabase } = require('./seed');
+const db = require('./db');
+const pool = db.pool;
 
 const app = express();
-
-if (!process.env.DATABASE_URL) {
-    console.error('ERROR: DATABASE_URL no configurada en .env');
-}
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
-
-function toPgSql(sql) {
-    let i = 0;
-    return String(sql).replace(/\?/g, () => `$${++i}`);
-}
-
-const db = {
-    async exec(sql) { await pool.query(sql); },
-    prepare(sql) {
-        const pgSql = toPgSql(sql);
-        return {
-            all: async (...params) => (await pool.query(pgSql, params)).rows,
-            get: async (...params) => (await pool.query(pgSql, params)).rows[0],
-            run: async (...params) => {
-                let q = pgSql;
-                if (/^\s*insert/i.test(sql) && !/returning/i.test(sql)) q += ' RETURNING id';
-                const result = await pool.query(q, params);
-                return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
-            }
-        };
-    }
-};
 
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
