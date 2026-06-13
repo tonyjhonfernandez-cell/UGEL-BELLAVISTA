@@ -187,17 +187,30 @@ async function applyMigrations() {
         } catch(e){}
         await pool.query('INSERT INTO schema_migrations (version) VALUES (7) ON CONFLICT DO NOTHING');
     }
+    // Migración 8: aumentar tamaño de columnas en usuarios para evitar errores de longitud
+    if (!applied.has(8)) {
+        try {
+            await pool.query("ALTER TABLE usuarios ALTER COLUMN telefono TYPE VARCHAR(100)");
+            await pool.query("ALTER TABLE usuarios ALTER COLUMN dependencia TYPE VARCHAR(150)");
+            await pool.query("ALTER TABLE usuarios ALTER COLUMN dni TYPE VARCHAR(50)");
+            await pool.query("ALTER TABLE usuarios ALTER COLUMN ie_codigo TYPE VARCHAR(50)");
+            await pool.query("ALTER TABLE usuarios ALTER COLUMN rol TYPE VARCHAR(50)");
+        } catch(e){
+            console.error('Error en migración 8:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (8) ON CONFLICT DO NOTHING');
+    }
 }
 
 async function initDatabase() {
-    // Si ya hay usuarios migrados, salir rápido
+    // Si ya hay instituciones educativas, el sistema ya está inicializado. Solo aplicar migraciones y salir rápido.
     try {
-        const r = await pool.query("SELECT COUNT(*) as c FROM usuarios WHERE usuario IS NOT NULL AND usuario != ''");
+        const r = await pool.query("SELECT COUNT(*) as c FROM instituciones_educativas");
         if (parseInt(r.rows[0].c) > 0) {
             await applyMigrations();
             return;
         }
-    } catch(e) { /* tabla no existe aún */ }
+    } catch(e) { /* tabla no existe aún o está vacía */ }
     await db.exec(`
         CREATE TABLE IF NOT EXISTS instituciones_educativas (
             id SERIAL PRIMARY KEY,
@@ -231,13 +244,13 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS usuarios (
             id SERIAL PRIMARY KEY,
             nombre_completo TEXT NOT NULL,
-            dni VARCHAR(20),
-            ie_codigo VARCHAR(20),
-            rol VARCHAR(20) NOT NULL DEFAULT 'director',
-            dependencia VARCHAR(50),
+            dni VARCHAR(50),
+            ie_codigo VARCHAR(50),
+            rol VARCHAR(50) NOT NULL DEFAULT 'director',
+            dependencia VARCHAR(150),
             puesto TEXT,
             email VARCHAR(150),
-            telefono VARCHAR(20),
+            telefono VARCHAR(100),
             foto TEXT,
             activo BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
@@ -376,7 +389,7 @@ async function initDatabase() {
         }
     }
     const iesCount = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
-    if (iesCount.c === 0) {
+    if (parseInt(iesCount.c) === 0) {
         // ...
     }
     await seedDatabase(db);
@@ -409,8 +422,9 @@ app.use('/api', async (req, res, next) => {
 });
 
 // También iniciar al arrancar (para entornos no-serverless)
-ensureDb().catch(err => console.error('DB init error:', err));
-syncPasswords().catch(err => console.error('syncPasswords error:', err));
+ensureDb()
+    .then(() => syncPasswords())
+    .catch(err => console.error('DB init or syncPasswords error:', err));
 
 // Endpoint para forzar migración manual (útil en Vercel después de deploy)
 app.get('/api/migrate', async (req, res) => {

@@ -186,12 +186,34 @@ async function seedDatabase(db) {
     ];
 
     const existing = await db.prepare('SELECT COUNT(*) as c FROM instituciones_educativas').get();
-    if (existing.c === 0) {
+    if (parseInt(existing.c) === 0) {
         const insertIE = db.prepare(
-            'INSERT INTO instituciones_educativas (codigo, nombre, ruralidad, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO NOTHING'
+            'INSERT INTO instituciones_educativas (codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (codigo) DO NOTHING'
         );
         for (const ie of iesData) {
-            await insertIE.run(...ie);
+            const codigo = ie[0];
+            const nombre = ie[1];
+            let tiene_inicial = false;
+            let tiene_primaria = false;
+            let tiene_secundaria = false;
+            let tiene_otros = false;
+            let tipo_otros = null;
+
+            if (ie.length === 8) {
+                tiene_inicial = ie[2];
+                tiene_primaria = ie[4];
+                tiene_secundaria = ie[5];
+                tiene_otros = ie[6];
+                tipo_otros = ie[7];
+            } else {
+                tiene_inicial = ie[2];
+                tiene_primaria = ie[3];
+                tiene_secundaria = ie[4];
+                tiene_otros = ie[5];
+                tipo_otros = ie[6];
+            }
+
+            await insertIE.run(codigo, nombre, tiene_inicial, tiene_primaria, tiene_secundaria, tiene_otros, tipo_otros);
         }
     }
 
