@@ -797,6 +797,13 @@
                 <input type="text" class="form-control" id="config-box-title" placeholder="Ej: Formulario de Evaluación de Desempeño">
               </div>
               <div class="col-md-6 mb-3">
+                <label class="form-label">Tipo de Recuadro / Destino</label>
+                <select class="form-select" id="config-box-type" onchange="onBoxTypeChange(this.value)">
+                  <option value="external">Enlace Externo (URL)</option>
+                  <option value="pimmer">Formulario PIMMER 2026 (Interno)</option>
+                </select>
+              </div>
+              <div class="col-md-12 mb-3" id="config-box-url-group">
                 <label class="form-label">Enlace / URL de Redirección (Formulario, Evaluación, etc.)</label>
                 <input type="url" class="form-control" id="config-box-url" placeholder="https://forms.google.com/...">
               </div>
@@ -880,6 +887,962 @@
         </div>
       </div>
 
+      <!-- ==================== SUPERVISOR: PIMMER LIST ==================== -->
+      <div class="view-section" id="view-pimmer-list" style="display:none;">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2>PIMMER — Monitoreo de Recursos Educativos</h2>
+            <span>Listado de fichas PIMMER 2026 registradas</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline-success btn-sm" onclick="exportarConsolidadoPimmer()">
+              <i class="fas fa-file-excel"></i> Descargar Consolidado (Excel)
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="abrirNuevoPimmerSupervisor()">
+              <i class="fas fa-plus-circle"></i> Nuevo Reporte PIMMER
+            </button>
+          </div>
+        </div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group" style="width: 100%;">
+            <label>Buscar Reporte</label>
+            <input type="text" class="form-control" id="pimmer-list-buscar" placeholder="Buscar por código local, nombre de I.E. o evaluador..." oninput="loadPimmerSubmissions()">
+          </div>
+        </div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código Local</th>
+                  <th>Institución Educativa</th>
+                  <th>Estado</th>
+                  <th>Actualizado</th>
+                  <th>Evaluador</th>
+                  <th style="width:280px; text-align:center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="pimmer-submissions-table">
+                <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">Cargando entregas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PIMMER: FORM WIZARD ==================== -->
+      <div class="view-section" id="view-pimmer-form" style="padding: 16px 20px; display:none;">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; border-bottom: none; padding-bottom: 0;">
+          <div>
+            <h2 id="pimmer-form-title">Monitoreo PIMMER 2026</h2>
+            <span id="pimmer-form-subtitle">Plan Integral de Monitoreo y Mejora de Recursos Educativos</span>
+          </div>
+          <button class="btn btn-outline btn-sm" id="btn-pimmer-close-top" onclick="volverDePimmer()"><i class="fas fa-times"></i> Salir</button>
+        </div>
+
+        <!-- Progress Tracker Bar (Step Indicator) -->
+        <div class="pimmer-stepper-wrap" style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:18px 24px; margin-bottom:20px; box-shadow:var(--shadow-sm);">
+          <div class="pimmer-stepper">
+            <div class="pimmer-step active" data-step="1">
+              <div class="step-num"><i class="fas fa-check"></i><span>1</span></div>
+              <div class="step-label">Datos Generales</div>
+            </div>
+            <div class="pimmer-step-line"></div>
+            <div class="pimmer-step" data-step="2">
+              <div class="step-num"><i class="fas fa-check"></i><span>2</span></div>
+              <div class="step-label">Infraestructura</div>
+            </div>
+            <div class="pimmer-step-line"></div>
+            <div class="pimmer-step" data-step="3">
+              <div class="step-num"><i class="fas fa-check"></i><span>3</span></div>
+              <div class="step-label">Mobiliario</div>
+            </div>
+            <div class="pimmer-step-line"></div>
+            <div class="pimmer-step" data-step="4">
+              <div class="step-num"><i class="fas fa-check"></i><span>4</span></div>
+              <div class="step-label">Tecnología</div>
+            </div>
+            <div class="pimmer-step-line"></div>
+            <div class="pimmer-step" data-step="5">
+              <div class="step-num"><i class="fas fa-check"></i><span>5</span></div>
+              <div class="step-label">Pedagogía</div>
+            </div>
+            <div class="pimmer-step-line"></div>
+            <div class="pimmer-step" data-step="6">
+              <div class="step-num"><i class="fas fa-check"></i><span>6</span></div>
+              <div class="step-label">Convivencia</div>
+            </div>
+          </div>
+        </div>
+
+        <form id="pimmer-wizard-form" onsubmit="event.preventDefault()">
+          <!-- STEP 1: DATOS GENERALES -->
+          <div class="pimmer-step-content active" id="pimmer-step-content-1">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-info-circle"></i> Identificación del Local Educativo</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Código Local *</label>
+                    <input type="text" id="p_codLocal" class="form-control" placeholder="Ej: 471284" oninput="buscarLocalPimmer(this.value)" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Nombre I.E. / Agrupación</label>
+                    <input type="text" id="p_nombreLocal" class="form-control" readonly placeholder="Se autocompleta al ingresar el código">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Fecha de Registro</label>
+                    <input type="text" id="p_fechaAuto" class="form-control" readonly>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label">Nivel / Modalidad</label>
+                    <input type="text" id="p_nivelLocal" class="form-control" readonly>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Ubicación (Dpto/Prov/Dist)</label>
+                    <input type="text" id="p_ubicacionLocal" class="form-control" readonly>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-list-ol"></i> Códigos Modulares (hasta 3 I.E. en el local)</div>
+              <div style="padding:22px">
+                <div id="p_modularesContainer"></div>
+                <div style="font-size:0.75rem; color:var(--text3); font-weight:600; margin-top:12px;">Nota: Los turnos son editables. Los niveles detectados autoconfiguran las secciones posteriores.</div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-user-tie"></i> Datos del Director / Responsable de la IE</div>
+              <div style="padding:22px">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label class="form-label font-bold">Nombres y Apellidos *</label>
+                    <input type="text" id="p_director_nombre" class="form-control" required placeholder="Nombre del Director">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label font-bold">Celular / WhatsApp *</label>
+                    <input type="text" id="p_director_celular" class="form-control" required placeholder="Celular de contacto">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label font-bold">Correo Electrónico *</label>
+                    <input type="email" id="p_director_correo" class="form-control" required placeholder="director@correo.com">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-map-marked-alt"></i> Zona y Matrícula Estudiantil</div>
+              <div style="padding:22px">
+                <div class="row">
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Zona Geográfica *</label>
+                    <select id="p_zona_geografica" class="form-select" required>
+                      <option value="">Seleccionar...</option>
+                      <option value="Urbana">Urbana</option>
+                      <option value="Rural 1 (R1)">Rural 1 (R1)</option>
+                      <option value="Rural 2 (R2)">Rural 2 (R2)</option>
+                      <option value="Rural 3 (R3)">Rural 3 (R3)</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Estudiantes Inicial</label>
+                    <input type="number" id="p_mat_inicial" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Estudiantes Primaria</label>
+                    <input type="number" id="p_mat_primaria" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Estudiantes Secundaria</label>
+                    <input type="number" id="p_mat_secundaria" class="form-control" min="0" value="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-clipboard-check"></i> Responsable del llenado (Evaluador)</div>
+              <div style="padding:22px">
+                <div class="row">
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">DNI Evaluador *</label>
+                    <input type="text" id="p_evaluador_dni" class="form-control" required placeholder="DNI">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Apellidos y Nombres *</label>
+                    <input type="text" id="p_evaluador_nombre" class="form-control" required placeholder="Nombre completo">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Cargo *</label>
+                    <input type="text" id="p_evaluador_cargo" class="form-control" required placeholder="Cargo del evaluador">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Celular / WhatsApp *</label>
+                    <input type="text" id="p_evaluador_celular" class="form-control" required placeholder="Celular">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2: INFRAESTRUCTURA -->
+          <div class="pimmer-step-content" id="pimmer-step-content-2">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-gavel"></i> Saneamiento Físico Legal del Terreno</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Cuenta con Título de Propiedad inscrito en la SUNARP? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_sunarp" id="p_sunarp_si" value="Si" onchange="toggleSaneamientoPimmer('Si')">
+                        <label class="form-check-label" for="p_sunarp_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_sunarp" id="p_sunarp_no" value="No" onchange="toggleSaneamientoPimmer('No')">
+                        <label class="form-check-label" for="p_sunarp_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Existen problemas de invasión, superposición o litigios? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_litigio" id="p_litigio_si" value="Si">
+                        <label class="form-check-label" for="p_litigio_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_litigio" id="p_litigio_no" value="No">
+                        <label class="form-check-label" for="p_litigio_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿El predio se encuentra ocupado actualmente por terceros? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_ocupado" id="p_ocupado_si" value="Si" onchange="toggleOcupadoPimmer('Si')">
+                        <label class="form-check-label" for="p_ocupado_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_ocupado" id="p_ocupado_no" value="No" onchange="toggleOcupadoPimmer('No')">
+                        <label class="form-check-label" for="p_ocupado_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" id="p_detalleOcupadoContainer" style="display:none;">
+                    <label class="form-label">Detalle de la ocupación</label>
+                    <input type="text" id="p_ocupado_detalle" class="form-control" placeholder="Especifique quién o qué ocupa el predio">
+                  </div>
+                </div>
+
+                <div id="p_conTituloContainer" style="display:none; border-top: 1px dashed var(--border); padding-top:16px;">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">N° de Partida Electrónica (SUNARP)</label>
+                      <input type="text" id="p_partida" class="form-control" placeholder="Ej: 11025487">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Titular Registral del Predio</label>
+                      <select id="p_titular" class="form-select">
+                        <option value="">Seleccionar...</option>
+                        <option>Ministerio de Educación (MINEDU)</option>
+                        <option>Gobierno Regional</option>
+                        <option>Municipalidad (Provincial o Distrital)</option>
+                        <option>Comunidad Campesina / Nativa</option>
+                        <option>Asociación de Pobladores / Particular</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="p_sinTituloContainer" style="display:none; border-top: 1px dashed var(--border); padding-top:16px;">
+                  <div class="row">
+                    <div class="col-md-6">
+                      <label class="form-label">Estado del Trámite de Saneamiento</label>
+                      <select id="p_saneamiento_estado" class="form-select">
+                        <option value="">Seleccionar...</option>
+                        <option>No iniciado</option>
+                        <option>En proceso - Diagnóstico técnico / levantamiento topográfico</option>
+                        <option>En proceso - Trámite documentario en GORE / UGEL</option>
+                        <option>En proceso - Calificación en SUNARP</option>
+                        <option>Paralizado u Observado por falta de requisitos</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Documento de Acreditación Temporal de Posesión</label>
+                      <select id="p_posesion_doc" class="form-select">
+                        <option value="">Seleccionar...</option>
+                        <option>Constancia de Posesión emitida por Municipio o Comunidad</option>
+                        <option>Minuta / Acta de Donación firmada sin inscripción</option>
+                        <option>Escritura Pública Antigua o Juez de Paz</option>
+                        <option>Ninguno (Posesión de hecho)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-school"></i> Aulas y Pabellones</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-2">
+                    <label class="form-label">Pabellones</label>
+                    <input type="number" id="p_pabellones" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Aulas Total</label>
+                    <input type="number" id="p_aulas_total" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Buen Estado</label>
+                    <input type="number" id="p_aulas_buenas" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Regular</label>
+                    <input type="number" id="p_aulas_regulares" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Mal Estado</label>
+                    <input type="number" id="p_aulas_malas" class="form-control" min="0" value="0">
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-md-4">
+                    <label class="form-label font-bold">¿Infraestructura Suficiente? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_infra_suficiente" id="p_infra_suficiente_si" value="Si" onchange="toggleObsInfraPimmer('Si')">
+                        <label class="form-check-label" for="p_infra_suficiente_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_infra_suficiente" id="p_infra_suficiente_no" value="No" onchange="toggleObsInfraPimmer('No')">
+                        <label class="form-check-label" for="p_infra_suficiente_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-8" id="p_obsInfraBox" style="display:none;">
+                    <label class="form-label">Observación de Insuficiencia</label>
+                    <input type="text" id="p_infra_obs" class="form-control" placeholder="Detalle la insuficiencia">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-cubes"></i> Material Predominante de la Construcción</div>
+              <div style="padding:22px">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;" id="p_materialesGrid"></div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-hand-holding-water"></i> Servicios Básicos y SSHH</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Servicio de Agua</label>
+                    <select id="p_agua" class="form-select">
+                      <option>Permanente</option>
+                      <option>Intermitente</option>
+                      <option>No disponible</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Servicio de Luz</label>
+                    <select id="p_luz" class="form-select">
+                      <option>Permanente</option>
+                      <option>Intermitente</option>
+                      <option>No disponible</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Internet</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_internet" id="p_internet_si" value="Si">
+                        <label class="form-check-label" for="p_internet_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_internet" id="p_internet_no" value="No">
+                        <label class="form-check-label" for="p_internet_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label font-bold">Alcantarillado</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_alcantarillado" id="p_alcantarillado_si" value="Si">
+                        <label class="form-check-label" for="p_alcantarillado_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_alcantarillado" id="p_alcantarillado_no" value="No">
+                        <label class="form-check-label" for="p_alcantarillado_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Pozo Séptico</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_pozo" id="p_pozo_si" value="Si">
+                        <label class="form-check-label" for="p_pozo_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_pozo" id="p_pozo_no" value="No">
+                        <label class="form-check-label" for="p_pozo_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">SSHH Total</label>
+                    <input type="number" id="p_sshh_total" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Funcionan Bien</label>
+                    <input type="number" id="p_sshh_funcionales" class="form-control" min="0" value="0">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Necesitan Reparación</label>
+                    <input type="number" id="p_sshh_malos" class="form-control" min="0" value="0">
+                  </div>
+                </div>
+
+                <div class="row text-left">
+                  <div class="col-md-4">
+                    <label class="form-label">SSHH Adaptados Discapacidad</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_discapacidad" id="p_discapacidad_si" value="Si">
+                        <label class="form-check-label" for="p_discapacidad_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_discapacidad" id="p_discapacidad_no" value="No">
+                        <label class="form-check-label" for="p_discapacidad_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="foto-area" style="background:#f5f8ff; border:1px solid #c7d2fe; border-radius:12px; padding:16px; margin-top:16px;">
+                  <div class="foto-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; color:var(--text1);"><i class="fas fa-image"></i> Fotos de SSHH</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirFotoInputPimmer('sshh_gral')"><i class="fas fa-camera"></i> Subir Fotos</button>
+                    <input type="file" id="p_input_sshh_gral" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,'p_grid_sshh_gral')" style="display:none;">
+                  </div>
+                  <div class="fotos-grid" id="p_grid_sshh_gral" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-door-open"></i> Espacios Comunes y Administrativos</div>
+              <div style="padding:22px">
+                <div id="p_tablasEspaciosDinamicas"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 3: MOBILIARIO Y EQUIPAMIENTO -->
+          <div class="pimmer-step-content" id="pimmer-step-content-3">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-chair"></i> Mobiliario y Equipamiento General</div>
+              <div style="padding:22px">
+                <div id="p_mobiliarioCompleto"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 4: RECURSOS TECNOLÓGICOS -->
+          <div class="pimmer-step-content" id="pimmer-step-content-4">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-laptop-code"></i> Aula de Innovación Pedagógica (AIP)</div>
+              <div style="padding:22px">
+                <div class="mb-3">
+                  <label class="form-label font-bold">¿Cuenta con Aula de Innovación Pedagógica (AIP)? *</label>
+                  <div class="d-flex gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_aip" id="p_aip_si" value="Si" onchange="toggleAipPimmer('Si')">
+                      <label class="form-check-label" for="p_aip_si">Sí</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_aip" id="p_aip_no" value="No" onchange="toggleAipPimmer('No')">
+                      <label class="form-check-label" for="p_aip_no">No</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="p_aipTableContainer" style="display:none;">
+                  <div class="sub-title">Equipamiento del AIP</div>
+                  <div class="table-responsive">
+                    <table class="table-custom">
+                      <thead>
+                        <tr>
+                          <th>Ítem</th>
+                          <th>Disponible</th>
+                          <th>Buen Estado</th>
+                          <th>Regular</th>
+                          <th>Mal Estado</th>
+                          <th>Fotos</th>
+                        </tr>
+                      </thead>
+                      <tbody id="p_tbodyTecnologia"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-wifi"></i> Conectividad y Acceso a Internet</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Tipo de Conexión</label>
+                    <select id="p_tipoConexion" class="form-select">
+                      <option>Banda ancha (Wi-Fi)</option>
+                      <option>Cableada</option>
+                      <option>Datos móviles</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Velocidad</label>
+                    <select id="p_velocidadConexion" class="form-select">
+                      <option>Menos de 10 Mbps</option>
+                      <option>10–50 Mbps</option>
+                      <option>Más de 50 Mbps</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Frecuencia de Uso</label>
+                    <select id="p_frecuenciaInternet" class="form-select">
+                      <option>Constante</option>
+                      <option>Intermitente</option>
+                      <option>Escasa</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label font-bold">Zonas con Cobertura</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_cobertura_aulas" value="Aulas">
+                      <label class="form-check-label" for="p_cobertura_aulas">Aulas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_cobertura_profesores" value="Salas profesores">
+                      <label class="form-check-label" for="p_cobertura_profesores">Sala Profesores</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_cobertura_labs" value="Laboratorios">
+                      <label class="form-check-label" for="p_cobertura_labs">Laboratorios</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_cobertura_oficinas" value="Oficinas">
+                      <label class="form-check-label" for="p_cobertura_oficinas">Oficinas</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-graduation-cap"></i> Capacitación y Uso de TIC</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Docentes Capacitados en TIC? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_docentes_capacitados" id="p_doc_cap_si" value="Si">
+                        <label class="form-check-label" for="p_doc_cap_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_docentes_capacitados" id="p_doc_cap_no" value="No">
+                        <label class="form-check-label" for="p_doc_cap_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Nivel de Capacitación</label>
+                    <select id="p_nivelCapacitacion" class="form-select">
+                      <option>Básico</option>
+                      <option>Intermedio</option>
+                      <option>Avanzado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Los Estudiantes Usan Tecnología? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_estudiantes_tic" id="p_est_tic_si" value="Si">
+                        <label class="form-check-label" for="p_est_tic_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_estudiantes_tic" id="p_est_tic_no" value="No">
+                        <label class="form-check-label" for="p_est_tic_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Existe Política de Mantenimiento de Equipos? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_mantenimiento_politica" id="p_mant_si" value="Si">
+                        <label class="form-check-label" for="p_mant_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_mantenimiento_politica" id="p_mant_no" value="No">
+                        <label class="form-check-label" for="p_mant_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="foto-area" style="background:#f5f8ff; border:1px solid #c7d2fe; border-radius:12px; padding:16px;">
+                  <div class="foto-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:600; color:var(--text1);"><i class="fas fa-image"></i> Fotos de Tecnología</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirFotoInputPimmer('tecnoGeneral')"><i class="fas fa-camera"></i> Subir Fotos</button>
+                    <input type="file" id="p_input_tecnoGeneral" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,'p_grid_tecnoGeneral')" style="display:none;">
+                  </div>
+                  <div class="fotos-grid" id="p_grid_tecnoGeneral" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 5: ASPECTOS PEDAGÓGICOS -->
+          <div class="pimmer-step-content" id="pimmer-step-content-5">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-book"></i> Documentos de Gestión</div>
+              <div style="padding:22px">
+                <div class="table-responsive">
+                  <table class="table-custom">
+                    <thead>
+                      <tr>
+                        <th>Documento</th>
+                        <th>Fecha de Aprobación</th>
+                        <th>Observaciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="p_tbodyDocumentos"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-users"></i> Organización del Trabajo Pedagógico</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Documentos de Gestión Actualizados? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_docs_actualizados" id="p_docs_act_si" value="Si" onchange="toggleDocsActualizadosPimmer('Si')">
+                        <label class="form-check-label" for="p_docs_act_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_docs_actualizados" id="p_docs_act_no" value="No" onchange="toggleDocsActualizadosPimmer('No')">
+                        <label class="form-check-label" for="p_docs_act_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" id="p_docsPendientesContainer" style="display:none;">
+                    <label class="form-label font-bold">Especifique Documentos Pendientes</label>
+                    <input type="text" id="p_docs_pendientes" class="form-control" placeholder="Ej: PEI, RI">
+                  </div>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Existen Planes de Mejora Continua? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_planes_mejora" id="p_planes_si" value="Si" onchange="togglePlanesPimmer('Si')">
+                        <label class="form-check-label" for="p_planes_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_planes_mejora" id="p_planes_no" value="No" onchange="togglePlanesPimmer('No')">
+                        <label class="form-check-label" for="p_planes_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" id="p_frecuenciaPlanesContainer" style="display:none;">
+                    <label class="form-label">Frecuencia de Revisión</label>
+                    <select id="p_frecuencia_planes" class="form-select">
+                      <option>Mensual</option>
+                      <option>Trimestral</option>
+                      <option>Semestral</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Se realiza Monitoreo y Acompañamiento Pedagógico? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_monitoreo_pedagogico" id="p_mon_si" value="Si" onchange="toggleMonitoreoPimmer('Si')">
+                        <label class="form-check-label" for="p_mon_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_monitoreo_pedagogico" id="p_mon_no" value="No" onchange="toggleMonitoreoPimmer('No')">
+                        <label class="form-check-label" for="p_mon_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" id="p_frecuenciaMonitoreoContainer" style="display:none;">
+                    <label class="form-label">Frecuencia de Observaciones de Aula</label>
+                    <select id="p_frecuencia_monitoreo" class="form-select">
+                      <option>Mensual</option>
+                      <option>Trimestral</option>
+                      <option>Semestral</option>
+                      <option>No se realizan</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-brain"></i> Estrategias Metodológicas</div>
+              <div style="padding:22px">
+                <div class="mb-3">
+                  <label class="form-label font-bold">¿Docentes utilizan metodologías activas? *</label>
+                  <div class="d-flex gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_metodologias_activas" id="p_met_si" value="Si" onchange="toggleMetodologiasPimmer('Si')">
+                      <label class="form-check-label" for="p_met_si">Sí</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_metodologias_activas" id="p_met_no" value="No" onchange="toggleMetodologiasPimmer('No')">
+                      <label class="form-check-label" for="p_met_no">No</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="p_metodologiasContainer" style="display:none; margin-bottom:18px;">
+                  <label class="form-label">Metodologías utilizadas</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_met_abp" value="ABP">
+                      <label class="form-check-label" for="p_met_abp">Aprendizaje Basado en Proyectos (ABP)</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_met_coop" value="Cooperativo">
+                      <label class="form-check-label" for="p_met_coop">Aprendizaje Cooperativo</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_met_problemas" value="Problemas">
+                      <label class="form-check-label" for="p_met_problemas">ABP por Problemas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_met_game" value="Gamificación">
+                      <label class="form-check-label" for="p_met_game">Gamificación</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label font-bold">¿Cuenta con Recursos Didácticos Adicionales? *</label>
+                  <div class="d-flex gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_recursos_adicionales" id="p_rec_si" value="Si" onchange="toggleRecursosPimmer('Si')">
+                      <label class="form-check-label" for="p_rec_si">Sí</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="p_recursos_adicionales" id="p_rec_no" value="No" onchange="toggleRecursosPimmer('No')">
+                      <label class="form-check-label" for="p_rec_no">No</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="p_recursosContainer" style="display:none;">
+                  <label class="form-label font-bold">Tipos de recursos</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_rec_impresos" value="impresos">
+                      <label class="form-check-label" for="p_rec_impresos">Materiales impresos</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_rec_digitales" value="digitales">
+                      <label class="form-check-label" for="p_rec_digitales">Tecnologías digitales</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_rec_manipulativos" value="manipulativos">
+                      <label class="form-check-label" for="p_rec_manipulativos">Recursos manipulativos</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 6: CLIMA ESCOLAR Y CONVIVENCIA -->
+          <div class="pimmer-step-content" id="pimmer-step-content-6">
+            <div class="t-card">
+              <div class="t-hd"><i class="fas fa-handshake"></i> Normas y Programas</div>
+              <div style="padding:22px">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Normas de Convivencia Institucional Aprobadas? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_normas_convivencia" id="p_normas_si" value="Si">
+                        <label class="form-check-label" for="p_normas_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_normas_convivencia" id="p_normas_no" value="No">
+                        <label class="form-check-label" for="p_normas_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Programas de Convivencia y Mediación Escolar? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_programas_mediacion" id="p_prog_si" value="Si">
+                        <label class="form-check-label" for="p_prog_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_programas_mediacion" id="p_prog_no" value="No">
+                        <label class="form-check-label" for="p_prog_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="t-card" style="margin-top:20px;">
+              <div class="t-hd"><i class="fas fa-user-friends"></i> Participación Estudiantil y Clima</div>
+              <div style="padding:22px">
+                <div class="mb-3">
+                  <label class="form-label">Organizaciones Estudiantiles Activas</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_part_consejo" value="Consejo Estudiantil">
+                      <label class="form-check-label" for="p_part_consejo">Consejo Estudiantil</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_part_clubes" value="Clubes extracurriculares">
+                      <label class="form-check-label" for="p_part_clubes">Clubes o Talleres</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_part_colab" value="Proyectos colaborativos">
+                      <label class="form-check-label" for="p_part_colab">Proyectos colaborativos</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Protocolos para Manejo de Conflictos en el Aula? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_protocolos_conflictos" id="p_prot_si" value="Si">
+                        <label class="form-check-label" for="p_prot_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_protocolos_conflictos" id="p_prot_no" value="No">
+                        <label class="form-check-label" for="p_prot_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Se realizan actividades extracurriculares? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_actividades_extra" id="p_act_si" value="Si" onchange="toggleExtraPimmer('Si')">
+                        <label class="form-check-label" for="p_act_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_actividades_extra" id="p_act_no" value="No" onchange="toggleExtraPimmer('No')">
+                        <label class="form-check-label" for="p_act_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="p_tiposActividadesContainer" style="display:none; margin-bottom:18px;">
+                  <label class="form-label">Tipos de actividades</label>
+                  <div class="d-flex flex-wrap gap-3 mt-1">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_act_deportes" value="Deportivas">
+                      <label class="form-check-label" for="p_act_deportes">Deportivas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_act_artisticas" value="Artísticas">
+                      <label class="form-check-label" for="p_act_artisticas">Artísticas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_act_culturales" value="Culturales">
+                      <label class="form-check-label" for="p_act_culturales">Culturales</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="p_act_cientificas" value="Científicas">
+                      <label class="form-check-label" for="p_act_cientificas">Científicas</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label font-bold">¿Existen Clubes Estudiantiles? *</label>
+                    <div class="d-flex gap-3 mt-1">
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_clubes_existentes" id="p_club_si" value="Si" onchange="toggleClubesPimmer('Si')">
+                        <label class="form-check-label" for="p_club_si">Sí</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="radio" name="p_clubes_existentes" id="p_club_no" value="No" onchange="toggleClubesPimmer('No')">
+                        <label class="form-check-label" for="p_club_no">No</label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6" id="p_detalleClubesContainer" style="display:none;">
+                    <label class="form-label">Especifique los Clubes</label>
+                    <input type="text" id="p_clubes_detalle" class="form-control" placeholder="Ej: Club de Danza, Ecología">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- WIZARD FOOTER NAVIGATION -->
+          <div class="pimmer-footer-nav" style="display:flex; justify-content:space-between; margin-top:24px; padding:16px 0; border-top:1px solid var(--border);">
+            <div>
+              <button type="button" class="btn btn-secondary" id="btn-pimmer-prev" onclick="cambiarPasoPimmer(-1)" style="display:none;"><i class="fas fa-arrow-left"></i> Anterior</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button type="button" class="btn btn-outline-primary" id="btn-pimmer-save" onclick="guardarPimmerBorradorBtn()"><i class="fas fa-save"></i> Guardar Borrador</button>
+              <button type="button" class="btn btn-primary" id="btn-pimmer-next" onclick="cambiarPasoPimmer(1)">Siguiente <i class="fas fa-arrow-right"></i></button>
+              <button type="button" class="btn btn-success" id="btn-pimmer-submit" onclick="enviarPimmerFinalBtn()" style="display:none;"><i class="fas fa-paper-plane"></i> Enviar Reporte</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
     </div><!-- /main -->
   </div><!-- /app-wrap -->
 </div><!-- /app-shell -->
@@ -898,6 +1861,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<script src="/js/app.js?v=1.1.7"></script>
+<script src="/js/app.js?v=1.1.8"></script>
 </body>
 </html>

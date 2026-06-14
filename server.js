@@ -181,6 +181,32 @@ async function applyMigrations() {
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (9) ON CONFLICT DO NOTHING');
     }
+    // Migración 10: tabla pimmer_submissions
+    if (!applied.has(10)) {
+        try {
+            await pool.query(`CREATE TABLE IF NOT EXISTS pimmer_submissions (
+                id SERIAL PRIMARY KEY,
+                codigo_local VARCHAR(50) NOT NULL UNIQUE,
+                estado VARCHAR(20) DEFAULT 'borrador',
+                datos JSONB NOT NULL,
+                subido_por INTEGER,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )`);
+        } catch(e){
+            console.error('Error en migración 10:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (10) ON CONFLICT DO NOTHING');
+    }
+    // Migración 11: agregar tipo de evaluación en system_settings
+    if (!applied.has(11)) {
+        try {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_type', 'external') ON CONFLICT DO NOTHING");
+        } catch(e){
+            console.error('Error en migración 11:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (11) ON CONFLICT DO NOTHING');
+    }
 }
 
 async function initDatabase() {
@@ -1644,7 +1670,8 @@ app.get('/api/system-settings', async (req, res) => {
         res.json({
             active_evaluation_box: settings.active_evaluation_box || false,
             evaluation_box_title: settings.evaluation_box_title || 'Evaluación de Actividad',
-            evaluation_box_url: settings.evaluation_box_url || ''
+            evaluation_box_url: settings.evaluation_box_url || '',
+            evaluation_box_type: settings.evaluation_box_type || 'external'
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -1653,7 +1680,7 @@ app.get('/api/system-settings', async (req, res) => {
 
 app.put('/api/system-settings', authAdmin, async (req, res) => {
     try {
-        const { active_evaluation_box, evaluation_box_title, evaluation_box_url } = req.body;
+        const { active_evaluation_box, evaluation_box_title, evaluation_box_url, evaluation_box_type } = req.body;
         
         await pool.query("INSERT INTO system_settings (key, value) VALUES ('active_evaluation_box', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [active_evaluation_box ? 'true' : 'false']);
         if (evaluation_box_title !== undefined) {
@@ -1661,6 +1688,9 @@ app.put('/api/system-settings', authAdmin, async (req, res) => {
         }
         if (evaluation_box_url !== undefined) {
             await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_url', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_url]);
+        }
+        if (evaluation_box_type !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_type', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_type]);
         }
         
         res.json({ ok: true });
@@ -2741,6 +2771,236 @@ app.get('/api/export/asignaciones', async (req, res) => {
         res.end();
     } catch (err) {
         console.error('Error exportando Excel:', err);
+        res.status(500).json({ error: 'Error al exportar' });
+    }
+});
+
+// ===================== PIMMER 2026 ENDPOINTS =====================
+app.get('/api/pimmer/submission/:codigo_local', async (req, res) => {
+    try {
+        const { codigo_local } = req.params;
+        const result = await pool.query('SELECT * FROM pimmer_submissions WHERE codigo_local = $1', [codigo_local]);
+        if (result.rows.length === 0) {
+            return res.json({ exists: false });
+        }
+        res.json({ exists: true, ...result.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/pimmer/save', async (req, res) => {
+    try {
+        const { codigo_local, datos } = req.body;
+        if (!codigo_local || !datos) return res.status(400).json({ error: 'Faltan datos requeridos' });
+        
+        const subido_por = req.session.user ? req.session.user.id : null;
+        
+        await pool.query(
+            `INSERT INTO pimmer_submissions (codigo_local, datos, estado, subido_por, updated_at) 
+             VALUES ($1, $2, 'borrador', $3, NOW()) 
+             ON CONFLICT (codigo_local) 
+             DO UPDATE SET datos = EXCLUDED.datos, estado = 'borrador', subido_por = EXCLUDED.subido_por, updated_at = NOW()`,
+            [codigo_local, JSON.stringify(datos), subido_por]
+        );
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/pimmer/submit', async (req, res) => {
+    try {
+        const { codigo_local, datos } = req.body;
+        if (!codigo_local || !datos) return res.status(400).json({ error: 'Faltan datos requeridos' });
+        
+        const subido_por = req.session.user ? req.session.user.id : null;
+        
+        // Verificar si ya está enviado
+        const check = await pool.query('SELECT estado FROM pimmer_submissions WHERE codigo_local = $1', [codigo_local]);
+        if (check.rows.length > 0 && check.rows[0].estado === 'enviado') {
+            return res.status(400).json({ error: 'Este reporte ya ha sido enviado y no se puede modificar' });
+        }
+        
+        await pool.query(
+            `INSERT INTO pimmer_submissions (codigo_local, datos, estado, subido_por, updated_at) 
+             VALUES ($1, $2, 'enviado', $3, NOW()) 
+             ON CONFLICT (codigo_local) 
+             DO UPDATE SET datos = EXCLUDED.datos, estado = 'enviado', subido_por = EXCLUDED.subido_por, updated_at = NOW()`,
+            [codigo_local, JSON.stringify(datos), subido_por]
+        );
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/pimmer/submissions', async (req, res) => {
+    try {
+        const queryText = `
+            SELECT p.id, p.codigo_local, p.estado, p.updated_at, ie.nombre as ie_nombre, u.nombre_completo as usuario_nombre
+            FROM pimmer_submissions p
+            LEFT JOIN instituciones_educativas ie ON p.codigo_local = ie.codigo
+            LEFT JOIN usuarios u ON p.subido_por = u.id
+            ORDER BY p.updated_at DESC
+        `;
+        const result = await pool.query(queryText);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/pimmer/submission/:id', authAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query('DELETE FROM pimmer_submissions WHERE id = $1', [parseInt(id)]);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/pimmer/submissions/export', async (req, res) => {
+    try {
+        const ExcelJS = require('exceljs');
+        const queryText = `
+            SELECT p.*, ie.nombre as ie_nombre
+            FROM pimmer_submissions p
+            LEFT JOIN instituciones_educativas ie ON p.codigo_local = ie.codigo
+            ORDER BY ie.nombre ASC
+        `;
+        const result = await pool.query(queryText);
+        const submissions = result.rows;
+
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('PIMMER Consolidado');
+
+        // Estilos
+        const headerStyle = {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: '12263F' } },
+            font: { color: { argb: 'FFFFFF' }, bold: true, name: 'Calibri', size: 11 },
+            alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { argb: 'DCE5EC' } },
+                bottom: { style: 'medium', color: { argb: 'DCE5EC' } },
+                left: { style: 'thin', color: { argb: 'DCE5EC' } },
+                right: { style: 'thin', color: { argb: 'DCE5EC' } }
+            }
+        };
+
+        const dataStyle = {
+            font: { name: 'Calibri', size: 10 },
+            alignment: { vertical: 'middle', horizontal: 'left' },
+            border: {
+                top: { style: 'thin', color: { argb: 'DCE5EC' } },
+                bottom: { style: 'thin', color: { argb: 'DCE5EC' } },
+                left: { style: 'thin', color: { argb: 'DCE5EC' } },
+                right: { style: 'thin', color: { argb: 'DCE5EC' } }
+            }
+        };
+
+        ws.columns = [
+            { header: 'CÓDIGO LOCAL', key: 'codigo_local', width: 15 },
+            { header: 'NOMBRE I.E.', key: 'ie_nombre', width: 30 },
+            { header: 'ESTADO', key: 'estado', width: 12 },
+            { header: 'FECHA REGISTRO', key: 'fecha_registro', width: 16 },
+            { header: 'DIRECTOR', key: 'director_nombre', width: 25 },
+            { header: 'DIRECTOR CELULAR', key: 'director_celular', width: 18 },
+            { header: 'DIRECTOR CORREO', key: 'director_correo', width: 22 },
+            { header: 'ZONA GEOGRÁFICA', key: 'zona_geografica', width: 18 },
+            { header: 'MATRÍCULA INICIAL', key: 'mat_inicial', width: 18 },
+            { header: 'MATRÍCULA PRIMARIA', key: 'mat_primaria', width: 18 },
+            { header: 'MATRÍCULA SECUNDARIA', key: 'mat_secundaria', width: 20 },
+            { header: 'EVALUADOR', key: 'evaluador_nombre', width: 25 },
+            { header: 'EVALUADOR CARGO', key: 'evaluador_cargo', width: 20 },
+            { header: 'EVALUADOR CELULAR', key: 'evaluador_celular', width: 18 },
+            { header: '¿SUNARP?', key: 'sunarp', width: 12 },
+            { header: 'N° PARTIDA', key: 'partida', width: 15 },
+            { header: 'TITULAR REGISTRAL', key: 'titular', width: 25 },
+            { header: 'PABELLONES', key: 'pabellones', width: 14 },
+            { header: 'AULAS TOTAL', key: 'aulas_total', width: 14 },
+            { header: 'AULAS BUENAS', key: 'aulas_buenas', width: 14 },
+            { header: 'AULAS REGULARES', key: 'aulas_regulares', width: 16 },
+            { header: 'AULAS MALAS', key: 'aulas_malas', width: 14 },
+            { header: '¿INFRA. SUFICIENTE?', key: 'infra_suficiente', width: 20 },
+            { header: 'AGUA', key: 'agua', width: 15 },
+            { header: 'LUZ', key: 'luz', width: 15 },
+            { header: 'INTERNET', key: 'internet', width: 12 },
+            { header: 'ALCANTARILLADO', key: 'alcantarillado', width: 16 },
+            { header: 'TOTAL SSHH', key: 'sshh_total', width: 14 },
+            { header: 'SSHH FUNCIONALES', key: 'sshh_funcionales', width: 18 },
+            { header: 'SSHH MALOS', key: 'sshh_malos', width: 16 },
+            { header: '¿AIP?', key: 'aip', width: 12 },
+            { header: '¿DOCENTES CAPACITADOS?', key: 'docentes_capacitados', width: 22 },
+            { header: '¿NORMAS CONVIVENCIA?', key: 'normas_convivencia', width: 22 }
+        ];
+
+        ws.getRow(1).height = 28;
+        ws.getRow(1).eachCell(cell => {
+            Object.assign(cell, headerStyle);
+        });
+
+        submissions.forEach(sub => {
+            let d = {};
+            try {
+                d = typeof sub.datos === 'string' ? JSON.parse(sub.datos) : sub.datos;
+            } catch(e) {}
+
+            const row = ws.addRow({
+                codigo_local: sub.codigo_local,
+                ie_nombre: sub.ie_nombre || d.nombreLocal || '',
+                estado: sub.estado === 'enviado' ? 'ENVIADO' : 'BORRADOR',
+                fecha_registro: sub.updated_at ? new Date(sub.updated_at).toLocaleDateString('es-PE') : '',
+                director_nombre: d.director_nombre || '',
+                director_celular: d.director_celular || '',
+                director_correo: d.director_correo || '',
+                zona_geografica: d.zona_geografica || '',
+                mat_inicial: d.mat_inicial || 0,
+                mat_primaria: d.mat_primaria || 0,
+                mat_secundaria: d.mat_secundaria || 0,
+                evaluador_nombre: d.evaluador_nombre || '',
+                evaluador_cargo: d.evaluador_cargo || '',
+                evaluador_celular: d.evaluador_celular || '',
+                sunarp: d.sunarp || '',
+                partida: d.partida || '',
+                titular: d.titular || '',
+                pabellones: d.pabellones || 0,
+                aulas_total: d.aulas_total || 0,
+                aulas_buenas: d.aulas_buenas || 0,
+                aulas_regulares: d.aulas_regulares || 0,
+                aulas_malas: d.aulas_malas || 0,
+                infra_suficiente: d.infra_suficiente || '',
+                agua: d.agua || '',
+                luz: d.luz || '',
+                internet: d.internet || '',
+                alcantarillado: d.alcantarillado || '',
+                sshh_total: d.sshh_total || 0,
+                sshh_funcionales: d.sshh_funcionales || 0,
+                sshh_malos: d.sshh_malos || 0,
+                aip: d.aip || '',
+                docentes_capacitados: d.docentes_capacitados || '',
+                normas_convivencia: d.normas_convivencia || ''
+            });
+
+            row.height = 20;
+            row.eachCell(cell => {
+                Object.assign(cell, dataStyle);
+            });
+        });
+
+        ws.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: submissions.length + 1, column: ws.columns.length }
+        };
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="consolidado_pimmer_2026.xlsx"');
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error exportando Excel PIMMER:', err);
         res.status(500).json({ error: 'Error al exportar' });
     }
 });

@@ -422,6 +422,7 @@ function buildSidebar() {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
+    html += '<a href="#" data-view="pimmer-list" onclick="cambiarVista(\'pimmer-list\',this)"><i class="fas fa-file-invoice"></i> PIMMER</a>';
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
@@ -529,6 +530,7 @@ function loadViewData(vista) {
     case 'perfil': loadPerfil(); break;
     case 'admin-usuarios': loadAdminUsuarios(); break;
     case 'cap': capInitView(); break;
+    case 'pimmer-list': loadPimmerSubmissions(); break;
   }
 }
 
@@ -4374,12 +4376,26 @@ async function handleExcelImport(event) {
   reader.readAsDataURL(file);
 }
 
+function onBoxTypeChange(val) {
+  const urlGroup = document.getElementById('config-box-url-group');
+  if (urlGroup) {
+    urlGroup.style.display = (val === 'external') ? 'block' : 'none';
+  }
+}
+
 async function loadSystemSettings() {
   try {
     const settings = await api('/api/system-settings');
     document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
     document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
     document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
+    
+    const boxType = settings.evaluation_box_type || 'external';
+    const typeSelect = document.getElementById('config-box-type');
+    if (typeSelect) {
+      typeSelect.value = boxType;
+    }
+    onBoxTypeChange(boxType);
   } catch(e) {
     showToast('Error al cargar configuración: ' + e.message, 'error');
   }
@@ -4390,9 +4406,14 @@ async function saveSystemSettings() {
     const active = document.getElementById('config-active-box').checked;
     const title = document.getElementById('config-box-title').value.trim();
     const url = document.getElementById('config-box-url').value.trim();
+    const type = document.getElementById('config-box-type').value;
     
-    if (active && (!title || !url)) {
-      showToast('Si activa el recuadro, debe ingresar el título y enlace', 'error');
+    if (active && !title) {
+      showToast('Si activa el recuadro, debe ingresar el título', 'error');
+      return;
+    }
+    if (active && type === 'external' && !url) {
+      showToast('Si activa el recuadro con enlace externo, debe ingresar el enlace/URL', 'error');
       return;
     }
     
@@ -4401,7 +4422,8 @@ async function saveSystemSettings() {
       body: {
         active_evaluation_box: active,
         evaluation_box_title: title,
-        evaluation_box_url: url
+        evaluation_box_url: url,
+        evaluation_box_type: type
       }
     });
     
@@ -4415,13 +4437,13 @@ async function loadDirectorEvaluationSettings() {
   try {
     const settings = await api('/api/system-settings');
     const evalBox = document.getElementById('dir-evaluation-box');
-    if (settings && settings.active_evaluation_box && settings.evaluation_box_url) {
+    window._evaluationBoxType = settings.evaluation_box_type || 'external';
+    window._evaluationBoxUrl = settings.evaluation_box_url || '';
+    if (settings && settings.active_evaluation_box) {
       document.getElementById('dir-eval-title').textContent = settings.evaluation_box_title || 'Evaluación de Actividad';
-      window._evaluationBoxUrl = settings.evaluation_box_url;
       evalBox.style.display = 'flex';
     } else {
       evalBox.style.display = 'none';
-      window._evaluationBoxUrl = '';
     }
   } catch(e) {
     console.error('Error al cargar configuración de evaluación:', e);
@@ -4429,7 +4451,1608 @@ async function loadDirectorEvaluationSettings() {
 }
 
 function openEvaluationLink() {
-  if (window._evaluationBoxUrl) {
+  if (window._evaluationBoxType === 'pimmer') {
+    abrirNuevoPimmerDirecto();
+  } else if (window._evaluationBoxUrl) {
     window.open(window._evaluationBoxUrl, '_blank');
   }
 }
+
+
+// =========================================================================
+// ========================== PIMMER 2026 MODULE ==========================
+// =========================================================================
+
+const institucionesRaw = [
+
+    // BELLAVISTA / BELLAVISTA
+
+    ["3982440","","TIERNOS ANGELITOS","A5 - Inicial Prog No Escolariz","NUEVO CHOTA","San Martín / Bellavista / Bellavista"],
+    ["4006096","","SEMILLITAS DEL SABER","A5 - Inicial Prog No Escolariz","VISTA ALEGRE","San Martín / Bellavista / Bellavista"],
+    ["1757509","","SANTA MARIA GORETTI","B0 - Primaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["3026325","830418","SANTA MARIA GORETTI","F0 - Secundaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1593425","471482","NUEVA FLORIDA","F0 - Secundaria","NUEVA FLORIDA","San Martín / Bellavista / Bellavista"],
+    ["3008125","902108","NUESTRA SEÑORA DEL ROCIO","F0 - Secundaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1593359","471463","HUACHO - ALLCOYACU","F0 - Secundaria","HUACHO","San Martín / Bellavista / Bellavista"],
+    ["0632695","471378","223 PASITO A PASO","A2 - Inicial - Jardín","NUEVA FLORIDA","San Martín / Bellavista / Bellavista"],
+    ["0602870","471340","185","A2 - Inicial - Jardín","LAS MERCEDES","San Martín / Bellavista / Bellavista"],
+    ["0726240","471477","176 ROMAN RIVERO SALDAÑA","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0509745","471335","137 FE Y ALEGRIA","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1602291","668389","1121","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0473652","471321","109 SANTA TERESITA","A2 - Inicial - Jardín","LIMON","San Martín / Bellavista / Bellavista"],
+    ["0847095","471316","101 GABRIELA MISTRAL","A2 - Inicial - Jardín","PERUATE","San Martín / Bellavista / Bellavista"],
+    ["0847061","471302","100 SEMILLITAS DEL SABER","A2 - Inicial - Jardín","INTIYACU","San Martín / Bellavista / Bellavista"],
+    ["0847038","","099","A2 - Inicial - Jardín","VICTOR RAUL HAYA DE LA TORRE","San Martín / Bellavista / Bellavista"],
+    ["0274209","471284","094 RAITOS DE SOL","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0676411","471279","091 TERESA GONZALES DE FANNING","A2 - Inicial - Jardín","HUACHO","San Martín / Bellavista / Bellavista"],
+    ["0726299","471514","0766 RUBEN CACHIQUE SANGAMA","F0 - Secundaria","LAS MERCEDES","San Martín / Bellavista / Bellavista"],
+    ["0726323","471509","0760 JOSE OLAYA BALANDRA","F0 - Secundaria","LIMON","San Martín / Bellavista / Bellavista"],
+    ["1018852","471528","0208 SANTIAGO ANTUNEZ DE MAYOLO","F0 - Secundaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0300533","471528","0208 SANTIAGO ANTUNEZ DE MAYOLO","B0 - Primaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0565226","471528","0208 SANTIAGO ANTUNEZ DE MAYOLO","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1746601","471533","0482 CIRO SALDAÑA GIRALDO","F0 - Secundaria","VICTOR RAUL HAYA DE LA TORRE","San Martín / Bellavista / Bellavista"],
+    ["0760850","471533","0482 CIRO SALDAÑA GIRALDO","B0 - Primaria","VICTOR RAUL HAYA DE LA TORRE","San Martín / Bellavista / Bellavista"],
+    ["1411123","471571","0194 TEODOCIA NAVARRO VEGA","F0 - Secundaria","PERUATE","San Martín / Bellavista / Bellavista"],
+    ["0300277","471571","0194 TEODOCIA NAVARRO VEGA","B0 - Primaria","PERUATE","San Martín / Bellavista / Bellavista"],
+    ["0300350","471415","0205 ELVIRA RUIZ DAVILA","B0 - Primaria","LAS MERCEDES","San Martín / Bellavista / Bellavista"],
+    ["0300319","471383","0199 SANTA ROSA","B0 - Primaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["0300301","471364","0198 MARIA EDITH VILLACORTA PINEDO","B0 - Primaria","LIMON","San Martín / Bellavista / Bellavista"],
+    ["0676437","471397","0069 FRANCISCO IZQUIERDO RIOS","B0 - Primaria","MISQUIYACU","San Martín / Bellavista / Bellavista"],
+    ["0675926","471420","0116 SAGRADO CORAZON DE JESUS","B0 - Primaria","BUENOS AIRES","San Martín / Bellavista / Bellavista"],
+    ["1565605","471420","0116 SAGRADO CORAZON DE JESUS","A2 - Inicial - Jardín","BUENOS AIRES","San Martín / Bellavista / Bellavista"],
+    ["0565192","471444","0164 MICAELA BASTIDA PUYUCAWA","B0 - Primaria","ALTO ÑEJAZAPA","San Martín / Bellavista / Bellavista"],
+    ["0300137","471458","0180 SEÑOR DE LOS MILAGROS","B0 - Primaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1238898","471458","0180 SEÑOR DE LOS MILAGROS","A2 - Inicial - Jardín","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1412154","999247","0722 NUEVO AMANECER","B0 - Primaria","RAMIRO PRIALE","San Martín / Bellavista / Bellavista"],
+    ["3044500","999247","0722 NUEVO AMANECER","A2 - Inicial - Jardín","RAMIRO PRIALE","San Martín / Bellavista / Bellavista"],
+    ["1411131","562156","0719 SAN ANTONIO DE PADUA","B0 - Primaria","NUEVO TACABAMBA","San Martín / Bellavista / Bellavista"],
+    ["1782416","562156","0719 SAN ANTONIO DE PADUA","A2 - Inicial - Jardín","NUEVO TACABAMBA","San Martín / Bellavista / Bellavista"],
+    ["1593227","471547","0001","E2 - Básica Especial - Primaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    ["1018670","471255","001 MADRE TERESA DE CALCUTA","A3 - Inicial - Cuna-Jardín","EL PORVENIR","San Martín / Bellavista / Bellavista"],
+    ["0726265","471566","0266 MIGUEL GRAU SEMINARIO","B0 - Primaria","VAINILLA","San Martín / Bellavista / Bellavista"],
+    ["1565621","471566","0266 MIGUEL GRAU SEMINARIO","A2 - Inicial - Jardín","VAINILLA","San Martín / Bellavista / Bellavista"],
+    ["0303222","471482","0224","B0 - Primaria","NUEVA FLORIDA","San Martín / Bellavista / Bellavista"],
+    ["0303156","471463","0215 VALENTIN PANIAGUA CORAZAO","B0 - Primaria","HUACHO","San Martín / Bellavista / Bellavista"],
+    ["273557","471496","0050 ABRAHAM CARDENAS RUIZ","F0 - Secundaria","BELLAVISTA","San Martín / Bellavista / Bellavista"],
+    
+    // BELLAVISTA / ALTO BIAVO
+    ["3990716","","RAYITOS DE LUZ","A5 - Inicial Prog No Escolariz","LA LIBERTAD","San Martín / Bellavista / Alto Biavo"],
+    ["3983960","","PEQUEÑOS SOÑADORES","A5 - Inicial Prog No Escolariz","SOL ANDINO","San Martín / Bellavista / Alto Biavo"],
+    ["4004995","","OSITOS QUE DEJAN HUELLAS","A5 - Inicial Prog No Escolariz","EL OSO","San Martín / Bellavista / Alto Biavo"],
+    ["3976696","","MANITAS CREATIVAS","A5 - Inicial Prog No Escolariz","BARRIO MEXICO","San Martín / Bellavista / Alto Biavo"],
+    ["1593433","471830","ISRAEL URIARTE","F0 - Secundaria","ISRAEL URIARTE","San Martín / Bellavista / Alto Biavo"],
+    ["3946297","","DULCE AMANECER","A5 - Inicial Prog No Escolariz","NANVALLE","San Martín / Bellavista / Alto Biavo"],
+    ["3961898","","DULCE ABRAZOS","A5 - Inicial Prog No Escolariz","PUEBLO LIBRE / ISRAEL URIARTE","San Martín / Bellavista / Alto Biavo"],
+    ["3990717","","DOS CORAZONES","A5 - Inicial Prog No Escolariz","NUEVO CAÑARIS","San Martín / Bellavista / Alto Biavo"],
+    ["3880357","","DIVINO NIÑO","A5 - Inicial Prog No Escolariz","RUEGA A DIOS","San Martín / Bellavista / Alto Biavo"],
+    ["3897470","","CRECIENDO CON AMOR","A5 - Inicial Prog No Escolariz","BARRANCA","San Martín / Bellavista / Alto Biavo"],
+    ["3981609","","BURBUJITAS DE COLORES","A5 - Inicial Prog No Escolariz","JOSE OLAYA","San Martín / Bellavista / Alto Biavo"],
+    ["4012553","","ARCOIRIS DEL SABER","A5 - Inicial Prog No Escolariz","ROMERILLAL","San Martín / Bellavista / Alto Biavo"],
+    ["3833927","","ANGELITOS DEL CIELO","A5 - Inicial Prog No Escolariz","LA ESPERANZA DEL TIOYACU","San Martín / Bellavista / Alto Biavo"],
+    ["1565696","639288","480","A2 - Inicial - Jardín","NUEVO SAN MIGUEL","San Martín / Bellavista / Alto Biavo"],
+    ["1565688","639274","479","A2 - Inicial - Jardín","GONZALES PRADA","San Martín / Bellavista / Alto Biavo"],
+    ["1565670","639269","478","A2 - Inicial - Jardín","SAN JUAN DE SHITARI","San Martín / Bellavista / Alto Biavo"],
+    ["1565662","639250","477","A2 - Inicial - Jardín","FLOR DE CAFE","San Martín / Bellavista / Alto Biavo"],
+    ["1656453","639250","477","B0 - Primaria","FLOR DE CAFE","San Martín / Bellavista / Alto Biavo"],
+    ["1472349","600931","231","A2 - Inicial - Jardín","NUEVO SAN MARTIN","San Martín / Bellavista / Alto Biavo"],
+    ["0602946","471632","190 ROSALIA PEZO REYNA","A3 - Inicial - Cuna-Jardín","INCAICO","San Martín / Bellavista / Alto Biavo"],
+    ["676163","471694","151 SAGRADO CORAZON DE JESUS","A2 - Inicial - Jardín","NUEVO ARICA","San Martín / Bellavista / Alto Biavo"],
+    ["3015963","903773","1374 EDGAR ANTONIO CHAVEZ GIL","A2 - Inicial - Jardín","CIELITO LINDO","San Martín / Bellavista / Alto Biavo"],
+    ["3048162","903773","1374 EDGAR ANTONIO CHAVEZ GIL","B0 - Primaria","CIELITO LINDO","San Martín / Bellavista / Alto Biavo"],
+    ["1746585","821796","1322","A2 - Inicial - Jardín","NUEVO PROGRESO","San Martín / Bellavista / Alto Biavo"],
+    ["1758747","821796","1322","B0 - Primaria","NUEVO PROGRESO","San Martín / Bellavista / Alto Biavo"],
+    ["1746577","821782","1321","A2 - Inicial - Jardín","PLANTANILLO","San Martín / Bellavista / Alto Biavo"],
+    ["1746569","821777","1320","A2 - Inicial - Jardín","FLOR DE VALLE","San Martín / Bellavista / Alto Biavo"],
+    ["1760495","821777","1320","B0 - Primaria","FLOR DE VALLE","San Martín / Bellavista / Alto Biavo"],
+    ["1746551","821763","1319","A2 - Inicial - Jardín","LAS ALMENDRAS","San Martín / Bellavista / Alto Biavo"],
+    ["1718550","800505","1310","F0 - Secundaria","FLOR DE CAFE","San Martín / Bellavista / Alto Biavo"],
+    ["1718543","800497","1309","F0 - Secundaria","NUEVO TRUJILLO","San Martín / Bellavista / Alto Biavo"],
+    ["0546622","471646","128 MODESTA GARCIA SAAVEDRA","A2 - Inicial - Jardín","JOSE OLAYA","San Martín / Bellavista / Alto Biavo"],
+    ["0546721","471627","127 CUNITA DE AMOR","A2 - Inicial - Jardín","CUZCO","San Martín / Bellavista / Alto Biavo"],
+    ["1711290","792459","1253","A2 - Inicial - Jardín","NUEVO CHOTALO","San Martín / Bellavista / Alto Biavo"],
+    ["1711282","792440","1252","A2 - Inicial - Jardín","LOS CLAVELES","San Martín / Bellavista / Alto Biavo"],
+    ["1758762","792440","1252","B0 - Primaria","LOS CLAVELES","San Martín / Bellavista / Alto Biavo"],
+    ["1711274","792435","1251","A2 - Inicial - Jardín","PORVENIR DEL PARAISO","San Martín / Bellavista / Alto Biavo"],
+    ["1711266","792421","1250","A2 - Inicial - Jardín","NUEVO JAEN","San Martín / Bellavista / Alto Biavo"],
+    ["1758754","792421","1250","B0 - Primaria","NUEVO JAEN","San Martín / Bellavista / Alto Biavo"],
+    ["1711258","792416","1249","A2 - Inicial - Jardín","EL JORDAN","San Martín / Bellavista / Alto Biavo"],
+    ["1684141","768685","1168","A2 - Inicial - Jardín","RAMON CASTILLA","San Martín / Bellavista / Alto Biavo"],
+    ["1684133","768671","1167","A2 - Inicial - Jardín","LOS ANGELES","San Martín / Bellavista / Alto Biavo"],
+    ["1684125","768666","1166","A2 - Inicial - Jardín","EL TRIUNFO","San Martín / Bellavista / Alto Biavo"],
+    ["1684117","768652","1165","A2 - Inicial - Jardín","PUENTE JUANITA","San Martín / Bellavista / Alto Biavo"],
+    ["1684109","768647","1164","A2 - Inicial - Jardín","ALTO PARAISO","San Martín / Bellavista / Alto Biavo"],
+    ["1759638","768647","1164","B0 - Primaria","ALTO PARAISO","San Martín / Bellavista / Alto Biavo"],
+    ["0274308","523669","104 ANGELITOS DEL SABER","A2 - Inicial - Jardín","BARRANCA","San Martín / Bellavista / Alto Biavo"],
+    ["0847004","471613","098 MERLIN GARCIA USHIÑAHUA","A2 - Inicial - Jardín","ABANCAY","San Martín / Bellavista / Alto Biavo"],
+    ["0846972","471849","097 SEÑOR DE LOS MILAGROS","A2 - Inicial - Jardín","VISTA ALEGRE","San Martín / Bellavista / Alto Biavo"],
+    ["0677450","471608","093","A2 - Inicial - Jardín","MURALLA","San Martín / Bellavista / Alto Biavo"],
+    ["0548818","471854","0772 JOSE F. SANCHEZ CARRION","F0 - Secundaria","BARRANCA","San Martín / Bellavista / Alto Biavo"],
+    ["1592526","805541","0732 JOSE DEL CARMEN MARIN ARISTA","B0 - Primaria","ALTO YANAYACU","San Martín / Bellavista / Alto Biavo"],
+    ["1602440","805541","0732 JOSE DEL CARMEN MARIN ARISTA","A2 - Inicial - Jardín","ALTO YANAYACU","San Martín / Bellavista / Alto Biavo"],
+    ["1793298","805541","0732 JOSE DEL CARMEN MARIN ARISTA","F0 - Secundaria","ALTO YANAYACU","San Martín / Bellavista / Alto Biavo"],
+    ["1412204","562175","0727 INTERCULTURAL BILINGUE","B0 - Primaria","PUENTE JUANITA","San Martín / Bellavista / Alto Biavo"],
+    ["3015591","562175","0727 INTERCULTURAL BILINGUE","F0 - Secundaria","PUENTE JUANITA","San Martín / Bellavista / Alto Biavo"],
+    ["1412196","806220","0726","B0 - Primaria","EL TRIUNFO","San Martín / Bellavista / Alto Biavo"],
+    ["1412188","806395","0725","B0 - Primaria","PLANTANILLO","San Martín / Bellavista / Alto Biavo"],
+    ["1384924","541381","0721","B0 - Primaria","SAN JUAN DE SHITARI","San Martín / Bellavista / Alto Biavo"],
+    ["1774256","541381","0721","F0 - Secundaria","SAN JUAN DE SHITARI","San Martín / Bellavista / Alto Biavo"],
+    ["1411149","533159","0720","B0 - Primaria","LA ESPERANZA DEL TIOYACU","San Martín / Bellavista / Alto Biavo"],
+    ["1384932","541395","0718","B0 - Primaria","ALMENDRAS","San Martín / Bellavista / Alto Biavo"],
+    ["1593391","806362","0717 GILBERTO SATALAYA TUANAMA","B0 - Primaria","RAMON CASTILLA","San Martín / Bellavista / Alto Biavo"],
+    ["1593334","806338","0716 MICAELA BASTIDAS","B0 - Primaria","MIRAFLORES","San Martín / Bellavista / Alto Biavo"],
+    ["1625409","806338","0716 MICAELA BASTIDAS","A2 - Inicial - Jardín","MIRAFLORES","San Martín / Bellavista / Alto Biavo"],
+    ["1565647","806300","0714 CIRO ALEGRIA BAZAN","A2 - Inicial - Jardín","LOS CEDROS","San Martín / Bellavista / Alto Biavo"],
+    ["1593318","806300","0714 CIRO ALEGRIA BAZAN","B0 - Primaria","LOS CEDROS","San Martín / Bellavista / Alto Biavo"],
+    ["1371053","806319","0689","A2 - Inicial - Jardín","EL CHALLUAL","San Martín / Bellavista / Alto Biavo"],
+    ["1371061","806319","0689","F0 - Secundaria","EL CHALLUAL","San Martín / Bellavista / Alto Biavo"],
+    ["1593326","806319","0689","B0 - Primaria","EL CHALLUAL","San Martín / Bellavista / Alto Biavo"],
+    ["1565639","806324","0688","A2 - Inicial - Jardín","LAS PALMAS","San Martín / Bellavista / Alto Biavo"],
+    ["1593268","806324","0688","B0 - Primaria","LAS PALMAS","San Martín / Bellavista / Alto Biavo"],
+    ["1691443","806324","0688","F0 - Secundaria","LAS PALMAS","San Martín / Bellavista / Alto Biavo"],
+    ["0549311","471793","0679 ABELARDO PAREDES TANANTA","B0 - Primaria","ABANCAY","San Martín / Bellavista / Alto Biavo"],
+    ["0549212","471788","0678 JUAN PINCHI URQUIA","B0 - Primaria","PUERTO BERMUDEZ","San Martín / Bellavista / Alto Biavo"],
+    ["1371046","471788","0678 JUAN PINCHI URQUIA","F0 - Secundaria","PUERTO BERMUDEZ","San Martín / Bellavista / Alto Biavo"],
+    ["0761155","471769","0489 JORGE CHAVEZ DARNELL","B0 - Primaria","VISTA ALEGRE","San Martín / Bellavista / Alto Biavo"],
+    ["1785567","471769","0489 JORGE CHAVEZ DARNELL","F0 - Secundaria","VISTA ALEGRE","San Martín / Bellavista / Alto Biavo"],
+    ["0303396","471745","0250 LOS HEROES DE ARICA","B0 - Primaria","NUEVO ARICA","San Martín / Bellavista / Alto Biavo"],
+    ["1371079","471745","0250 LOS HEROES DE ARICA","F0 - Secundaria","NUEVO ARICA","San Martín / Bellavista / Alto Biavo"],
+    ["0303388","471726","0249 SARITA COLINA SAMBRANO","B0 - Primaria","MURALLA","San Martín / Bellavista / Alto Biavo"],
+    ["0303347","471665","0242 BENJAMIN TORRES TORRES","B0 - Primaria","GONZALES PRADA","San Martín / Bellavista / Alto Biavo"],
+    ["1783117","471665","0242 BENJAMIN TORRES TORRES","F0 - Secundaria","GONZALES PRADA","San Martín / Bellavista / Alto Biavo"],
+    ["0303305","471731","0238 MANCO CAPAC","B0 - Primaria","INCAICO","San Martín / Bellavista / Alto Biavo"],
+    ["1451392","471731","0238 MANCO CAPAC","F0 - Secundaria","INCAICO","San Martín / Bellavista / Alto Biavo"],
+    ["0603233","471750","0259 RAMON CASTILLA MARQUESADO","B0 - Primaria","NUEVO SAN MIGUEL","San Martín / Bellavista / Alto Biavo"],
+    ["0300376","471811","0207 FERNANDO BELAUNDE TERRY","B0 - Primaria","JOSE OLAYA","San Martín / Bellavista / Alto Biavo"],
+    ["1593417","471811","0207 FERNANDO BELAUNDE TERRY","F0 - Secundaria","JOSE OLAYA","San Martín / Bellavista / Alto Biavo"],
+    ["0300368","471689","0206 ISAAC NEWTON","B0 - Primaria","CUZCO","San Martín / Bellavista / Alto Biavo"],
+    ["1238252","471689","0206 ISAAC NEWTON","F0 - Secundaria","CUZCO","San Martín / Bellavista / Alto Biavo"],
+    ["0300335","523650","0201 VIRGITA ALVARADO CARDENAS","B0 - Primaria","BARRANCA","San Martín / Bellavista / Alto Biavo"],
+    ["0676189","471825","0123 REYNALDO PAREDES SAAVEDRA","B0 - Primaria","ANDOAS","San Martín / Bellavista / Alto Biavo"],
+    ["1565613","471825","0123 REYNALDO PAREDES SAAVEDRA","A2 - Inicial - Jardín","ANDOAS","San Martín / Bellavista / Alto Biavo"],
+    ["0676171","471670","0122 JOSE CARLOS MARIATEGUI","B0 - Primaria","NUEVO SAN MARTIN","San Martín / Bellavista / Alto Biavo"],
+    ["3023876","471670","0122 JOSE CARLOS MARIATEGUI","F0 - Secundaria","NUEVO SAN MARTIN","San Martín / Bellavista / Alto Biavo"],
+    ["1018886","471590","006 SAN MARTIN DE PORRES","A2 - Inicial - Jardín","PUERTO BERMUDEZ","San Martín / Bellavista / Alto Biavo"],
+    ["1238658","805452","0008 JULIO RAMON RIBEYRO","B0 - Primaria","BELLO HORIZONTE","San Martín / Bellavista / Alto Biavo"],
+    ["1371012","805452","0008 JULIO RAMON RIBEYRO","A2 - Inicial - Jardín","BELLO HORIZONTE","San Martín / Bellavista / Alto Biavo"],
+    ["1718535","805452","0008 JULIO RAMON RIBEYRO","F0 - Secundaria","BELLO HORIZONTE","San Martín / Bellavista / Alto Biavo"],
+    ["1238815","805447","0007","B0 - Primaria","NUEVO CHOTALO","San Martín / Bellavista / Alto Biavo"],
+    ["1018597","471707","0003 ELEAZAR FASABI ZATALAYA","B0 - Primaria","LOS ANGELES","San Martín / Bellavista / Alto Biavo"],
+    ["1800960","471707","0003 ELEAZAR FASABI ZATALAYA","F0 - Secundaria","LOS ANGELES","San Martín / Bellavista / Alto Biavo"],
+    ["1238294","471830","0002","B0 - Primaria","ISRAEL URIARTE","San Martín / Bellavista / Alto Biavo"],
+    ["1352186","471830","0002","A2 - Inicial - Jardín","ISRAEL URIARTE","San Martín / Bellavista / Alto Biavo"],
+    ["1018555","471651","0001 ALBERTO UPIACHIHUA PUYO","B0 - Primaria","NUEVO TRUJILLO","San Martín / Bellavista / Alto Biavo"],
+    ["1565589","471651","0001 ALBERTO UPIACHIHUA PUYO","A2 - Inicial - Jardín","NUEVO TRUJILLO","San Martín / Bellavista / Alto Biavo"],
+    ["1412170","806418","01367","B0 - Primaria","SELVA ANDINA","San Martín / Bellavista / Alto Biavo"],
+    ["1565654","806418","01367","A2 - Inicial - Jardín","SELVA ANDINA","San Martín / Bellavista / Alto Biavo"],
+    ["1790088","806418","01367","F0 - Secundaria","SELVA ANDINA","San Martín / Bellavista / Alto Biavo"],
+    ["1782994","851378","01361","B0 - Primaria","SAN JUAN DE MIRAFLORES","San Martín / Bellavista / Alto Biavo"],
+    ["3015583","851378","01361","A2 - Inicial - Jardín","SAN JUAN DE MIRAFLORES","San Martín / Bellavista / Alto Biavo"],
+    
+    // BELLAVISTA / BAJO BIAVO
+    ["3985061","","MI PEQUEÑO UNIVERSO","A5 - Inicial Prog No Escolariz","DOS UNIDOS","San Martín / Bellavista / Bajo Biavo"],
+    ["3833953","","LOS TRIUNFADORES","A5 - Inicial Prog No Escolariz","PUERTO NUEVO","San Martín / Bellavista / Bajo Biavo"],
+    ["3833939","","LA CASITA DEL SABER","A5 - Inicial Prog No Escolariz","LA UNION / NUEVA UNION","San Martín / Bellavista / Bajo Biavo"],
+    ["3930652","","GOTITAS DEL SABER","A5 - Inicial Prog No Escolariz","SANTA ELENA","San Martín / Bellavista / Bajo Biavo"],
+    ["299230","472047","AGROPECUARIO DOS UNIDOS","B0 - Primaria","DOS UNIDOS","San Martín / Bellavista / Bajo Biavo"],
+    ["602953","471910","AGROPECUARIO DOS UNIDOS","A2 - Inicial - Jardín","DOS UNIDOS","San Martín / Bellavista / Bajo Biavo"],
+    ["0847244","472113","AGROPECUARIO DOS UNIDOS","F0 - Secundaria","DOS UNIDOS","San Martín / Bellavista / Bajo Biavo"],
+    ["1565977","639325","468","A2 - Inicial - Jardín","DOS DE MAYO","San Martín / Bellavista / Bajo Biavo"],
+    ["1565969","911971","467","A2 - Inicial - Jardín","SANTA ELENA","San Martín / Bellavista / Bajo Biavo"],
+    ["1438332","580457","422","A2 - Inicial - Jardín","LA PERLA DE PONACILLO","San Martín / Bellavista / Bajo Biavo"],
+    ["1438324","580443","421","A2 - Inicial - Jardín","NUEVO PROGRESO","San Martín / Bellavista / Bajo Biavo"],
+    ["0548628","471934","331","A2 - Inicial - Jardín","PAMPA HERMOSA","San Martín / Bellavista / Bajo Biavo"],
+    ["0274902","471929","321","A2 - Inicial - Jardín","NUEVO LIMA","San Martín / Bellavista / Bajo Biavo"],
+    ["0502393","471892","129","A2 - Inicial - Jardín","LA UNION","San Martín / Bellavista / Bajo Biavo"],
+    ["1692011","775964","1170","A2 - Inicial - Jardín","PACASMAYO","San Martín / Bellavista / Bajo Biavo"],
+    ["1692003","775959","1169","A2 - Inicial - Jardín","LOS OLIVOS","San Martín / Bellavista / Bajo Biavo"],
+    ["0846949","471887","095","A2 - Inicial - Jardín","NUEVO MUNDO","San Martín / Bellavista / Bajo Biavo"],
+    ["1591601","804754","0781","B0 - Primaria","EL PORVENIR","San Martín / Bellavista / Bajo Biavo"],
+    ["3059755","804754","0781","A2 - Inicial - Jardín","EL PORVENIR","San Martín / Bellavista / Bajo Biavo"],
+    ["1591361","471868","0780","B0 - Primaria","NUEVO LIMA","San Martín / Bellavista / Bajo Biavo"],
+    ["1565951","804631","0779","A2 - Inicial - Jardín","SAN JUAN","San Martín / Bellavista / Bajo Biavo"],
+    ["1591502","804631","0779","B0 - Primaria","SAN JUAN","San Martín / Bellavista / Bajo Biavo"],
+    ["1760503","804631","0779","F0 - Secundaria","SAN JUAN","San Martín / Bellavista / Bajo Biavo"],
+    ["1400902","555368","0751","A2 - Inicial - Jardín","NUEVO ORIENTE","San Martín / Bellavista / Bajo Biavo"],
+    ["1591403","804565","0751","B0 - Primaria","NUEVO ORIENTE","San Martín / Bellavista / Bajo Biavo"],
+    ["0514521","472085","0724","B0 - Primaria","PACASMAYO","San Martín / Bellavista / Bajo Biavo"],
+    ["1205061","804438","0647","B0 - Primaria","LOS OLIVOS","San Martín / Bellavista / Bajo Biavo"],
+    ["1785575","804438","0647","F0 - Secundaria","LOS OLIVOS","San Martín / Bellavista / Bajo Biavo"],
+    ["0299537","804358","0605","B0 - Primaria","DOS DE MAYO","San Martín / Bellavista / Bajo Biavo"],
+    ["0299420","472071","0577","B0 - Primaria","NUEVO TARAPOTO","San Martín / Bellavista / Bajo Biavo"],
+    ["0677443","472071","0577","A2 - Inicial - Jardín","NUEVO TARAPOTO","San Martín / Bellavista / Bajo Biavo"],
+    ["1124106","472071","0577","F0 - Secundaria","NUEVO TARAPOTO","San Martín / Bellavista / Bajo Biavo"],
+    ["0761163","471774","0488 CARLOS CUETO FERNANDINI","B0 - Primaria","PUERTO NUEVO","San Martín / Bellavista / Bajo Biavo"],
+    ["0677468","472066","0475","B0 - Primaria","NUEVO PROGRESO","San Martín / Bellavista / Bajo Biavo"],
+    ["1746593","472066","0475","F0 - Secundaria","NUEVO PROGRESO","San Martín / Bellavista / Bajo Biavo"],
+    ["0639153","472052","0298","B0 - Primaria","SANTA FLOR","San Martín / Bellavista / Bajo Biavo"],
+    ["1565878","472052","0298","A2 - Inicial - Jardín","SANTA FLOR","San Martín / Bellavista / Bajo Biavo"],
+    ["0299222","804344","0143","B0 - Primaria","PAMPA HERMOSA","San Martín / Bellavista / Bajo Biavo"],
+    ["0299214","472028","0142","B0 - Primaria","NUEVO MUNDO","San Martín / Bellavista / Bajo Biavo"],
+    ["0299206","472014","0141","B0 - Primaria","SAN RAMON","San Martín / Bellavista / Bajo Biavo"],
+    ["1565860","472014","0141","A2 - Inicial - Jardín","SAN RAMON","San Martín / Bellavista / Bajo Biavo"],
+    ["1782986","804508","01360","B0 - Primaria","VALPARAISO","San Martín / Bellavista / Bajo Biavo"],
+    ["0676197","471991","0136","B0 - Primaria","NUEVA UNION","San Martín / Bellavista / Bajo Biavo"],
+    ["0298786","804339","0086","B0 - Primaria","SANTA ELENA","San Martín / Bellavista / Bajo Biavo"],
+    ["3045556","804339","0086","A2 - Inicial - Jardín","SANTA ELENA","San Martín / Bellavista / Bajo Biavo"],
+    ["0298778","471972","0085","B0 - Primaria","LA UNION","San Martín / Bellavista / Bajo Biavo"],
+    ["0298760","471967","0084 ANDRES AVELINO CACERES DORREGARAY","B0 - Primaria","NUEVO LIMA","San Martín / Bellavista / Bajo Biavo"],
+    ["0548917","471967","0084 ANDRES AVELINO CACERES DORREGARAY","F0 - Secundaria","NUEVO LIMA","San Martín / Bellavista / Bajo Biavo"],
+    ["1400894","555274","0080","B0 - Primaria","LOS ANGELES","San Martín / Bellavista / Bajo Biavo"],
+    ["1565852","555274","0080","A2 - Inicial - Jardín","LOS ANGELES","San Martín / Bellavista / Bajo Biavo"],
+    ["0789651","471953","0048","B0 - Primaria","LA PERLA DE PONACILLO","San Martín / Bellavista / Bajo Biavo"],
+    ["0789628","471948","0044","B0 - Primaria","YANAYACU","San Martín / Bellavista / Bajo Biavo"],
+    ["1345297","471948","0044","F0 - Secundaria","YANAYACU","San Martín / Bellavista / Bajo Biavo"],
+    ["1438308","471948","0044","A2 - Inicial - Jardín","YANAYACU","San Martín / Bellavista / Bajo Biavo"],
+    
+    // BELLAVISTA / SAN PABLO
+    ["3835726","","RAYITOS DE SOL","A5 - Inicial Prog No Escolariz","SANTA VICTORIA","San Martín / Bellavista / San Pablo"],
+    ["3975148","","PEQUEÑOS GENIOS","A5 - Inicial Prog No Escolariz","SAN IGNACIO","San Martín / Bellavista / San Pablo"],
+    ["3941369","","MI DULCE HOGAR","A5 - Inicial Prog No Escolariz","FAUSA LAMISTA","San Martín / Bellavista / San Pablo"],
+    ["3835727","","GOTITAS DE AMOR","A5 - Inicial Prog No Escolariz","NUEVA FLORES","San Martín / Bellavista / San Pablo"],
+    ["3975147","","CORAZON DE JESUS","A5 - Inicial Prog No Escolariz","EL CARIBE","San Martín / Bellavista / San Pablo"],
+    ["3835701","","CARITAS ALEGRES","A5 - Inicial Prog No Escolariz","DOS UNIDOS","San Martín / Bellavista / San Pablo"],
+    ["0632752","472491","229 MARIA ELENA MOYANO","A2 - Inicial - Jardín","DOS DE MAYO","San Martín / Bellavista / San Pablo"],
+    ["0632331","472373","226 MARIA ANDREA PARADO DE BELLIDO","A2 - Inicial - Jardín","SHAMBOYACU","San Martín / Bellavista / San Pablo"],
+    ["0726257","472472","177 CARMELA PERDOMO PANDURO","A2 - Inicial - Jardín","CENTRO AMERICA","San Martín / Bellavista / San Pablo"],
+    ["0726232","472269","175 ANTORCHA DEL SABER","A2 - Inicial - Jardín","SAN ANDRES","San Martín / Bellavista / San Pablo"],
+    ["0521583","472250","136 MARIA CALVO RUIZ","A2 - Inicial - Jardín","FAUSA SAPINA","San Martín / Bellavista / San Pablo"],
+    ["0500892","472245","120 EMILIA BARCIA BONIFATTI","A2 - Inicial - Jardín","CONSUELO","San Martín / Bellavista / San Pablo"],
+    ["0548032","","119","A2 - Inicial - Jardín","FAUSA LAMISTA","San Martín / Bellavista / San Pablo"],
+    ["1602309","668394","1122","A2 - Inicial - Jardín","YACUSISA","San Martín / Bellavista / San Pablo"],
+    ["0274282","","102","A2 - Inicial - Jardín","HUINGOYACU","San Martín / Bellavista / San Pablo"],
+    ["1018936","472467","0758 RICARDO PALMA","F0 - Secundaria","HUINGOYACU","San Martín / Bellavista / San Pablo"],
+    ["1412162","806296","0723","B0 - Primaria","NUEVA ESPERANZA","San Martín / Bellavista / San Pablo"],
+    ["0473835","472486","0630 JUSTINIANO SHUÑA PAIMA","B0 - Primaria","CENTRO AMERICA","San Martín / Bellavista / San Pablo"],
+    ["0829259","472392","0306 JOSE SANTOS CHOCANO GASTANODI","B0 - Primaria","FAUSA LAMISTA","San Martín / Bellavista / San Pablo"],
+    ["0603282","472392","0015 JOSE SANTOS CHOCANO GASTAÑODI","F0 - Secundaria","FAUSA LAMISTA","San Martín / Bellavista / San Pablo"],
+    ["0726273","472354","0267","B0 - Primaria","YACUSISA","San Martín / Bellavista / San Pablo"],
+    ["0303263","472368","0231 ALFONSO UGARTE VERNAL","B0 - Primaria","JOSE PARDO","San Martín / Bellavista / San Pablo"],
+    ["0829341","472410","0213 PASCUAL SANGAMA VALLES","B0 - Primaria","SHAMBOYACU","San Martín / Bellavista / San Pablo"],
+    ["0300343","472349","0202","B0 - Primaria","CONSUELO","San Martín / Bellavista / San Pablo"],
+    ["0829374","","0176","B0 - Primaria","HUINGOYACU","San Martín / Bellavista / San Pablo"],
+    ["0829317","472311","0174","B0 - Primaria","FAUSA SAPINA","San Martín / Bellavista / San Pablo"],
+    ["1371038","472311","0174","F0 - Secundaria","FAUSA SAPINA","San Martín / Bellavista / San Pablo"],
+    ["0639120","472429","0388 JUAN DE LA CRUZ SALAS SALAS","B0 - Primaria","SAN ANDRES","San Martín / Bellavista / San Pablo"],
+    ["0548230","472453","0687 JOSE AVELARDO QUIÑONES GONZALES","B0 - Primaria","DOS DE MAYO","San Martín / Bellavista / San Pablo"],
+    ["0760892","472523","0485 IGNACIO ISUIZA SANANCINA","B0 - Primaria","SAN IGNACIO","San Martín / Bellavista / San Pablo"],
+    ["0847152","472306","0046 JOSE DE LA TORRE UGARTE","B0 - Primaria","SANTA VICTORIA","San Martín / Bellavista / San Pablo"],
+    ["0789560","472293","0045","B0 - Primaria","DOS UNIDOS","San Martín / Bellavista / San Pablo"],
+    ["0829283","472288","0042 HUMBERTO DEL AGUILA ARRIEGA","B0 - Primaria","NUEVA FLORES","San Martín / Bellavista / San Pablo"],
+    ["0847129","472274","0014 CORONEL LEONCIO PRADO","B0 - Primaria","EL CARIBE","San Martín / Bellavista / San Pablo"],
+    ["1019082","472212","0016 JOSE GABRIEL CONDORCANQUI","B0 - Primaria","SAN PABLO","San Martín / Bellavista / San Pablo"],
+    ["0274225","472212","0016 JOSE GABRIEL CONDORCANQUI","A2 - Inicial - Jardín","SAN PABLO","San Martín / Bellavista / San Pablo"],
+    ["0537282","472212","0016 JOSE GABRIEL CONDORCANQUI","F0 - Secundaria","SAN PABLO","San Martín / Bellavista / San Pablo"],
+    ["1018845","472330","005","A2 - Inicial - Jardín","JOSE PARDO","San Martín / Bellavista / San Pablo"],
+    ["1018951","472518","003 ROSA MERINO","A2 - Inicial - Jardín","LOS OLIVOS / CONSUELO","San Martín / Bellavista / San Pablo"],
+    ["0537381","472448","0029 JUAN VELASCO ALVARADO","F0 - Secundaria","CONSUELO","San Martín / Bellavista / San Pablo"],
+    ["1593292","806282","0690 PEDRO VILCA APAZA","B0 - Primaria","NUEVO SAN LORENZO","San Martín / Bellavista / San Pablo"],
+    
+    // BELLAVISTA / SAN RAFAEL
+    ["3835719","","LOS LORITOS","A5 - Inicial Prog No Escolariz","SANTA CATALINA","San Martín / Bellavista / San Rafael"],
+    ["3000924","900703","HOGAR NAZARET DEL CORAZON INMACULADO DE MARIA","F0 - Secundaria","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["1352160","520859","CORPUS CHRISTE","F0 - Secundaria","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["1576537","520859","CORPUS CHRISTE","B0 - Primaria","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["1602317","520859","CORPUS CHRISTE","A2 - Inicial - Jardín","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["1593409","806376","230 MI PEQUEÑO UNIVERSO","A2 - Inicial - Jardín","NUEVO CHIMBOTE","San Martín / Bellavista / San Rafael"],
+    ["0632729","472575","228 DIVINO NIÑO JESUS","A2 - Inicial - Jardín","PANAMA","San Martín / Bellavista / San Rafael"],
+    ["0274290","472561","103 CORAZONES TIERNOS","A2 - Inicial - Jardín","LA LIBERTAD","San Martín / Bellavista / San Rafael"],
+    ["0274191","","086 DANIEL ALCIDES CARRION","A2 - Inicial - Jardín","SAN RAFAEL","San Martín / Bellavista / San Rafael"],
+    ["0789503","472556","090 LOS ANGELITOS DE PALESTINA","A2 - Inicial - Jardín","PALESTINA","San Martín / Bellavista / San Rafael"],
+    ["0726315","472684","0759 FRANCISCO BOLOGNESI","F0 - Secundaria","LA LIBERTAD","San Martín / Bellavista / San Rafael"],
+    ["1018977","472679","0700 SAN JUAN BAUTISTA","F0 - Secundaria","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["0299545","472622","0617 NATIVIDAD BARRERA ARELLANO","B0 - Primaria","PALESTINA","San Martín / Bellavista / San Rafael"],
+    ["0303248","472698","0226 JUAN DANIEL DEL AGUILA VELASQUEZ","B0 - Primaria","PANAMA","San Martín / Bellavista / San Rafael"],
+    ["0303230","472617","0225 MERVIN TANANTA GARCIA","B0 - Primaria","NUEVO CHIMBOTE","San Martín / Bellavista / San Rafael"],
+    ["0300236","472580","0190 CESAR VALLEJO MENDOZA","B0 - Primaria","LA LIBERTAD","San Martín / Bellavista / San Rafael"],
+    ["0300194","","0188 DANIEL ALCIDES CARRION","B0 - Primaria","SAN RAFAEL","San Martín / Bellavista / San Rafael"],
+    ["0829192","472641","0049 INMACULADA CONCEPCION","B0 - Primaria","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["0829226","472636","0047 JESUS EL BUEN MAESTRO","B0 - Primaria","SANTA CATALINA","San Martín / Bellavista / San Rafael"],
+    ["1018803","472542","004 AMIGUITOS DE JESUS","A2 - Inicial - Jardín","CARHUAPOMA","San Martín / Bellavista / San Rafael"],
+    ["0300228","084429","0005 SAN JOSE OBRERO","B0 - Primaria","SAN JOSE","San Martín / Bellavista / San Rafael"],
+    ["1565597","084429","0005 SAN JOSE OBRERO","A2 - Inicial - Jardín","SAN JOSE","San Martín / Bellavista / San Rafael"],
+    ["0537183","472660","0005 DANIEL ALCIDES CARRION","F0 - Secundaria","SAN RAFAEL","San Martín / Bellavista / San Rafael"],
+    
+    // EL DORADO / SANTA ROSA
+    ["0602862","","184","A2 - Inicial - Jardín","SANTA ELENA","San Martín / El Dorado / Santa Rosa"],
+    ["0301788","806258","0376 MARIANO MELGAR Y VALDIVIESO","B0 - Primaria","SANTA ELENA","San Martín / El Dorado / Santa Rosa"],
+    ["1593235","806258","0376 MARIANO MELGAR Y VALDIVIESO","F0 - Secundaria","SANTA ELENA","San Martín / El Dorado / Santa Rosa"],
+    
+    // HUALLAGA / TINGO DE SAPOSOA
+    ["0274183","474466","085 RAMON RODRIGUEZ RIOS","A2 - Inicial - Jardín","TINGO DE SAPOSOA","San Martín / Huallaga / Tingo de Saposoa"],
+    ["0300178","474471","0184 OSCAR PANDURO DAVILA","B0 - Primaria","TINGO DE SAPOSOA","San Martín / Huallaga / Tingo de Saposoa"],
+    ["0548131","474485","0010 JULIO PIZARRO CARDENAS","F0 - Secundaria","TINGO DE SAPOSOA","San Martín / Huallaga / Tingo de Saposoa"]
+  ];
+
+const DATA_MODULAR = {};
+const DATA_LOCAL = {};
+institucionesRaw.forEach(row => {
+  const [codMod, codLoc, nombre, nivel, centro, ubic] = row;
+  if (codMod && codMod.trim()) DATA_MODULAR[codMod.trim()] = { nombre, nivel, ubicacion: ubic };
+  if (codLoc && codLoc.trim()) {
+    if (!DATA_LOCAL[codLoc]) DATA_LOCAL[codLoc] = { nombre, niveles: [nivel], ubicacion: ubic };
+    else if (!DATA_LOCAL[codLoc].niveles.includes(nivel)) DATA_LOCAL[codLoc].niveles.push(nivel);
+  }
+});
+for (let k in DATA_LOCAL) DATA_LOCAL[k].nivelesStr = DATA_LOCAL[k].niveles.join(' / ');
+
+var currentPimmerStep = 1;
+window.pimmerGaleria = {};
+
+function onBoxTypeChange(val) {
+  const configUrlInput = document.getElementById('config-box-url-group');
+  if (configUrlInput) {
+    configUrlInput.style.display = (val === 'external') ? 'block' : 'none';
+  }
+}
+
+function abrirNuevoPimmerSupervisor() {
+  cambiarVista('pimmer-form');
+  document.getElementById('pimmer-form-title').textContent = 'Nuevo Monitoreo PIMMER 2026';
+  document.getElementById('pimmer-form-subtitle').textContent = 'Plan Integral de Monitoreo y Mejora de Recursos Educativos';
+  
+  window.pimmerGaleria = {};
+  
+  generarModularesUI();
+  generarMaterialesPimmer();
+  generarMobiliarioFull();
+  generarTablaTecnologia();
+  generarTablaDocumentos();
+  
+  currentPimmerStep = 1;
+  cambiarPasoPimmer(0);
+  
+  document.getElementById('p_fechaAuto').value = new Date().toLocaleDateString('es-PE');
+  document.getElementById('pimmer-wizard-form').reset();
+  
+  bloquearFormularioPimmer(false);
+  attachStepperClickListeners();
+}
+
+function abrirNuevoPimmerDirecto() {
+  abrirNuevoPimmerSupervisor();
+  
+  if (currentUser && currentUser.ie_codigo) {
+    document.getElementById('p_codLocal').value = currentUser.ie_codigo;
+    buscarLocalPimmer(currentUser.ie_codigo);
+  }
+}
+
+function volverDePimmer() {
+  if (currentUser.rol === 'director') {
+    cambiarVista('director-main');
+  } else {
+    cambiarVista('pimmer-list');
+  }
+}
+
+function cambiarPasoPimmer(offset) {
+  const nextStep = currentPimmerStep + offset;
+  if (nextStep < 1 || nextStep > 6) return;
+  
+  document.querySelectorAll('.pimmer-step-content').forEach(el => {
+    el.classList.remove('active');
+  });
+  const nextContent = document.getElementById('pimmer-step-content-' + nextStep);
+  if (nextContent) nextContent.classList.add('active');
+  
+  document.querySelectorAll('.pimmer-step').forEach(el => {
+    const stepNum = parseInt(el.getAttribute('data-step'));
+    if (stepNum === nextStep) {
+      el.classList.add('active');
+      el.classList.remove('completed');
+    } else if (stepNum < nextStep) {
+      el.classList.add('completed');
+      el.classList.remove('active');
+    } else {
+      el.classList.remove('active', 'completed');
+    }
+  });
+  
+  currentPimmerStep = nextStep;
+  
+  document.getElementById('btn-pimmer-prev').style.display = (currentPimmerStep === 1) ? 'none' : 'block';
+  document.getElementById('btn-pimmer-next').style.display = (currentPimmerStep === 6) ? 'none' : 'block';
+  document.getElementById('btn-pimmer-submit').style.display = (currentPimmerStep === 6) ? 'block' : 'none';
+  
+  const formSection = document.getElementById('view-pimmer-form');
+  if (formSection) formSection.scrollTop = 0;
+}
+
+function attachStepperClickListeners() {
+  document.querySelectorAll('.pimmer-step').forEach(el => {
+    const stepNum = parseInt(el.getAttribute('data-step'));
+    if (stepNum) {
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        const diff = stepNum - currentPimmerStep;
+        cambiarPasoPimmer(diff);
+      };
+    }
+  });
+}
+
+function buscarLocalPimmer(code) {
+  if (!code || code.trim().length !== 6) {
+    clearLocalFields();
+    return;
+  }
+  
+  const data = DATA_LOCAL[code.trim()];
+  if (data) {
+    document.getElementById('p_nombreLocal').value = data.nombre;
+    document.getElementById('p_nivelLocal').value = data.nivelesStr;
+    document.getElementById('p_ubicacionLocal').value = data.ubicacion;
+    
+    const modRows = institucionesRaw.filter(r => r[1] === code.trim());
+    for (let i = 0; i < 3; i++) {
+      const inputMod = document.getElementById('p_mod_code_' + (i + 1));
+      if (inputMod) {
+        inputMod.value = (modRows[i] && modRows[i][0]) || '';
+        buscarModularPimmer(inputMod.value, i + 1);
+      }
+    }
+    
+    actualizarNivelesPresentesPimmer();
+    cargarPimmerBorrador(code.trim());
+  } else {
+    api('/api/ies?buscar=' + encodeURIComponent(code.trim())).then(ies => {
+      if (ies && ies.length > 0) {
+        const ie = ies[0];
+        document.getElementById('p_nombreLocal').value = ie.nombre || '';
+        const levels = [];
+        if (ie.tiene_inicial) levels.push('Inicial');
+        if (ie.tiene_primaria) levels.push('Primaria');
+        if (ie.tiene_secundaria) levels.push('Secundaria');
+        if (ie.tiene_otros) levels.push(ie.tipo_otros || 'Otros');
+        document.getElementById('p_nivelLocal').value = levels.join(' / ');
+        const ubicacion = [ie.provincia, ie.distrito, ie.lugar].filter(Boolean).join(' / ');
+        document.getElementById('p_ubicacionLocal').value = ubicacion;
+        
+        const modCodes = [ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria].filter(Boolean);
+        for (let i = 0; i < 3; i++) {
+          const inputMod = document.getElementById('p_mod_code_' + (i + 1));
+          if (inputMod) {
+            inputMod.value = modCodes[i] || '';
+            buscarModularPimmer(inputMod.value, i + 1);
+          }
+        }
+        
+        actualizarNivelesPresentesPimmer();
+        cargarPimmerBorrador(code.trim());
+      } else {
+        clearLocalFields();
+      }
+    }).catch(err => {
+      console.error('Error fetching IE from DB:', err);
+      clearLocalFields();
+    });
+  }
+}
+
+function buscarModularPimmer(val, idx) {
+  const d = DATA_MODULAR[val.trim()];
+  if (d) {
+    document.getElementById('p_mod_nombre_' + idx).value = d.nombre;
+    document.getElementById('p_mod_nivel_' + idx).value = d.nivel;
+  } else {
+    document.getElementById('p_mod_nombre_' + idx).value = '';
+    document.getElementById('p_mod_nivel_' + idx).value = '';
+  }
+  actualizarNivelesPresentesPimmer();
+}
+
+function clearLocalFields() {
+  document.getElementById('p_nombreLocal').value = '';
+  document.getElementById('p_nivelLocal').value = '';
+  document.getElementById('p_ubicacionLocal').value = '';
+  document.getElementById('p_director_nombre').value = '';
+  document.getElementById('p_director_celular').value = '';
+  document.getElementById('p_director_correo').value = '';
+  
+  for (let i = 1; i <= 3; i++) {
+    const codeEl = document.getElementById('p_mod_code_' + i);
+    if (codeEl) codeEl.value = '';
+    const nameEl = document.getElementById('p_mod_nombre_' + i);
+    if (nameEl) nameEl.value = '';
+    const levelEl = document.getElementById('p_mod_nivel_' + i);
+    if (levelEl) levelEl.value = '';
+  }
+  actualizarNivelesPresentesPimmer();
+}
+
+function actualizarNivelesPresentesPimmer() {
+  let nivelesSet = new Set();
+  
+  const mainNivel = document.getElementById('p_nivelLocal').value.toLowerCase();
+  if (mainNivel.includes('inicial')) nivelesSet.add('Inicial');
+  if (mainNivel.includes('primaria')) nivelesSet.add('Primaria');
+  if (mainNivel.includes('secundaria')) nivelesSet.add('Secundaria');
+
+  for (let i = 1; i <= 3; i++) {
+    let nivelInput = document.getElementById('p_mod_nivel_' + i);
+    if (nivelInput && nivelInput.value) {
+      let nivelStr = nivelInput.value.toLowerCase();
+      if (nivelStr.includes('inicial')) nivelesSet.add('Inicial');
+      if (nivelStr.includes('primaria')) nivelesSet.add('Primaria');
+      if (nivelStr.includes('secundaria')) nivelesSet.add('Secundaria');
+    }
+  }
+  
+  regenerarEspaciosPorNivelesPimmer(Array.from(nivelesSet));
+}
+
+function regenerarEspaciosPorNivelesPimmer(nivelesActivos) {
+  const nivelesDisponibles = { Inicial: false, Primaria: false, Secundaria: false };
+  nivelesActivos.forEach(n => { if (nivelesDisponibles.hasOwnProperty(n)) nivelesDisponibles[n] = true; });
+  
+  const espaciosComunes = [
+    { id: "comedor", nom: "Comedor" },
+    { id: "cocina", nom: "Cocina" },
+    { id: "patio", nom: "Recreación / Patio" },
+    { id: "auditorio", nom: "Auditorio" },
+    { id: "biblioteca", nom: "Biblioteca" },
+    { id: "zonasVerdes", nom: "Zonas Verdes" },
+    { id: "losa", nom: "Losa Deportiva" },
+    { id: "aip", nom: "AIP (Aula Innovación)" },
+    { id: "tanque", nom: "Tanque Elevado" },
+    { id: "cisterna", nom: "Cisterna" },
+    { id: "cercado", nom: "Cercado Perimetral" }
+  ];
+  const inicialItems = nivelesDisponibles.Inicial ? [{ id: "juegos", nom: "Juegos Infantiles" }, { id: "descanso", nom: "Área de Descanso" }] : [];
+  const primariaItems = nivelesDisponibles.Primaria ? [{ id: "tallerMan", nom: "Talleres Manualidades" }, { id: "otroPri", nom: "Otros Talleres" }] : [];
+  const secundariaItems = nivelesDisponibles.Secundaria ? [{ id: "labFis", nom: "Lab. Física" }, { id: "labQuim", nom: "Lab. Química" }] : [];
+  const admin = [
+    { id: "dir", nom: "Dirección" },
+    { id: "prof", nom: "Sala de Profesores" },
+    { id: "enf", nom: "Enfermería" },
+    { id: "almacen", nom: "Almacén General" },
+    { id: "qaliwarma", nom: "Almacén Qali Warma" }
+  ];
+  
+  function build(titulo, items) {
+    if (items.length === 0) return '';
+    let html = '<div class="sub-title" style="margin-top:20px; font-weight:700; color:var(--text);">' + titulo + '</div>' +
+                '<div class="table-responsive">' +
+                  '<table class="table-custom">' +
+                    '<thead>' +
+                      '<tr>' +
+                        '<th>Espacio</th>' +
+                        '<th>Disponibilidad</th>' +
+                        '<th>Estado</th>' +
+                        '<th>Observaciones</th>' +
+                        '<th>Fotografía</th>' +
+                      '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
+    items.forEach(i => {
+      html += '<tr>' +
+                 '<td style="font-weight:600;">' + i.nom + '</td>' +
+                 '<td>' +
+                   '<div class="radio-group">' +
+                     '<label><input type="radio" name="p_pres_' + i.id + '" value="Si" onchange="toggleEspacioPimmer(\'/' + i.id + '\')"> Sí</label>' +
+                     '<label><input type="radio" name="p_pres_' + i.id + '" value="No" onchange="toggleEspacioPimmer(\'/' + i.id + '\')"> No</label>' +
+                   '</div>' +
+                 '</td>' +
+                 '<td>' +
+                   '<div id="p_estado_' + i.id + '" style="display:none;" class="radio-group">' +
+                     '<label><input type="radio" name="p_est_' + i.id + '" value="Bueno"> Bueno</label>' +
+                     '<label><input type="radio" name="p_est_' + i.id + '" value="Regular"> Regular</label>' +
+                     '<label><input type="radio" name="p_est_' + i.id + '" value="Malo"> Malo</label>' +
+                   '</div>' +
+                 '</td>' +
+                 '<td><input type="text" id="p_obs_' + i.id + '" class="form-control" style="display:none;" placeholder="Observaciones"></td>' +
+                 '<td>' +
+                   '<div id="p_foto_' + i.id + '" style="display:none;">' +
+                     '<button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirFotoInputPimmer(\'esp_' + i.id + '\')"><i class="fas fa-camera"></i> Foto</button>' +
+                     '<input type="file" id="p_input_esp_' + i.id + '" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,\'p_grid_esp_' + i.id + '\')" style="display:none;">' +
+                     '<div class="fotos-grid" id="p_grid_esp_' + i.id + '" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"></div>' +
+                   '</div>' +
+                 '</td>' +
+               '</tr>';
+    });
+    html += '</tbody></table></div>';
+    // Fix regex escape
+    return html.replace(/\\//g, '');
+  }
+  
+  let finalHtml = build("Espacios Comunes", espaciosComunes);
+  if (inicialItems.length) finalHtml += build("Nivel Inicial", inicialItems);
+  if (primariaItems.length) finalHtml += build("Nivel Primaria", primariaItems);
+  if (secundariaItems.length) finalHtml += build("Nivel Secundaria", secundariaItems);
+  finalHtml += build("Áreas Administrativas", admin);
+  document.getElementById("p_tablasEspaciosDinamicas").innerHTML = finalHtml;
+}
+
+function toggleEspacioPimmer(id) {
+  const radios = document.querySelectorAll('input[name="p_pres_' + id + '"]');
+  let selected = null;
+  for (let r of radios) { if (r.checked) selected = r.value; }
+  
+  const estadoDiv = document.getElementById('p_estado_' + id);
+  const obsDiv = document.getElementById('p_obs_' + id);
+  const fotoDiv = document.getElementById('p_foto_' + id);
+  
+  if (selected === 'Si') {
+    if (estadoDiv) estadoDiv.style.display = 'flex';
+    if (obsDiv) obsDiv.style.display = 'block';
+    if (fotoDiv) fotoDiv.style.display = 'block';
+  } else {
+    if (estadoDiv) estadoDiv.style.display = 'none';
+    if (obsDiv) obsDiv.style.display = 'none';
+    if (fotoDiv) fotoDiv.style.display = 'none';
+    if (estadoDiv) estadoDiv.querySelectorAll('input').forEach(i => i.checked = false);
+    if (obsDiv) obsDiv.value = '';
+  }
+}
+
+function toggleSaneamientoPimmer(val) {
+  const con = document.getElementById('p_conTituloContainer');
+  const sin = document.getElementById('p_sinTituloContainer');
+  if (con) con.style.display = (val === 'Si') ? 'block' : 'none';
+  if (sin) sin.style.display = (val === 'No') ? 'block' : 'none';
+}
+
+function toggleOcupadoPimmer(val) {
+  const el = document.getElementById('p_detalleOcupadoContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleObsInfraPimmer(val) {
+  const el = document.getElementById('p_obsInfraBox');
+  if (el) el.style.display = (val === 'No') ? 'block' : 'none';
+}
+
+function toggleAipPimmer(val) {
+  const el = document.getElementById('p_aipTableContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleDocsActualizadosPimmer(val) {
+  const el = document.getElementById('p_docsPendientesContainer');
+  if (el) el.style.display = (val === 'No') ? 'block' : 'none';
+}
+
+function togglePlanesPimmer(val) {
+  const el = document.getElementById('p_frecuenciaPlanesContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleMonitoreoPimmer(val) {
+  const el = document.getElementById('p_frecuenciaMonitoreoContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleMetodologiasPimmer(val) {
+  const el = document.getElementById('p_metodologiasContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleRecursosPimmer(val) {
+  const el = document.getElementById('p_recursosContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleExtraPimmer(val) {
+  const el = document.getElementById('p_tiposActividadesContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleClubesPimmer(val) {
+  const el = document.getElementById('p_detalleClubesContainer');
+  if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+}
+
+function toggleMobPimmer(id) {
+  let radios = document.querySelectorAll('input[name="p_pres_mob_' + id + '"]'), val = null;
+  for (let r of radios) { if (r.checked) val = r.value; }
+  let elements = [
+    document.getElementById('p_estMobBuen_' + id),
+    document.getElementById('p_estMobReg_' + id),
+    document.getElementById('p_estMobMal_' + id),
+    document.getElementById('p_fotoMob_' + id)
+  ];
+  elements.forEach(el => {
+    if (el) el.style.display = (val === 'Si') ? 'block' : 'none';
+  });
+}
+
+function toggleTecnologiaPimmer(idBase) {
+  let radios = document.querySelectorAll('input[name="p_pres_' + idBase + '"]'), val = null;
+  for (let r of radios) { if (r.checked) val = r.value; }
+  let els = [
+    document.getElementById('p_estBuen_' + idBase),
+    document.getElementById('p_estReg_' + idBase),
+    document.getElementById('p_estMal_' + idBase),
+    document.getElementById('p_foto_' + idBase)
+  ];
+  els.forEach(el => { if (el) el.style.display = (val === 'Si') ? 'block' : 'none'; });
+}
+
+function abrirFotoInputPimmer(idKey) {
+  const el = document.getElementById('p_input_' + idKey);
+  if (el) el.click();
+}
+
+function procesarFotoPimmer(input, gridId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  if (!window.pimmerGaleria) window.pimmerGaleria = {};
+  if (!window.pimmerGaleria[gridId]) window.pimmerGaleria[gridId] = [];
+  
+  const emptySpan = grid.querySelector('.foto-empty');
+  if (emptySpan) emptySpan.remove();
+  
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 1000;
+        const MAX_HEIGHT = 1000;
+        
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        window.pimmerGaleria[gridId].push(compressedBase64);
+        renderGridPimmer(gridId);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  input.value = '';
+}
+
+function renderGridPimmer(gridId) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  const fotos = window.pimmerGaleria[gridId] || [];
+  if (fotos.length === 0) {
+    grid.innerHTML = '<span class="foto-empty" style="color:var(--text3);font-size:.75rem;">Sin fotos</span>';
+    return;
+  }
+  
+  fotos.forEach((url, idx) => {
+    const div = document.createElement('div');
+    div.className = 'foto-item';
+    div.style.position = 'relative';
+    div.style.width = '70px';
+    div.style.height = '70px';
+    div.style.borderRadius = '6px';
+    div.style.overflow = 'hidden';
+    div.style.border = '1px solid var(--border)';
+    
+    div.innerHTML = '<img src="' + url + '" style="width:100%; height:100%; object-fit:cover;">' +
+      '<button type="button" class="foto-delete" onclick="eliminarFotoPimmer(\'' + gridId + '\', ' + idx + ')" style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:white; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;">&times;</button>';
+    grid.appendChild(div);
+  });
+}
+
+function eliminarFotoPimmer(gridId, idx) {
+  if (window.pimmerGaleria && window.pimmerGaleria[gridId]) {
+    window.pimmerGaleria[gridId].splice(idx, 1);
+    renderGridPimmer(gridId);
+  }
+}
+
+function generarModularesUI() {
+  let html = '';
+  for (let i = 1; i <= 3; i++) {
+    html += '<div class="grid-modular" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 12px; background: #fafafa;">' +
+               '<div class="form-group"><label style="font-weight:600; font-size:.8rem;">Cód. Modular ' + i + '</label><input type="text" class="form-control form-control-sm" id="p_mod_code_' + i + '" name="p_mod_code_' + i + '" maxlength="7" oninput="buscarModularPimmer(this.value,' + i + ')"></div>' +
+               '<div class="form-group"><label style="font-weight:600; font-size:.8rem;">Nombre I.E.</label><input type="text" class="form-control form-control-sm" id="p_mod_nombre_' + i + '" name="p_mod_nombre_' + i + '" placeholder="Editable"></div>' +
+               '<div class="form-group"><label style="font-weight:600; font-size:.8rem;">Nivel</label><input type="text" class="form-control form-control-sm" id="p_mod_nivel_' + i + '" name="p_mod_nivel_' + i + '" placeholder="Editable"></div>' +
+               '<div class="form-group">' +
+                 '<label style="font-weight:600; font-size:.8rem;">Turno</label>' +
+                 '<select class="form-select form-select-sm" id="p_mod_turno_' + i + '" name="p_mod_turno_' + i + '">' +
+                   '<option value="Mañana">Mañana</option>' +
+                   '<option value="Tarde">Tarde</option>' +
+                   '<option value="Noche">Noche</option>' +
+                 '</select>' +
+               '</div>' +
+               '</div>';
+  }
+  document.getElementById('p_modularesContainer').innerHTML = html;
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById('p_mod_nivel_' + i).addEventListener('input', actualizarNivelesPresentesPimmer);
+    document.getElementById('p_mod_nombre_' + i).addEventListener('input', actualizarNivelesPresentesPimmer);
+  }
+}
+
+const materialesLista = ['PARED', 'PISO', 'TECHO', 'PUERTA', 'VENTANA'];
+function generarMaterialesPimmer() {
+  const contenedor = document.getElementById('p_materialesGrid');
+  contenedor.innerHTML = '';
+  materialesLista.forEach(mat => {
+    const idMat = mat.toLowerCase();
+    const div = document.createElement('div');
+    div.className = 'material-card';
+    div.style.background = '#f8fafc';
+    div.style.border = '1px solid var(--border)';
+    div.style.borderRadius = '8px';
+    div.style.padding = '12px';
+    div.innerHTML = '<strong style="display:block;margin-bottom:8px;color:var(--text);">' + mat + '</strong>' +
+                     '<select class="form-select form-select-sm" id="p_select_' + idMat + '"><option value="">Seleccionar...</option><option value="Concreto">Concreto</option><option value="Madera">Madera</option><option value="Metal">Metal</option><option value="Tierra">Tierra</option><option value="Calamina">Calamina</option><option value="Otro">Otro</option></select>' +
+                     '<button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="abrirFotoInputPimmer(\'' + idMat + '\')"><i class="fas fa-camera"></i> Subir Foto</button>' +
+                     '<input type="file" id="p_input_' + idMat + '" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,\'p_grid_' + idMat + '\')" style="display:none;">' +
+                     '<div class="fotos-grid" id="p_grid_' + idMat + '" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;"><span class="foto-empty" style="color:var(--text3);font-size:.75rem;">Sin fotos</span></div>';
+    contenedor.appendChild(div);
+  });
+}
+
+function generarMobiliarioFull() {
+  const grupos = [
+    { tit: "Mobiliario Estudiantil", items: ["Mesas (Inicial, Primaria, Secundaria)", "Sillas (Inicial, Primaria, Secundaria)", "Pizarras (Acrílicas, tiza, interactivas)", "Mobiliario para juegos", "Elementos de descanso", "Estantes y organizadores", "Casilleros estudiantiles", "Módulos de cómputo", "Papeleros"] },
+    { tit: "Administrativo", items: ["Escritorios", "Sillas ejecutivas", "Archivadores", "Armarios", "Mesas de reuniones", "Estanterías"] },
+    { tit: "Seguridad", items: ["Extintores", "Señalética", "Botiquines", "Cámaras", "Luces de emergencia"] }
+  ];
+  let html = '';
+  grupos.forEach(gr => {
+    html += '<div class="sub-title" style="margin-top:20px; font-weight:700; color:var(--text);">' + gr.tit + '</div>' +
+             '<div class="table-responsive">' +
+               '<table class="table-custom">' +
+                 '<thead>' +
+                   '<tr>' +
+                     '<th>Ítem</th>' +
+                     '<th>Disponibilidad</th>' +
+                     '<th>Buen Estado</th>' +
+                     '<th>Regular</th>' +
+                     '<th>Mal Estado</th>' +
+                     '<th>Evidencia Foto</th>' +
+                   '</tr>' +
+                 '</thead>' +
+                 '<tbody>';
+    gr.items.forEach((item, idx) => {
+      let idUnico = gr.tit.replace(/\s/g, '') + idx;
+      html += '<tr>' +
+                 '<td style="font-weight:600;">' + item + '</td>' +
+                 '<td>' +
+                   '<div class="radio-group">' +
+                     '<label><input type="radio" name="p_pres_mob_' + idUnico + '" value="Si" onchange="toggleMobPimmer(\'' + idUnico + '\')"> Sí</label>' +
+                     '<label><input type="radio" name="p_pres_mob_' + idUnico + '" value="No" onchange="toggleMobPimmer(\'' + idUnico + '\')"> No</label>' +
+                   '</div>' +
+                 '</td>' +
+                 '<td><div id="p_estMobBuen_' + idUnico + '" style="display:none;"><input type="number" id="p_numMobBuen_' + idUnico + '" class="form-control form-control-sm" placeholder="Bueno" min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td><div id="p_estMobReg_' + idUnico + '" style="display:none;"><input type="number" id="p_numMobReg_' + idUnico + '" class="form-control form-control-sm" placeholder="Reg." min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td><div id="p_estMobMal_' + idUnico + '" style="display:none;"><input type="number" id="p_numMobMal_' + idUnico + '" class="form-control form-control-sm" placeholder="Malo" min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td>' +
+                   '<div id="p_fotoMob_' + idUnico + '" style="display:none;">' +
+                     '<button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirFotoInputPimmer(\'mob_' + idUnico + '\')"><i class="fas fa-camera"></i> Foto</button>' +
+                     '<input type="file" id="p_input_mob_' + idUnico + '" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,\'p_grid_mob_' + idUnico + '\')" style="display:none;">' +
+                     '<div class="fotos-grid" id="p_grid_mob_' + idUnico + '"></div>' +
+                   '</div>' +
+                 '</td>' +
+               '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+  document.getElementById("p_mobiliarioCompleto").innerHTML = html;
+}
+
+function generarTablaTecnologia() {
+  const items = ["Computadoras de Aula", "Tablets para Estudiantes", "Proyectores Multimedia", "Impresoras", "Fotocopiadoras"];
+  let tbody = document.getElementById("p_tbodyTecnologia");
+  tbody.innerHTML = "";
+  items.forEach((item, idx) => {
+    let idBase = 'tec_' + idx;
+    let row = '<tr>' +
+                 '<td style="font-weight:600;">' + item + '</td>' +
+                 '<td>' +
+                   '<div class="radio-group">' +
+                     '<label><input type="radio" name="p_pres_' + idBase + '" value="Si" onchange="toggleTecnologiaPimmer(\'' + idBase + '\')"> Sí</label>' +
+                     '<label><input type="radio" name="p_pres_' + idBase + '" value="No" onchange="toggleTecnologiaPimmer(\'' + idBase + '\')"> No</label>' +
+                   '</div>' +
+                 '</td>' +
+                 '<td><div id="p_estBuen_' + idBase + '" style="display:none;"><input type="number" id="p_numTecBuen_' + idBase + '" class="form-control form-control-sm" placeholder="Bueno" min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td><div id="p_estReg_' + idBase + '" style="display:none;"><input type="number" id="p_numTecReg_' + idBase + '" class="form-control form-control-sm" placeholder="Reg." min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td><div id="p_estMal_' + idBase + '" style="display:none;"><input type="number" id="p_numTecMal_' + idBase + '" class="form-control form-control-sm" placeholder="Malo" min="0" value="0" style="width:80px;"></div></td>' +
+                 '<td>' +
+                   '<div id="p_foto_' + idBase + '" style="display:none;">' +
+                     '<button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirFotoInputPimmer(\'tec_' + idBase + '\')"><i class="fas fa-camera"></i> Foto</button>' +
+                     '<input type="file" id="p_input_tec_' + idBase + '" class="hidden-file" multiple accept="image/*" onchange="procesarFotoPimmer(this,\'p_grid_tec_' + idBase + '\')" style="display:none;">' +
+                     '<div class="fotos-grid" id="p_grid_tec_' + idBase + '"></div>' +
+                   '</div>' +
+                 '</td>' +
+               '</tr>';
+    tbody.insertAdjacentHTML('beforeend', row);
+  });
+}
+
+function generarTablaDocumentos() {
+  const docs = [
+    "1. Reglamento Interno",
+    "2. Plan Curricular Institucional (PCI)",
+    "3. Proyecto Educativo Institucional (PEI)",
+    "4. Plan Anual de Trabajo (PAT)",
+    "5. Plan de Tutoría Integral",
+    "6. Plan de Gestión de Riesgo",
+    "7. Resolución Comité Pedagógico",
+    "8. Resolución Comité Condiciones Operativas",
+    "9. Resolución Comité Convivencia"
+  ];
+  const tbody = document.getElementById("p_tbodyDocumentos");
+  tbody.innerHTML = "";
+  docs.forEach((doc, idx) => {
+    const row = tbody.insertRow();
+    const cellDoc = row.insertCell(0);
+    const cellFecha = row.insertCell(1);
+    const cellObs = row.insertCell(2);
+    cellDoc.textContent = doc;
+    cellDoc.style.fontWeight = "600";
+    
+    const inputFecha = document.createElement("input");
+    inputFecha.type = "date";
+    inputFecha.id = 'p_doc_fecha_' + idx;
+    inputFecha.className = "form-control form-control-sm";
+    cellFecha.appendChild(inputFecha);
+    
+    const inputObs = document.createElement("input");
+    inputObs.type = "text";
+    inputObs.id = 'p_doc_obs_' + idx;
+    inputObs.className = "form-control form-control-sm";
+    inputObs.placeholder = "Observaciones";
+    cellObs.appendChild(inputObs);
+  });
+}
+
+function serializarFormularioPimmer() {
+  const form = document.getElementById('pimmer-wizard-form');
+  const data = {};
+  
+  const inputs = form.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    if (input.type === 'file') return;
+    if (input.type === 'button' || input.type === 'submit') return;
+    
+    const name = input.id || input.name;
+    if (!name) return;
+    
+    if (input.type === 'radio') {
+      if (input.checked) {
+        data[input.name] = input.value;
+      }
+    } else if (input.type === 'checkbox') {
+      if (!data[name]) data[name] = [];
+      if (input.checked) {
+        data[name].push(input.value);
+      }
+    } else {
+      data[name] = input.value;
+    }
+  });
+  
+  const espaciosContainer = document.getElementById('p_tablasEspaciosDinamicas');
+  if (espaciosContainer) {
+    const espInputs = espaciosContainer.querySelectorAll('input');
+    espInputs.forEach(input => {
+      if (input.type === 'radio') {
+        if (input.checked) {
+          data[input.name] = input.value;
+        }
+      } else {
+        data[input.id || input.name] = input.value;
+      }
+    });
+  }
+
+  const mobContainer = document.getElementById('p_mobiliarioCompleto');
+  if (mobContainer) {
+    const mobInputs = mobContainer.querySelectorAll('input');
+    mobInputs.forEach(input => {
+      if (input.type === 'radio') {
+        if (input.checked) {
+          data[input.name] = input.value;
+        }
+      } else {
+        data[input.id || input.name] = input.value;
+      }
+    });
+  }
+
+  const tecContainer = document.getElementById('p_tbodyTecnologia');
+  if (tecContainer) {
+    const tecInputs = tecContainer.querySelectorAll('input');
+    tecInputs.forEach(input => {
+      if (input.type === 'radio') {
+        if (input.checked) {
+          data[input.name] = input.value;
+        }
+      } else {
+        data[input.id || input.name] = input.value;
+      }
+    });
+  }
+
+  const docContainer = document.getElementById('p_tbodyDocumentos');
+  if (docContainer) {
+    const docInputs = docContainer.querySelectorAll('input');
+    docInputs.forEach(input => {
+      data[input.id || input.name] = input.value;
+    });
+  }
+  
+  data.galeria = window.pimmerGaleria || {};
+  return data;
+}
+
+function deserializarFormularioPimmer(data) {
+  if (!data) return;
+  
+  window.pimmerGaleria = data.galeria || {};
+  
+  const form = document.getElementById('pimmer-wizard-form');
+  
+  const inputs = form.querySelectorAll('input, select, textarea');
+  inputs.forEach(input => {
+    if (input.type === 'file') return;
+    
+    const name = input.id || input.name;
+    if (!name) return;
+    
+    if (data[name] !== undefined) {
+      if (input.type === 'radio') {
+        input.checked = (input.value === data[name]);
+      } else if (input.type === 'checkbox') {
+        const arr = data[name] || [];
+        input.checked = arr.includes(input.value);
+      } else {
+        input.value = data[name];
+      }
+    } else if (input.type === 'radio' && data[input.name] !== undefined) {
+      input.checked = (input.value === data[input.name]);
+    }
+  });
+  
+  triggerPimmerToggles(data);
+  actualizarNivelesPresentesPimmer();
+  
+  const espaciosContainer = document.getElementById('p_tablasEspaciosDinamicas');
+  if (espaciosContainer) {
+    const espInputs = espaciosContainer.querySelectorAll('input');
+    espInputs.forEach(input => {
+      if (input.type === 'radio') {
+        const name = input.name;
+        if (data[name] !== undefined) {
+          input.checked = (input.value === data[name]);
+        }
+      } else {
+        const id = input.id || input.name;
+        if (data[id] !== undefined) {
+          input.value = data[id];
+        }
+      }
+    });
+    
+    const spaceIds = new Set();
+    espInputs.forEach(input => {
+      if (input.name && input.name.startsWith('p_pres_')) {
+        spaceIds.add(input.name.replace('p_pres_', ''));
+      }
+    });
+    spaceIds.forEach(id => toggleEspacioPimmer(id));
+  }
+
+  const mobContainer = document.getElementById('p_mobiliarioCompleto');
+  if (mobContainer) {
+    const mobInputs = mobContainer.querySelectorAll('input');
+    mobInputs.forEach(input => {
+      if (input.type === 'radio') {
+        const name = input.name;
+        if (data[name] !== undefined) {
+          input.checked = (input.value === data[name]);
+        }
+      } else {
+        const id = input.id || input.name;
+        if (data[id] !== undefined) {
+          input.value = data[id];
+        }
+      }
+    });
+    
+    const mobIds = new Set();
+    mobInputs.forEach(input => {
+      if (input.name && input.name.startsWith('p_pres_mob_')) {
+        mobIds.add(input.name.replace('p_pres_mob_', ''));
+      }
+    });
+    mobIds.forEach(id => toggleMobPimmer(id));
+  }
+
+  const tecContainer = document.getElementById('p_tbodyTecnologia');
+  if (tecContainer) {
+    const tecInputs = tecContainer.querySelectorAll('input');
+    tecInputs.forEach(input => {
+      if (input.type === 'radio') {
+        const name = input.name;
+        if (data[name] !== undefined) {
+          input.checked = (input.value === data[name]);
+        }
+      } else {
+        const id = input.id || input.name;
+        if (data[id] !== undefined) {
+          input.value = data[id];
+        }
+      }
+    });
+    
+    const tecIds = new Set();
+    tecInputs.forEach(input => {
+      if (input.name && input.name.startsWith('p_pres_')) {
+        tecIds.add(input.name.replace('p_pres_', ''));
+      }
+    });
+    tecIds.forEach(id => toggleTecnologiaPimmer(id));
+  }
+
+  const docContainer = document.getElementById('p_tbodyDocumentos');
+  if (docContainer) {
+    const docInputs = docContainer.querySelectorAll('input');
+    docInputs.forEach(input => {
+      const id = input.id || input.name;
+      if (data[id] !== undefined) {
+        input.value = data[id];
+      }
+    });
+  }
+
+  Object.keys(window.pimmerGaleria).forEach(gridId => {
+    renderGridPimmer(gridId);
+  });
+}
+
+function triggerPimmerToggles(data) {
+  if (data.p_sunarp) toggleSaneamientoPimmer(data.p_sunarp);
+  if (data.p_ocupado) toggleOcupadoPimmer(data.p_ocupado);
+  if (data.p_infra_suficiente) toggleObsInfraPimmer(data.p_infra_suficiente);
+  if (data.p_aip) toggleAipPimmer(data.p_aip);
+  if (data.p_docs_actualizados) toggleDocsActualizadosPimmer(data.p_docs_actualizados);
+  if (data.p_planes_mejora) togglePlanesPimmer(data.p_planes_mejora);
+  if (data.p_monitoreo_pedagogico) toggleMonitoreoPimmer(data.p_monitoreo_pedagogico);
+  if (data.p_metodologias_activas) toggleMetodologiasPimmer(data.p_metodologias_activas);
+  if (data.p_recursos_adicionales) toggleRecursosPimmer(data.p_recursos_adicionales);
+  if (data.p_actividades_extra) toggleExtraPimmer(data.p_actividades_extra);
+  if (data.p_clubes_existentes) toggleClubesPimmer(data.p_clubes_existentes);
+}
+
+async function cargarPimmerBorrador(codigo_local) {
+  try {
+    const submission = await api('/api/pimmer/submission/' + encodeURIComponent(codigo_local));
+    if (submission) {
+      deserializarFormularioPimmer(submission.datos);
+      if (submission.estado === 'enviado') {
+        bloquearFormularioPimmer(true);
+        showToast('Este reporte ya fue enviado y se encuentra en modo lectura.', 'info');
+      } else {
+        bloquearFormularioPimmer(false);
+      }
+    } else {
+      const localBackup = localStorage.getItem('pimmer_draft_' + codigo_local);
+      if (localBackup) {
+        try {
+          const parsed = JSON.parse(localBackup);
+          deserializarFormularioPimmer(parsed);
+          showToast('Se cargó un respaldo local de este borrador.', 'success');
+        } catch(e) {
+          console.error('Error parsing local backup:', e);
+        }
+      } else {
+        clearFormKeepMetadata();
+      }
+      bloquearFormularioPimmer(false);
+    }
+  } catch (err) {
+    console.error('Error al cargar borrador PIMMER:', err);
+  }
+}
+
+function clearFormKeepMetadata() {
+  const nombre = document.getElementById('p_nombreLocal').value;
+  const nivel = document.getElementById('p_nivelLocal').value;
+  const ubicacion = document.getElementById('p_ubicacionLocal').value;
+  const code = document.getElementById('p_codLocal').value;
+  const dirNombre = document.getElementById('p_director_nombre').value;
+  const dirCelular = document.getElementById('p_director_celular').value;
+  const dirCorreo = document.getElementById('p_director_correo').value;
+  
+  const modData = [];
+  for (let i = 1; i <= 3; i++) {
+    modData.push({
+      code: document.getElementById('p_mod_code_' + i) ? document.getElementById('p_mod_code_' + i).value : '',
+      name: document.getElementById('p_mod_nombre_' + i) ? document.getElementById('p_mod_nombre_' + i).value : '',
+      level: document.getElementById('p_mod_nivel_' + i) ? document.getElementById('p_mod_nivel_' + i).value : '',
+      turno: document.getElementById('p_mod_turno_' + i) ? document.getElementById('p_mod_turno_' + i).value : 'Mañana'
+    });
+  }
+
+  document.getElementById('pimmer-wizard-form').reset();
+  window.pimmerGaleria = {};
+  
+  document.getElementById('p_nombreLocal').value = nombre;
+  document.getElementById('p_nivelLocal').value = nivel;
+  document.getElementById('p_ubicacionLocal').value = ubicacion;
+  document.getElementById('p_codLocal').value = code;
+  document.getElementById('p_director_nombre').value = dirNombre;
+  document.getElementById('p_director_celular').value = dirCelular;
+  document.getElementById('p_director_correo').value = dirCorreo;
+  
+  for (let i = 1; i <= 3; i++) {
+    const m = modData[i-1];
+    if (document.getElementById('p_mod_code_' + i)) document.getElementById('p_mod_code_' + i).value = m.code;
+    if (document.getElementById('p_mod_nombre_' + i)) document.getElementById('p_mod_nombre_' + i).value = m.name;
+    if (document.getElementById('p_mod_nivel_' + i)) document.getElementById('p_mod_nivel_' + i).value = m.level;
+    if (document.getElementById('p_mod_turno_' + i)) document.getElementById('p_mod_turno_' + i).value = m.turno;
+  }
+  
+  actualizarNivelesPresentesPimmer();
+  
+  document.querySelectorAll('.fotos-grid').forEach(grid => {
+    renderGridPimmer(grid.id);
+  });
+}
+
+function bloquearFormularioPimmer(lock) {
+  const form = document.getElementById('pimmer-wizard-form');
+  const elements = form.querySelectorAll('input, select, textarea, button');
+  elements.forEach(el => {
+    if (el.id === 'btn-pimmer-close-top' || el.id === 'btn-pimmer-prev' || el.id === 'btn-pimmer-next' || el.id === 'btn-pimmer-prev-bottom') {
+      return;
+    }
+    
+    if (el.className.includes('foto-delete') || el.className.includes('btn-foto')) {
+      el.style.display = lock ? 'none' : 'block';
+    }
+    
+    if (lock) {
+      el.setAttribute('disabled', 'true');
+    } else {
+      el.removeAttribute('disabled');
+    }
+  });
+  
+  const containers = ['p_tablasEspaciosDinamicas', 'p_mobiliarioCompleto', 'p_tbodyTecnologia', 'p_tbodyDocumentos'];
+  containers.forEach(cid => {
+    const container = document.getElementById(cid);
+    if (container) {
+      container.querySelectorAll('input, select, textarea, button').forEach(el => {
+        if (lock) {
+          el.setAttribute('disabled', 'true');
+          if (el.className.includes('btn-foto') || el.className.includes('foto-delete')) {
+            el.style.display = 'none';
+          }
+        } else {
+          el.removeAttribute('disabled');
+          if (el.className.includes('btn-foto') || el.className.includes('foto-delete')) {
+            el.style.display = 'block';
+          }
+        }
+      });
+    }
+  });
+
+  const saveBtn = document.getElementById('btn-pimmer-save');
+  const submitBtn = document.getElementById('btn-pimmer-submit');
+  if (saveBtn) saveBtn.style.display = lock ? 'none' : 'block';
+  if (submitBtn) {
+    if (lock) {
+      submitBtn.style.display = 'none';
+    } else {
+      submitBtn.style.display = (currentPimmerStep === 6) ? 'block' : 'none';
+    }
+  }
+}
+
+async function guardarPimmerBorradorBtn() {
+  const code = document.getElementById('p_codLocal').value;
+  if (!code || code.trim().length !== 6) {
+    showToast('Debe ingresar un Código Local de 6 dígitos válido antes de guardar.', 'error');
+    return;
+  }
+  
+  try {
+    const data = serializarFormularioPimmer();
+    
+    await api('/api/pimmer/save', {
+      method: 'POST',
+      body: {
+        codigo_local: code.trim(),
+        datos: data
+      }
+    });
+    
+    localStorage.setItem('pimmer_draft_' + code.trim(), JSON.stringify(data));
+    showToast('Borrador guardado con éxito en BD y localmente.', 'success');
+  } catch(e) {
+    showToast('Error al guardar borrador: ' + e.message, 'error');
+  }
+}
+
+function validarPimmerFormulario() {
+  const step1Required = [
+    { id: 'p_codLocal', label: 'Código Local', step: 1 },
+    { id: 'p_nombreLocal', label: 'Nombre de I.E.', step: 1 },
+    { id: 'p_director_nombre', label: 'Nombre del Director', step: 1 },
+    { id: 'p_director_celular', label: 'Celular del Director', step: 1 },
+    { id: 'p_evaluador_dni', label: 'DNI del Evaluador', step: 1 },
+    { id: 'p_evaluador_nombre', label: 'Nombre del Evaluador', step: 1 },
+    { id: 'p_evaluador_cargo', label: 'Cargo del Evaluador', step: 1 },
+    { id: 'p_evaluador_celular', label: 'Celular del Evaluador', step: 1 }
+  ];
+  
+  for (const field of step1Required) {
+    const el = document.getElementById(field.id);
+    if (!el || !el.value.trim()) {
+      showToast('Falta completar: ' + field.label + ' en el Paso ' + field.step, 'error');
+      if (el) el.focus();
+      const diff = field.step - currentPimmerStep;
+      cambiarPasoPimmer(diff);
+      return false;
+    }
+  }
+  
+  const sunarpChecked = document.querySelector('input[name="p_sunarp"]:checked');
+  if (!sunarpChecked) {
+    showToast('Debe responder si la IE cuenta con inscripción en SUNARP (Paso 2)', 'error');
+    const diff = 2 - currentPimmerStep;
+    cambiarPasoPimmer(diff);
+    return false;
+  }
+  
+  const ocupadoChecked = document.querySelector('input[name="p_ocupado"]:checked');
+  if (!ocupadoChecked) {
+    showToast('Debe responder si el local está ocupado por terceros (Paso 2)', 'error');
+    const diff = 2 - currentPimmerStep;
+    cambiarPasoPimmer(diff);
+    return false;
+  }
+
+  const infraSuficienteChecked = document.querySelector('input[name="p_infra_suficiente"]:checked');
+  if (!infraSuficienteChecked) {
+    showToast('Debe responder si la infraestructura es suficiente (Paso 2)', 'error');
+    const diff = 2 - currentPimmerStep;
+    cambiarPasoPimmer(diff);
+    return false;
+  }
+  
+  const aipChecked = document.querySelector('input[name="p_aip"]:checked');
+  if (!aipChecked) {
+    showToast('Debe responder si la IE cuenta con Aula de Innovación Pedagógica - AIP (Paso 4)', 'error');
+    const diff = 4 - currentPimmerStep;
+    cambiarPasoPimmer(diff);
+    return false;
+  }
+
+  const docsChecked = document.querySelector('input[name="p_docs_actualizados"]:checked');
+  if (!docsChecked) {
+    showToast('Debe responder si los instrumentos de gestión están actualizados (Paso 5)', 'error');
+    const diff = 5 - currentPimmerStep;
+    cambiarPasoPimmer(diff);
+    return false;
+  }
+  
+  return true;
+}
+
+async function enviarPimmerFinalBtn() {
+  if (!validarPimmerFormulario()) return;
+  
+  if (!confirm('¿Está seguro de que desea enviar el reporte final? Una vez enviado, se bloqueará para edición.')) {
+    return;
+  }
+  
+  const code = document.getElementById('p_codLocal').value;
+  try {
+    const data = serializarFormularioPimmer();
+    
+    await api('/api/pimmer/submit', {
+      method: 'POST',
+      body: {
+        codigo_local: code.trim(),
+        datos: data
+      }
+    });
+    
+    localStorage.removeItem('pimmer_draft_' + code.trim());
+    showToast('Reporte enviado con éxito.', 'success');
+    
+    bloquearFormularioPimmer(true);
+    
+    setTimeout(() => {
+      volverDePimmer();
+    }, 1500);
+  } catch(e) {
+    showToast('Error al enviar reporte: ' + e.message, 'error');
+  }
+}
+
+async function loadPimmerSubmissions() {
+  const table = document.getElementById('pimmer-submissions-table');
+  if (!table) return;
+  
+  table.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);"><i class="fas fa-spinner fa-spin"></i> Cargando entregas...</td></tr>';
+  
+  try {
+    const submissions = await api('/api/pimmer/submissions');
+    const buscarVal = document.getElementById('pimmer-list-buscar').value.toLowerCase().trim();
+    
+    const filtered = submissions.filter(sub => {
+      const codLoc = (sub.codigo_local || '').toLowerCase();
+      const ieNombre = (sub.ie_nombre || '').toLowerCase();
+      const evalNombre = (sub.evaluador_nombre || '').toLowerCase();
+      
+      return codLoc.includes(buscarVal) || ieNombre.includes(buscarVal) || evalNombre.includes(buscarVal);
+    });
+    
+    if (filtered.length === 0) {
+      table.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron reportes PIMMER</td></tr>';
+      return;
+    }
+    
+    table.innerHTML = '';
+    filtered.forEach(sub => {
+      const tr = document.createElement('tr');
+      const updatedDate = new Date(sub.updated_at).toLocaleString('es-PE');
+      
+      const estadoBadge = sub.estado === 'enviado' 
+        ? '<span class="badge bg-success" style="padding: 4px 8px; border-radius: 4px; color: white; background-color: #2ec4b6;">Enviado</span>'
+        : '<span class="badge bg-warning" style="padding: 4px 8px; border-radius: 4px; color: #856404; background-color: #fff3cd;">Borrador</span>';
+        
+      const actions = '<div style="display:flex; gap:6px; justify-content:center;">' +
+          '<button class="btn btn-outline-primary btn-sm" onclick="verPimmerSubmission(' + sub.id + ')" title="Ver Reporte">' +
+            '<i class="fas fa-eye"></i> Ver' +
+          '</button>' +
+          (sub.estado === 'borrador' ? 
+            '<button class="btn btn-outline-warning btn-sm" onclick="editarPimmerSubmission(\'/' + sub.codigo_local + '\'/)" title="Editar Reporte">' +
+              '<i class="fas fa-edit"></i> Editar' +
+            '</button>' : '') +
+          (currentUser.rol === 'admin' ? 
+            '<button class="btn btn-outline-danger btn-sm" onclick="eliminarPimmerSubmission(' + sub.id + ')" title="Eliminar/Resetear">' +
+              '<i class="fas fa-trash-alt"></i> Resetear' +
+            '</button>' : '') +
+        '</div>';
+      
+      // Fix regex escape
+      let finalActions = actions.replace(/\\//g, '');
+
+      tr.innerHTML = '<td>' + sub.codigo_local + '</td>' +
+        '<td>' + (sub.ie_nombre || 'IE Asociada') + '</td>' +
+        '<td style="text-align:center;">' + estadoBadge + '</td>' +
+        '<td>' + updatedDate + '</td>' +
+        '<td>' + (sub.evaluador_nombre || 'N/A') + '</td>' +
+        '<td style="text-align:center;">' + finalActions + '</td>';
+        
+      table.appendChild(tr);
+    });
+  } catch(e) {
+    table.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;padding:20px;">Error al cargar reportes: ' + e.message + '</td></tr>';
+  }
+}
+
+function exportarConsolidadoPimmer() {
+  window.location.href = '/api/pimmer/submissions/export';
+}
+
+async function verPimmerSubmission(id) {
+  try {
+    const submissions = await api('/api/pimmer/submissions');
+    const sub = submissions.find(s => s.id === id);
+    if (!sub) {
+      showToast('No se encontró la entrega seleccionada', 'error');
+      return;
+    }
+    
+    cambiarVista('pimmer-form');
+    document.getElementById('pimmer-form-title').textContent = 'Ver Monitoreo PIMMER 2026 (Lectura)';
+    document.getElementById('pimmer-form-subtitle').textContent = 'Ficha técnica de monitoreo finalizado';
+    
+    generarModularesUI();
+    generarMaterialesPimmer();
+    generarMobiliarioFull();
+    generarTablaTecnologia();
+    generarTablaDocumentos();
+    
+    document.getElementById('p_codLocal').value = sub.codigo_local;
+    document.getElementById('p_nombreLocal').value = sub.ie_nombre || '';
+    
+    deserializarFormularioPimmer(sub.datos);
+    bloquearFormularioPimmer(true);
+    
+    currentPimmerStep = 1;
+    cambiarPasoPimmer(0);
+    
+    attachStepperClickListeners();
+  } catch(e) {
+    showToast('Error al ver entrega: ' + e.message, 'error');
+  }
+}
+
+async function editarPimmerSubmission(codigo_local) {
+  cambiarVista('pimmer-form');
+  document.getElementById('pimmer-form-title').textContent = 'Editar Monitoreo PIMMER 2026';
+  document.getElementById('pimmer-form-subtitle').textContent = 'Edición de borrador registrado';
+  
+  generarModularesUI();
+  generarMaterialesPimmer();
+  generarMobiliarioFull();
+  generarTablaTecnologia();
+  generarTablaDocumentos();
+  
+  document.getElementById('p_codLocal').value = codigo_local;
+  await buscarLocalPimmer(codigo_local);
+  
+  currentPimmerStep = 1;
+  cambiarPasoPimmer(0);
+  
+  attachStepperClickListeners();
+}
+
+async function eliminarPimmerSubmission(id) {
+  if (!confirm('¿Está seguro de que desea eliminar/resetear este reporte PIMMER? Esto borrará permanentemente todas las respuestas de esta institución.')) {
+    return;
+  }
+  
+  try {
+    await api('/api/pimmer/submission/' + id, {
+      method: 'DELETE'
+    });
+    showToast('Reporte resetetado con éxito.', 'success');
+    loadPimmerSubmissions();
+  } catch(e) {
+    showToast('Error al resetear reporte: ' + e.message, 'error');
+  }
+}
+
+// Export functions to global scope
+window.onBoxTypeChange = onBoxTypeChange;
+window.abrirNuevoPimmerSupervisor = abrirNuevoPimmerSupervisor;
+window.abrirNuevoPimmerDirecto = abrirNuevoPimmerDirecto;
+window.volverDePimmer = volverDePimmer;
+window.cambiarPasoPimmer = cambiarPasoPimmer;
+window.buscarLocalPimmer = buscarLocalPimmer;
+window.buscarModularPimmer = buscarModularPimmer;
+window.actualizarNivelesPresentesPimmer = actualizarNivelesPresentesPimmer;
+window.toggleEspacioPimmer = toggleEspacioPimmer;
+window.toggleSaneamientoPimmer = toggleSaneamientoPimmer;
+window.toggleOcupadoPimmer = toggleOcupadoPimmer;
+window.toggleObsInfraPimmer = toggleObsInfraPimmer;
+window.toggleAipPimmer = toggleAipPimmer;
+window.toggleDocsActualizadosPimmer = toggleDocsActualizadosPimmer;
+window.togglePlanesPimmer = togglePlanesPimmer;
+window.toggleMonitoreoPimmer = toggleMonitoreoPimmer;
+window.toggleMetodologiasPimmer = toggleMetodologiasPimmer;
+window.toggleRecursosPimmer = toggleRecursosPimmer;
+window.toggleExtraPimmer = toggleExtraPimmer;
+window.toggleClubesPimmer = toggleClubesPimmer;
+window.toggleMobPimmer = toggleMobPimmer;
+window.toggleTecnologiaPimmer = toggleTecnologiaPimmer;
+window.abrirFotoInputPimmer = abrirFotoInputPimmer;
+window.procesarFotoPimmer = procesarFotoPimmer;
+window.eliminarFotoPimmer = eliminarFotoPimmer;
+window.guardarPimmerBorradorBtn = guardarPimmerBorradorBtn;
+window.enviarPimmerFinalBtn = enviarPimmerFinalBtn;
+window.loadPimmerSubmissions = loadPimmerSubmissions;
+window.exportarConsolidadoPimmer = exportarConsolidadoPimmer;
+window.verPimmerSubmission = verPimmerSubmission;
+window.editarPimmerSubmission = editarPimmerSubmission;
+window.eliminarPimmerSubmission = eliminarPimmerSubmission;
+
