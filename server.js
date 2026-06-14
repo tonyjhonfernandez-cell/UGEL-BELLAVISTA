@@ -165,6 +165,22 @@ async function applyMigrations() {
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (8) ON CONFLICT DO NOTHING');
     }
+    // Migración 9: tabla system_settings
+    if (!applied.has(9)) {
+        try {
+            await pool.query(`CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL
+            )`);
+            // Insert default values
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('active_evaluation_box', 'false') ON CONFLICT DO NOTHING");
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_title', 'Evaluación de Actividad') ON CONFLICT DO NOTHING");
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_url', '') ON CONFLICT DO NOTHING");
+        } catch(e){
+            console.error('Error en migración 9:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (9) ON CONFLICT DO NOTHING');
+    }
 }
 
 async function initDatabase() {
@@ -1607,6 +1623,46 @@ app.put('/api/perfil', authDirector, async (req, res) => {
             await db.prepare(`UPDATE usuarios SET ${updates.join(',')} WHERE id=?`).run(...params);
             if (nombre) req.session.user.nombre = nombre;
         }
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================== CONFIGURACIONES DEL SISTEMA =====================
+app.get('/api/system-settings', authDirector, async (req, res) => {
+    try {
+        const rows = await pool.query("SELECT * FROM system_settings");
+        const settings = {};
+        rows.rows.forEach(r => {
+            if (r.key === 'active_evaluation_box') {
+                settings[r.key] = r.value === 'true';
+            } else {
+                settings[r.key] = r.value;
+            }
+        });
+        res.json({
+            active_evaluation_box: settings.active_evaluation_box || false,
+            evaluation_box_title: settings.evaluation_box_title || 'Evaluación de Actividad',
+            evaluation_box_url: settings.evaluation_box_url || ''
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/system-settings', authAdmin, async (req, res) => {
+    try {
+        const { active_evaluation_box, evaluation_box_title, evaluation_box_url } = req.body;
+        
+        await pool.query("INSERT INTO system_settings (key, value) VALUES ('active_evaluation_box', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [active_evaluation_box ? 'true' : 'false']);
+        if (evaluation_box_title !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_title', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_title]);
+        }
+        if (evaluation_box_url !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_url', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_url]);
+        }
+        
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

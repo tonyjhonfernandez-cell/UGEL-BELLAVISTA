@@ -6,7 +6,7 @@
 <title>Seguimiento de Actividades - UGEL Bellavista</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=1.1.5">
+<link rel="stylesheet" href="/css/style.css?v=1.1.6">
 </head>
 <body>
 
@@ -91,54 +91,71 @@
             </div>
           </div>
           <div class="dir-body">
-            <div class="dir-top-row">
-              <div class="dir-kpis">
-                <div class="dir-kpi total">
-                  <div class="kpi-cap"></div>
-                  <div class="kpi-num-box">
-                    <span class="kpi-number" id="kpi-total">0</span>
-                    <span class="kpi-sublabel">Total</span>
+            <div class="dir-top-row" style="align-items: stretch;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+                <div class="dir-kpis">
+                  <div class="dir-kpi total">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-total">0</span>
+                      <span class="kpi-sublabel">Total</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="fas fa-list-alt kpi-icon"></i>
+                      <div class="kpi-title">Total de<br>Actividades</div>
+                    </div>
                   </div>
-                  <div class="kpi-divider"></div>
-                  <div class="kpi-text-box">
-                    <i class="fas fa-list-alt kpi-icon"></i>
-                    <div class="kpi-title">Total de<br>Actividades</div>
+                  <div class="dir-kpi pendientes">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-pendientes">0</span>
+                      <span class="kpi-sublabel">Pend.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="far fa-clock kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Pendientes</div>
+                    </div>
+                  </div>
+                  <div class="dir-kpi cumplidas">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-cumplidas">0</span>
+                      <span class="kpi-sublabel">Cump.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="far fa-check-circle kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Cumplidas</div>
+                    </div>
+                  </div>
+                  <div class="dir-kpi vencidas">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-vencidas">0</span>
+                      <span class="kpi-sublabel">Venc.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="fas fa-exclamation-triangle kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Vencidas</div>
+                    </div>
                   </div>
                 </div>
-                <div class="dir-kpi pendientes">
-                  <div class="kpi-cap"></div>
-                  <div class="kpi-num-box">
-                    <span class="kpi-number" id="kpi-pendientes">0</span>
-                    <span class="kpi-sublabel">Pend.</span>
+                <!-- Recuadro especial de evaluación (direcciona al formulario configurado) -->
+                <div id="dir-evaluation-box" style="display: none; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); cursor: pointer; align-items: center; justify-content: space-between; transition: all 0.2s ease;" onclick="openEvaluationLink()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.35)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; background: rgba(255,255,255,0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                      <i class="fas fa-file-signature"></i>
+                    </div>
+                    <div>
+                      <h4 id="dir-eval-title" style="margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Actividad Especial</h4>
+                      <p style="margin: 3px 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.85); font-weight: 500;">Haz clic aquí para abrir y completar esta evaluación / formulario</p>
+                    </div>
                   </div>
-                  <div class="kpi-divider"></div>
-                  <div class="kpi-text-box">
-                    <i class="far fa-clock kpi-icon"></i>
-                    <div class="kpi-title">Actividades<br>Pendientes</div>
-                  </div>
-                </div>
-                <div class="dir-kpi cumplidas">
-                  <div class="kpi-cap"></div>
-                  <div class="kpi-num-box">
-                    <span class="kpi-number" id="kpi-cumplidas">0</span>
-                    <span class="kpi-sublabel">Cump.</span>
-                  </div>
-                  <div class="kpi-divider"></div>
-                  <div class="kpi-text-box">
-                    <i class="far fa-check-circle kpi-icon"></i>
-                    <div class="kpi-title">Actividades<br>Cumplidas</div>
-                  </div>
-                </div>
-                <div class="dir-kpi vencidas">
-                  <div class="kpi-cap"></div>
-                  <div class="kpi-num-box">
-                    <span class="kpi-number" id="kpi-vencidas">0</span>
-                    <span class="kpi-sublabel">Venc.</span>
-                  </div>
-                  <div class="kpi-divider"></div>
-                  <div class="kpi-text-box">
-                    <i class="fas fa-exclamation-triangle kpi-icon"></i>
-                    <div class="kpi-title">Actividades<br>Vencidas</div>
+                  <div style="font-size: 1.2rem; margin-right: 8px;">
+                    <i class="fas fa-arrow-right"></i>
                   </div>
                 </div>
               </div>
@@ -739,11 +756,11 @@
 
       <!-- ==================== PERFIL ==================== -->
       <div class="view-section" id="view-perfil">
-        <div class="page-hd"><h2>Mi Perfil</h2><span>Información personal y configuración de cuenta</span></div>
+        <div class="page-hd"><h2 id="perfil-title">Mi Perfil</h2><span id="perfil-subtitle">Información personal y configuración de cuenta</span></div>
         <div class="t-card perfil-card"><div style="padding:22px">
           <div class="perfil-hd">
             <div class="perfil-avatar" id="perfil-avatar-letter">?</div>
-            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-user" style="color:var(--granate);margin-right:8px"></i> Mi Perfil</h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0">Información personal y de cuenta</p></div>
+            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-user" style="color:var(--granate);margin-right:8px" id="perfil-card-icon"></i> <span id="perfil-card-title">Mi Perfil</span></h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0" id="perfil-card-desc">Información personal y de cuenta</p></div>
           </div>
           <form onsubmit="event.preventDefault();savePerfil()">
             <div class="row">
@@ -760,6 +777,32 @@
             <div class="mt-4" style="display:flex; gap:12px; align-items:center;">
               <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
               <button type="button" class="btn btn-secondary px-4" id="btn-perfil-volver" onclick="volverDePerfil()" style="display:none;">Volver</button>
+            </div>
+          </form>
+        </div></div>
+
+        <!-- Tarjeta de Configuración del Sistema (solo visible para administradores) -->
+        <div class="t-card admin-only" id="system-config-card" style="margin-top:20px; display:none;"><div style="padding:22px">
+          <div class="perfil-hd" style="border-bottom: 1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-cogs" style="color:var(--primary);margin-right:8px"></i> Configuración de Evaluación (Directores)</h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0">Administra el recuadro especial que aparece a los directores debajo de las tarjetas de cumplimiento.</p></div>
+          </div>
+          <form onsubmit="event.preventDefault();saveSystemSettings()">
+            <div class="row">
+              <div class="col-md-12 mb-3" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Activar recuadro de evaluación en el panel de Directores</label>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
+                <input type="text" class="form-control" id="config-box-title" placeholder="Ej: Formulario de Evaluación de Desempeño">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Enlace / URL de Redirección (Formulario, Evaluación, etc.)</label>
+                <input type="url" class="form-control" id="config-box-url" placeholder="https://forms.google.com/...">
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary px-4">Guardar Configuración</button>
             </div>
           </form>
         </div></div>
@@ -855,6 +898,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
-<script src="/js/app.js?v=1.1.5"></script>
+<script src="/js/app.js?v=1.1.6"></script>
 </body>
 </html>

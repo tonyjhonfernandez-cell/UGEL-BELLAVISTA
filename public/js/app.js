@@ -437,8 +437,9 @@ function buildSidebar() {
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
   }
 
+  var perfilLabel = (currentUser.rol === 'admin') ? 'Configuraciones' : 'Mi Perfil';
   html += '<div class="label">Cuenta</div>';
-  html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
+  html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> ' + perfilLabel + '</a>';
 
   nav.innerHTML = html;
 
@@ -495,6 +496,22 @@ function cambiarVista(vista, el) {
   if (vista === 'perfil' && currentUser) {
     var inits = currentUser.nombre.split(' ').map(function (w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
     document.getElementById('perfil-avatar-letter').textContent = inits;
+    
+    // Si es administrador, cambiar encabezados a "Configuraciones" y mostrar la tarjeta de configuración
+    if (currentUser.rol === 'admin') {
+      document.getElementById('perfil-title').textContent = 'Configuraciones';
+      document.getElementById('perfil-subtitle').textContent = 'Ajustes del sistema y de cuenta';
+      document.getElementById('perfil-card-title').textContent = 'Configuraciones';
+      document.getElementById('perfil-card-desc').textContent = 'Configuraciones del sistema y perfil';
+      document.getElementById('system-config-card').style.display = 'block';
+      loadSystemSettings(); // Cargar la configuración de evaluación desde la API
+    } else {
+      document.getElementById('perfil-title').textContent = 'Mi Perfil';
+      document.getElementById('perfil-subtitle').textContent = 'Información personal y configuración de cuenta';
+      document.getElementById('perfil-card-title').textContent = 'Mi Perfil';
+      document.getElementById('perfil-card-desc').textContent = 'Información personal y de cuenta';
+      document.getElementById('system-config-card').style.display = 'none';
+    }
   }
 }
 
@@ -616,6 +633,7 @@ function renderDonut(completadas, pendientes, vencidas, containerId) {
 // ===================== DIRECTOR MAIN VIEW =====================
 async function loadDirectorMain(ieCodigo) {
   try {
+    loadDirectorEvaluationSettings();
     var codigo = ieCodigo !== undefined ? ieCodigo : document.getElementById('dir-filter-codigo').value;
     if (!codigo) {
       document.getElementById('kpi-total').textContent = '0';
@@ -4354,4 +4372,64 @@ async function handleExcelImport(event) {
     event.target.value = '';
   };
   reader.readAsDataURL(file);
+}
+
+async function loadSystemSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
+    document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
+    document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
+  } catch(e) {
+    showToast('Error al cargar configuración: ' + e.message, 'error');
+  }
+}
+
+async function saveSystemSettings() {
+  try {
+    const active = document.getElementById('config-active-box').checked;
+    const title = document.getElementById('config-box-title').value.trim();
+    const url = document.getElementById('config-box-url').value.trim();
+    
+    if (active && (!title || !url)) {
+      showToast('Si activa el recuadro, debe ingresar el título y enlace', 'error');
+      return;
+    }
+    
+    await api('/api/system-settings', {
+      method: 'PUT',
+      body: {
+        active_evaluation_box: active,
+        evaluation_box_title: title,
+        evaluation_box_url: url
+      }
+    });
+    
+    showToast('Configuración del sistema guardada con éxito', 'success');
+  } catch(e) {
+    showToast('Error al guardar configuración: ' + e.message, 'error');
+  }
+}
+
+async function loadDirectorEvaluationSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    const evalBox = document.getElementById('dir-evaluation-box');
+    if (settings && settings.active_evaluation_box && settings.evaluation_box_url) {
+      document.getElementById('dir-eval-title').textContent = settings.evaluation_box_title || 'Evaluación de Actividad';
+      window._evaluationBoxUrl = settings.evaluation_box_url;
+      evalBox.style.display = 'flex';
+    } else {
+      evalBox.style.display = 'none';
+      window._evaluationBoxUrl = '';
+    }
+  } catch(e) {
+    console.error('Error al cargar configuración de evaluación:', e);
+  }
+}
+
+function openEvaluationLink() {
+  if (window._evaluationBoxUrl) {
+    window.open(window._evaluationBoxUrl, '_blank');
+  }
 }
