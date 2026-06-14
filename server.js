@@ -1630,7 +1630,7 @@ app.put('/api/perfil', authDirector, async (req, res) => {
 });
 
 // ===================== CONFIGURACIONES DEL SISTEMA =====================
-app.get('/api/system-settings', authDirector, async (req, res) => {
+app.get('/api/system-settings', async (req, res) => {
     try {
         const rows = await pool.query("SELECT * FROM system_settings");
         const settings = {};
