@@ -33,11 +33,11 @@ app.use(session({
 async function syncPasswords() {
     try {
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
-        // Solo para usuarios nuevos (password NULL/vacío) - no revertir cambios manuales
+        // Solo para usuarios nuevos o sin contraseña (password NULL/vacío)
         await pool.query(`
             UPDATE usuarios
-            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
-            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
+            SET password = COALESCE(NULLIF(TRIM(password),''), NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+            WHERE (password IS NULL OR password = '') AND usuario != 'admin'
         `);
     } catch(e) {
         console.error('Error en syncPasswords:', e.message);
@@ -50,42 +50,37 @@ async function runUserMigration() {
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100)");
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
 
-        // Asignar password = DNI donde falta (supervisores y directores)
+        // 1. Asignar usuario = DNI y password = DNI para todos los que tengan DNI (excepto el usuario 'admin')
         await pool.query(`
             UPDATE usuarios
-            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
-            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
+            SET usuario = TRIM(dni),
+                password = COALESCE(NULLIF(TRIM(password), ''), TRIM(dni))
+            WHERE dni IS NOT NULL AND TRIM(dni) != '' AND usuario != 'admin'
         `);
 
-        // Asignar usuario para directores donde falta
+        // 2. Elevar DNI '74223117' a rol 'admin' y asegurar que su usuario es su DNI
         await pool.query(`
             UPDATE usuarios
-            SET usuario = 'director.' || COALESCE(ie_codigo, id::text)
-            WHERE (usuario IS NULL OR usuario = '') AND rol = 'director'
+            SET rol = 'admin',
+                usuario = '74223117',
+                password = COALESCE(NULLIF(TRIM(password), ''), '74223117')
+            WHERE dni = '74223117'
         `);
 
-        // Asignar usuario para supervisores: primer_nombre.primer_apellido
-        const sups = await pool.query(
-            "SELECT id, nombre_completo FROM usuarios WHERE (usuario IS NULL OR usuario = '') AND rol = 'supervisor'"
-        );
-        for (const u of sups.rows) {
-            const parts = (u.nombre_completo || '').trim().toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            let base = parts.length >= 2 ? parts[0] + '.' + parts[1] : (parts[0] || 'supervisor');
-            let uname = base, cnt = 2;
-            while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
-                uname = base + cnt++;
-            }
-            await pool.query('UPDATE usuarios SET usuario = $1 WHERE id = $2', [uname, u.id]);
-        }
+        // 3. Asignar usuario para directores donde falta (si no tienen DNI)
+        await pool.query(`
+            UPDATE usuarios
+            SET usuario = 'director.' || COALESCE(ie_codigo, id::text),
+                password = COALESCE(NULLIF(TRIM(password), ''), COALESCE(ie_codigo, '12345678'))
+            WHERE (usuario IS NULL OR usuario = '' OR usuario LIKE 'director.%') AND rol = 'director' AND (dni IS NULL OR TRIM(dni) = '')
+        `);
 
-        // Crear/verificar admin
-        const adminR = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
+        // 4. Crear/verificar el usuario 'admin' (cuyo usuario es 'admin' y contraseña '1020')
+        const adminR = await pool.query("SELECT id FROM usuarios WHERE usuario = 'admin' LIMIT 1");
         if (adminR.rows.length === 0) {
-            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
+            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', '1020', true)");
         } else {
-            await pool.query("UPDATE usuarios SET usuario = COALESCE(NULLIF(usuario,''), 'admin'), password = COALESCE(NULLIF(password,''), 'admin') WHERE rol = 'admin'");
+            await pool.query("UPDATE usuarios SET usuario = 'admin', password = '1020' WHERE usuario = 'admin'");
         }
     } catch(e) {
         console.error('Error en runUserMigration:', e.message);
@@ -400,8 +395,8 @@ ensureDb()
 app.get('/api/migrate', async (req, res) => {
     try {
         await runUserMigration();
-        // Restablecer contraseña del admin a 'admin' siempre
-        await pool.query("UPDATE usuarios SET password = 'admin', usuario = 'admin' WHERE rol = 'admin'");
+        // Restablecer contraseña del admin a '1020' siempre (sólo para la cuenta 'admin')
+        await pool.query("UPDATE usuarios SET password = '1020', usuario = 'admin' WHERE usuario = 'admin'");
         const stats = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE usuario IS NOT NULL AND usuario != '') AS con_usuario,
@@ -514,19 +509,9 @@ app.get('/api/import-excel', async (req, res) => {
             
             if (!nombre || !dni) continue;
 
-            const parts = nombreCompleto.toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            
-            let uname = 'supervisor';
-            if (parts.length > 0) {
-                const primerNombre = parts[0];
-                const partsApellidos = apellidos.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-                const primerApellido = partsApellidos.length > 0 ? partsApellidos[0] : (parts.length > 1 ? parts[1] : 'sup');
-                uname = `${primerNombre}.${primerApellido}`;
-            }
+            let uname = dni || 'supervisor';
 
-            const existing = await pool.query("SELECT id FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
+            const existing = await pool.query("SELECT id, rol, password FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
             
             if (existing.rows.length > 0) {
                 const uId = existing.rows[0].id;
@@ -536,11 +521,14 @@ app.get('/api/import-excel', async (req, res) => {
                     finalUname = uname + (++c);
                 }
                 
+                // Si es el DNI 74223117 o ya era admin, mantener rol admin
+                const targetRol = (dni === '74223117' || existing.rows[0].rol === 'admin') ? 'admin' : 'supervisor';
+
                 await pool.query(`
                     UPDATE usuarios 
-                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = 'supervisor', usuario = $6, password = $7
-                    WHERE id = $8
-                `, [nombreCompleto, dependencia, puesto, celular, email, finalUname, dni, uId]);
+                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = $6, usuario = $7, password = COALESCE(NULLIF(TRIM(password), ''), $8)
+                    WHERE id = $9
+                `, [nombreCompleto, dependencia, puesto, celular, email, targetRol, finalUname, dni, uId]);
             } else {
                 let finalUname = uname;
                 let c = 1;
@@ -548,10 +536,12 @@ app.get('/api/import-excel', async (req, res) => {
                     finalUname = uname + (++c);
                 }
 
+                const targetRol = (dni === '74223117') ? 'admin' : 'supervisor';
+
                 await pool.query(`
                     INSERT INTO usuarios (nombre_completo, dni, rol, dependencia, puesto, telefono, email, usuario, password, activo)
-                    VALUES ($1, $2, 'supervisor', $3, $4, $5, $6, $7, $8, true)
-                `, [nombreCompleto, dni, dependencia, puesto, celular, email, finalUname, dni]);
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+                `, [nombreCompleto, dni, targetRol, dependencia, puesto, celular, email, finalUname, dni]);
             }
             supCount++;
         }
@@ -2039,6 +2029,190 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
         res.end();
     } catch (err) {
         console.error('Error export consolidado:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================== EXPORT EXCEL PLANTILLA MONITOREO =====================
+app.get('/api/actividades/:id/export-excel', authSupervisor, async (req, res) => {
+    try {
+        const actividadId = req.params.id;
+        const actividad = await db.prepare('SELECT titulo FROM actividades WHERE id = ?').get(actividadId);
+        if (!actividad) {
+            return res.status(404).json({ error: 'Actividad no encontrada' });
+        }
+
+        const query = `
+            SELECT ase.id as asignacion_id, ase.estado, ase.notas_supervisor,
+                   ie.codigo as ie_codigo, ie.nombre as ie_nombre
+            FROM asignaciones ase
+            INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            WHERE ase.actividad_id = ?
+            ORDER BY ie.nombre
+        `;
+        const rows = await db.prepare(query).all(actividadId);
+
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Control de Actividad');
+
+        ws.columns = [
+            { header: 'Cód. Modular', key: 'ie_codigo', width: 16 },
+            { header: 'Institución Educativa', key: 'ie_nombre', width: 44 },
+            { header: 'Estado (completada / inconclusa / pendiente)', key: 'estado', width: 36 },
+            { header: 'Observación (Obligatorio si está inconclusa)', key: 'notas_supervisor', width: 50 }
+        ];
+
+        // Format header row
+        ws.getRow(1).font = { name: 'Arial', family: 4, size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        ws.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '002060' }
+        };
+
+        rows.forEach(r => {
+            ws.addRow({
+                ie_codigo: r.ie_codigo,
+                ie_nombre: r.ie_nombre,
+                estado: r.estado || 'pendiente',
+                notas_supervisor: r.notas_supervisor || ''
+            });
+        });
+
+        ws.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) {
+                row.eachCell(cell => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+            }
+        });
+
+        const safeTitle = actividad.titulo.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="control_${safeTitle}.xlsx"`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error al exportar Excel:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================== IMPORT EXCEL CONTROL MONITOREO =====================
+app.post('/api/actividades/:id/import-excel', authSupervisor, async (req, res) => {
+    try {
+        const actividadId = req.params.id;
+        const { file } = req.body;
+        if (!file) {
+            return res.status(400).json({ error: 'No se recibió ningún archivo' });
+        }
+
+        const buffer = Buffer.from(file, 'base64');
+        const xlsx = require('xlsx');
+        const wb = xlsx.read(buffer, { type: 'buffer' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+
+        let codModularKey = '';
+        let estadoKey = '';
+        let observacionKey = '';
+
+        if (rows.length > 0) {
+            const keys = Object.keys(rows[0]);
+            codModularKey = keys.find(k => k.toLowerCase().includes('cód') || k.toLowerCase().includes('cod') || k.toLowerCase().includes('modular')) || keys[0];
+            estadoKey = keys.find(k => k.toLowerCase().includes('estado')) || keys[2];
+            observacionKey = keys.find(k => k.toLowerCase().includes('observa') || k.toLowerCase().includes('nota') || k.toLowerCase().includes('comentario')) || keys[3];
+        }
+
+        if (!codModularKey || !estadoKey) {
+            return res.status(400).json({ error: 'El archivo Excel no tiene el formato correcto. Debe tener columnas para "Cód. Modular" y "Estado".' });
+        }
+
+        let updatedCount = 0;
+        let errors = [];
+
+        const assignments = await db.prepare(`
+            SELECT ase.id, ie.codigo as ie_codigo, ase.estado, ase.director_id
+            FROM asignaciones ase
+            INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            WHERE ase.actividad_id = ?
+        `).all(actividadId);
+
+        const assignmentMap = new Map();
+        assignments.forEach(a => {
+            assignmentMap.set(a.ie_codigo.trim(), a);
+        });
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const ieCodigo = (row[codModularKey] || '').toString().trim();
+            if (!ieCodigo) continue;
+
+            const asig = assignmentMap.get(ieCodigo);
+            if (!asig) {
+                continue;
+            }
+
+            let rawEstado = (row[estadoKey] || '').toString().trim().toLowerCase();
+            let newEstado = asig.estado;
+            if (rawEstado.includes('complet')) {
+                newEstado = 'completada';
+            } else if (rawEstado.includes('inconcl') || rawEstado.includes('inconcluso')) {
+                newEstado = 'inconclusa';
+            } else if (rawEstado.includes('pendien')) {
+                newEstado = 'pendiente';
+            } else if (rawEstado.includes('no cumpl') || rawEstado.includes('no_cumpl')) {
+                newEstado = 'no_cumplida';
+            }
+
+            let obs = (row[observacionKey] || '').toString().trim();
+
+            if (newEstado === 'inconclusa' && !obs) {
+                errors.push(`Fila ${i + 2} (IE ${ieCodigo}): El estado es "inconclusa" pero no tiene observación.`);
+                continue;
+            }
+
+            const fecha = newEstado === 'completada' ? new Date().toISOString() : null;
+
+            await db.prepare(
+                'UPDATE asignaciones SET estado = ?, notas_supervisor = ?, fecha_completado = ? WHERE id = ?'
+            ).run(newEstado, obs || null, fecha, asig.id);
+
+            if (newEstado !== asig.estado && asig.director_id) {
+                try {
+                    const act = await db.prepare('SELECT titulo FROM actividades WHERE id = ?').get(actividadId);
+                    const mensaje = newEstado === 'completada'
+                        ? `Tu actividad "${act?.titulo}" fue marcada como completada`
+                        : `Tu actividad "${act?.titulo}" fue marcada como inconclusa / no cumplida`;
+                    await db.prepare(
+                        'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
+                    ).run(asig.director_id, `Actividad ${newEstado}`, mensaje, 'estado');
+                } catch (e) {
+                    console.error('Error enviando notificación en import excel:', e);
+                }
+            }
+
+            updatedCount++;
+        }
+
+        res.json({
+            ok: true,
+            mensaje: `Se actualizaron ${updatedCount} asignaciones con éxito.`,
+            updatedCount,
+            errors
+        });
+
+    } catch (err) {
+        console.error('Error al importar Excel:', err);
         res.status(500).json({ error: err.message });
     }
 });

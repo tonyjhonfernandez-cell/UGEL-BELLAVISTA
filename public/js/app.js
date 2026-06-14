@@ -1829,6 +1829,9 @@ function openMonModal(actId) {
   var grp = monitoreoData[actId];
   if (!grp) return;
 
+  window._monCurrentActId = actId;
+  window._monCurrentGroup = grp;
+
   // Header info
   var infoHtml = '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">' +
     '<div style="flex:1;min-width:200px;">' +
@@ -4305,4 +4308,50 @@ function capDescargarPDF() {
   } else {
     alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
   }
+}
+
+async function handleExcelImport(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    var base64 = e.target.result.split(',')[1];
+    var statusSpan = document.getElementById('import-excel-status');
+    statusSpan.textContent = 'Procesando archivo...';
+    statusSpan.style.color = 'var(--primary)';
+
+    try {
+      var res = await api('/api/actividades/' + window._monCurrentActId + '/import-excel', {
+        method: 'POST',
+        body: { file: base64 }
+      });
+
+      if (res.ok) {
+        statusSpan.textContent = '¡Actualizado!';
+        statusSpan.style.color = 'var(--success)';
+        showToast(res.mensaje, 'success');
+
+        if (res.errors && res.errors.length > 0) {
+          // Si hubo algunos errores de validación, alertar al usuario
+          alert('Algunas filas no pudieron ser procesadas:\n\n' + res.errors.join('\n'));
+        }
+
+        // Refrescar lista de monitoreo y reabrir modal
+        await loadMonitoreo();
+        openMonModal(window._monCurrentActId);
+      } else {
+        statusSpan.textContent = 'Error al procesar.';
+        statusSpan.style.color = 'var(--danger)';
+        showToast(res.error || 'Error en el servidor', 'error');
+      }
+    } catch(err) {
+      statusSpan.textContent = 'Error.';
+      statusSpan.style.color = 'var(--danger)';
+      showToast('Error: ' + err.message, 'error');
+    }
+    // Limpiar input
+    event.target.value = '';
+  };
+  reader.readAsDataURL(file);
 }
