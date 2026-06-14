@@ -286,11 +286,11 @@ async function login() {
     const data = await api('/api/login', { method: 'POST', body: { usuario, password } });
     currentUser = data.usuario || data.user;
     if (currentUser.rol === 'director') {
-      err.textContent = 'Acceso denegado: los directores no pueden iniciar sesión aquí. Use el panel público.';
-      err.style.display = 'block';
-      currentUser = null;
-      return;
-    }
+    html += '<div class="label">Principal</div>';
+    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
+
+  }
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-shell').style.display = 'block';
     initSupervisorApp();
@@ -422,7 +422,6 @@ function buildSidebar() {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
-    html += '<a href="#" data-view="pimmer-list" onclick="cambiarVista(\'pimmer-list\',this)"><i class="fas fa-file-invoice"></i> PIMMER</a>';
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
@@ -435,6 +434,7 @@ function buildSidebar() {
       html += '<div class="label">Gestión</div>';
       html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
     }
+    html += '<a href="#" data-view="pimmer-list" onclick="cambiarVista(\'pimmer-list\',this)"><i class="fas fa-file-invoice"></i> PIMMER</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
   }
 
@@ -5029,8 +5029,8 @@ function regenerarEspaciosPorNivelesPimmer(nivelesActivos) {
                  '<td style="font-weight:600;">' + i.nom + '</td>' +
                  '<td>' +
                    '<div class="radio-group">' +
-                     '<label><input type="radio" name="p_pres_' + i.id + '" value="Si" onchange="toggleEspacioPimmer(\'/' + i.id + '\')"> Sí</label>' +
-                     '<label><input type="radio" name="p_pres_' + i.id + '" value="No" onchange="toggleEspacioPimmer(\'/' + i.id + '\')"> No</label>' +
+                     '<label><input type="radio" name="p_pres_' + i.id + '" value="Si" onchange="toggleEspacioPimmer(\'' + i.id + '\')"> Sí</label>' +
+                     '<label><input type="radio" name="p_pres_' + i.id + '" value="No" onchange="toggleEspacioPimmer(\'' + i.id + '\')"> No</label>' +
                    '</div>' +
                  '</td>' +
                  '<td>' +
