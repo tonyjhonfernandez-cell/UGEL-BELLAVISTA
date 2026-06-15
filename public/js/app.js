@@ -1756,6 +1756,7 @@ async function loadMonitoreo() {
           fecha_limite: a.fecha_limite,
           link_url: a.link_url || '',
           asignador_nombre: a.asignador_nombre,
+          asignador_id: a.asignador_id,
           area: a.area,
           ies: []
         };
@@ -1791,11 +1792,15 @@ async function loadMonitoreo() {
       var pctN = total > 0 ? (noCumplidas/total*100).toFixed(1) : 0;
       var pctP = total > 0 ? (pendientes/total*100).toFixed(1) : 0;
 
+      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id === grp.asignador_id));
+      var editBtn = canEdit ? '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad" style="padding:5px 8px;"><i class="fas fa-pen"></i></button>' : '';
+      var checkboxHtml = canEdit ? '<input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onclick="event.stopPropagation()" onchange="updateBulkDeleteButtonState()" style="width:14px;height:14px;accent-color:var(--primary);flex-shrink:0;">' : '<div style="width:14px;height:14px;flex-shrink:0;"></div>';
+
       html += '<div class="mon-act-card">' +
         '<div class="mon-act-hd" onclick="openMonModal(' + grp.id + ')">' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
-              '<input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onclick="event.stopPropagation()" onchange="updateBulkDeleteButtonState()" style="width:14px;height:14px;accent-color:var(--primary);flex-shrink:0;">' +
+              checkboxHtml +
               '<span class="act-title">' + grp.titulo + '</span>' +
             '</div>' +
             '<div class="act-meta">Por: ' + (grp.asignador_nombre || '-') + (grp.area ? ' · ' + grp.area : '') + ' &nbsp;·&nbsp; <span style="color:var(--text2);font-weight:700;">' + completadas + ' completadas · ' + pendientes + ' pendientes · ' + inconclusas + ' inconclusas de ' + total + '</span></div>' +
@@ -1812,7 +1817,7 @@ async function loadMonitoreo() {
               '<div style="font-size:1.1rem;font-weight:800;color:' + pctColor + ';">' + pct + '%</div>' +
               '<div style="font-size:.62rem;color:var(--text3);font-weight:600;">cumplim.</div>' +
             '</div>' +
-            '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad" style="padding:5px 8px;"><i class="fas fa-pen"></i></button>' +
+            editBtn +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1866,11 +1871,16 @@ function renderMonModalRows(ies, filter) {
       var badgeCls = ie.estado === 'completada' ? 'badge-completada' : ie.estado === 'no_cumplida' ? 'badge-no_cumplida' : ie.estado === 'inconclusa' ? 'badge-inconclusa' : 'badge-pendiente';
       var badge = '<span class="badge ' + badgeCls + '">' + (ie.estado || 'pendiente').replace('_',' ').toUpperCase() + '</span>';
       var btns = '';
-      if (ie.estado !== 'completada') {
-        btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';
+      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id === ie.asignador_id));
+      if (canEdit) {
+        if (ie.estado !== 'completada') {
+          btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';
+        }
+        btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-minus-circle"></i></button>';
+        btns += '<button class="btn btn-xs btn-danger" style="padding:5px 8px;" onclick="monModalEliminar(' + ie.id + ',' + ie.actividad_id + ')" title="Eliminar asignación"><i class="fas fa-trash-alt"></i></button>';
+      } else {
+        btns = '<span style="font-size:0.75rem; color:var(--text3);"><i class="fas fa-lock" title="No puedes editar actividades de otros"></i></span>';
       }
-      btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-minus-circle"></i></button>';
-      btns += '<button class="btn btn-xs btn-danger" style="padding:5px 8px;" onclick="monModalEliminar(' + ie.id + ',' + ie.actividad_id + ')" title="Eliminar asignación"><i class="fas fa-trash-alt"></i></button>';
       html += '<tr>' +
         '<td style="padding:10px 22px;">' +
           '<div style="font-weight:700;font-size:.82rem;color:var(--text1);">' + (ie.ie_nombre || '-') + '</div>' +
