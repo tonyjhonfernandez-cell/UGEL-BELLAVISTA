@@ -4313,23 +4313,21 @@ async function loadCalendario() {
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
   try {
-    var acts = await api('/api/actividades');
-    var events = acts.map(function(a) {
-      var pct = a.total_asignaciones > 0 ? (a.completadas / a.total_asignaciones) * 100 : 0;
-      var color = pct >= 80 ? 'var(--success)' : pct > 0 ? 'var(--warning)' : 'var(--primary)';
-      
-      var end = new Date(a.fecha_limite);
-      end.setDate(end.getDate() + 1);
-      var endStr = end.toISOString().split('T')[0];
+    var eventos = await api('/api/calendario/eventos');
+    var events = eventos.map(function(e) {
+      var color = 'var(--primary)';
+      if (e.estado === 'Cumplida') color = 'var(--success)';
+      else if (e.estado === 'En Proceso') color = 'var(--warning)';
 
       return {
-        id: a.id,
-        title: a.titulo,
-        start: a.fecha_inicio || a.fecha_limite,
-        end: endStr,
-        allDay: true,
+        id: e.id,
+        title: e.title,
+        start: e.start,
+        end: e.end !== (e.fecha + 'T') ? e.end : undefined,
+        allDay: e.start.endsWith('T') || e.start.endsWith('T00:00'),
         backgroundColor: color,
-        borderColor: color
+        borderColor: color,
+        extendedProps: e
       };
     });
 
@@ -4350,15 +4348,87 @@ async function loadCalendario() {
         list: 'Lista'
       },
       eventClick: function(info) {
-        cambiarVista('monitoreo');
-        setTimeout(function() {
-          openMonModal(parseInt(info.event.id));
-        }, 500);
+        abrirModalEvento(info.event.extendedProps);
       }
     });
     calendar.render();
   } catch (e) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
+  }
+}
+
+// ==================== CALENDARIO EVENTOS (SUPERVISORES) ====================
+let modalEvento;
+
+function abrirModalEvento(evento) {
+  if (!modalEvento) modalEvento = new bootstrap.Modal(document.getElementById('modalEventoCalendario'));
+  var form = document.getElementById('formEventoCalendario');
+  form.reset();
+  
+  if (evento && evento.id) {
+    document.getElementById('modalEventoTitle').innerText = 'Editar Evento';
+    document.getElementById('evId').value = evento.id;
+    document.getElementById('evTitulo').value = evento.title || '';
+    document.getElementById('evDescripcion').value = evento.descripcion || '';
+    document.getElementById('evEstado').value = evento.estado || 'Pendiente';
+    
+    var d = (evento.start || '').split('T');
+    document.getElementById('evFecha').value = d[0] || '';
+    document.getElementById('evHoraInicio').value = d[1] || '';
+    
+    var e = (evento.end || '').split('T');
+    document.getElementById('evHoraFin').value = e[1] || '';
+    
+    document.getElementById('evArea').value = evento.area || '';
+    document.getElementById('btnEliminarEvento').style.display = 'block';
+  } else {
+    document.getElementById('modalEventoTitle').innerText = 'Nuevo Evento';
+    document.getElementById('evId').value = '';
+    document.getElementById('btnEliminarEvento').style.display = 'none';
+  }
+  modalEvento.show();
+}
+
+async function guardarEvento() {
+  var id = document.getElementById('evId').value;
+  var payload = {
+    titulo: document.getElementById('evTitulo').value,
+    fecha: document.getElementById('evFecha').value,
+    hora_inicio: document.getElementById('evHoraInicio').value,
+    hora_fin: document.getElementById('evHoraFin').value,
+    descripcion: document.getElementById('evDescripcion').value,
+    area: document.getElementById('evArea').value,
+    estado: document.getElementById('evEstado').value
+  };
+
+  if (!payload.titulo || !payload.fecha) {
+    alert('Por favor ingrese al menos el Título y la Fecha.');
+    return;
+  }
+
+  try {
+    if (id) {
+      await api('/api/calendario/eventos/' + id, 'PUT', payload);
+    } else {
+      await api('/api/calendario/eventos', 'POST', payload);
+    }
+    modalEvento.hide();
+    loadCalendario();
+  } catch(e) {
+    alert('Error al guardar evento: ' + e.message);
+  }
+}
+
+async function eliminarEvento() {
+  var id = document.getElementById('evId').value;
+  if (!id) return;
+  if (!confirm('¿Seguro que desea eliminar este evento?')) return;
+  try {
+    await api('/api/calendario/eventos/' + id, 'DELETE');
+    modalEvento.hide();
+    loadCalendario();
+  } catch(e) {
+    alert('Error al eliminar evento: ' + e.message);
   }
 }
 

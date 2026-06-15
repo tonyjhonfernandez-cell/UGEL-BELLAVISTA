@@ -285,6 +285,20 @@ async function initDatabase() {
             created_at TIMESTAMP DEFAULT NOW()
         );
 
+        CREATE TABLE IF NOT EXISTS eventos_calendario (
+            id SERIAL PRIMARY KEY,
+            supervisor_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+            titulo TEXT NOT NULL,
+            descripcion TEXT,
+            estado VARCHAR(20) DEFAULT 'Pendiente',
+            fecha DATE NOT NULL,
+            hora_inicio TIME DEFAULT '',
+            hora_fin TIME DEFAULT '',
+            area TEXT DEFAULT '',
+            sub_area TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+
         CREATE TABLE IF NOT EXISTS notificaciones (
             id SERIAL PRIMARY KEY,
             usuario_id INTEGER REFERENCES usuarios(id),
@@ -2407,13 +2421,90 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
     }
 });
 
+// ==================== CALENDARIO PERSONAL (SUPERVISORES) ====================
+
+app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        // As per user's request "únicas entre supervisores", we filter by supervisor_id
+        const eventos = await db.prepare(`
+            SELECT id, titulo as title, fecha || 'T' || hora_inicio as start, 
+                   fecha || 'T' || hora_fin as end,
+                   estado, descripcion, area, sub_area
+            FROM eventos_calendario
+            WHERE supervisor_id = ?
+        `).all(userId);
+        res.json(eventos);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
+    try {
+        const { titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area } = req.body;
+        const supervisor_id = req.session.user.id;
+        const result = await db.prepare(`
+            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, hora_inicio || '00:00', hora_fin || '00:00', area || '', sub_area || '');
+        res.json({ success: true, id: result.id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const supervisor_id = req.session.user.id;
+        const { titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area } = req.body;
+        
+        // Verifica que le pertenezca
+        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ? AND supervisor_id = ?').get(id, supervisor_id);
+        if (!ev) return res.status(403).json({ error: 'No autorizado' });
+
+        if (titulo) {
+            await db.prepare(`
+                UPDATE eventos_calendario 
+                SET titulo=?, descripcion=?, estado=?, fecha=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?
+                WHERE id=?
+            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, hora_inicio || '00:00', hora_fin || '00:00', area || '', sub_area || '', id);
+        } else if (estado) {
+            // Solo estado
+            await db.prepare('UPDATE eventos_calendario SET estado=? WHERE id=?').run(estado, id);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
+    try {
+        const id = parseInt(req.params.id);
+        const supervisor_id = req.session.user.id;
+        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ? AND supervisor_id = ?').get(id, supervisor_id);
+        if (!ev) return res.status(403).json({ error: 'No autorizado' });
+
+        await db.prepare('DELETE FROM eventos_calendario WHERE id=?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
     try {
-        const actividades = await db.prepare(`
-            SELECT a.*, u.dependencia as area, u.nombre_completo as asignador_nombre
-            FROM actividades a
-            LEFT JOIN usuarios u ON a.asignador_id = u.id
-            ORDER BY u.dependencia, a.fecha_limite ASC
+        const eventos = await db.prepare(`
+            SELECT e.*, u.dependencia as area_usuario, u.nombre_completo as asignador_nombre
+            FROM eventos_calendario e
+            LEFT JOIN usuarios u ON e.supervisor_id = u.id
+            ORDER BY COALESCE(NULLIF(e.area, ''), u.dependencia), e.fecha ASC
         `).all();
 
         const ExcelJS = require('exceljs');
@@ -2421,17 +2512,17 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
         workbook.creator = 'UGEL';
         
         const areasMap = {};
-        actividades.forEach(a => {
-            const area = a.area || 'Sin Área';
+        eventos.forEach(e => {
+            const area = e.area || e.area_usuario || 'Sin Área';
             if (!areasMap[area]) areasMap[area] = [];
-            areasMap[area].push(a);
+            areasMap[area].push(e);
         });
 
         // Hoja de Resumen
         const resumenSheet = workbook.addWorksheet('Resumen');
         resumenSheet.columns = [
             { header: 'Área', key: 'area', width: 30 },
-            { header: 'Total Actividades', key: 'total', width: 20 }
+            { header: 'Total Eventos', key: 'total', width: 20 }
         ];
         resumenSheet.getRow(1).font = { bold: true };
 
@@ -2444,24 +2535,26 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
             sheet.columns = [
                 { header: 'ID', key: 'id', width: 10 },
                 { header: 'Título', key: 'titulo', width: 40 },
-                { header: 'Fecha Inicio', key: 'inicio', width: 15 },
-                { header: 'Fecha Límite', key: 'limite', width: 15 },
-                { header: 'Asignador', key: 'asignador', width: 30 }
+                { header: 'Fecha', key: 'fecha', width: 15 },
+                { header: 'Horario', key: 'horario', width: 20 },
+                { header: 'Supervisor', key: 'supervisor', width: 30 },
+                { header: 'Estado', key: 'estado', width: 15 }
             ];
             sheet.getRow(1).font = { bold: true };
             acts.forEach(a => {
                 sheet.addRow({
                     id: a.id,
                     titulo: a.titulo,
-                    inicio: a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString('es-PE') : '-',
-                    limite: a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-',
-                    asignador: a.asignador_nombre
+                    fecha: a.fecha ? new Date(a.fecha).toLocaleDateString('es-PE') : '-',
+                    horario: (a.hora_inicio || '') + ' - ' + (a.hora_fin || ''),
+                    supervisor: a.asignador_nombre,
+                    estado: a.estado
                 });
             });
         }
 
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename="actividades_por_areas.xlsx"');
+        res.setHeader('Content-Disposition', 'attachment; filename="eventos_calendario_areas.xlsx"');
         await workbook.xlsx.write(res);
         res.end();
     } catch (err) {
