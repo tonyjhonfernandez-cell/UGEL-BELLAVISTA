@@ -4432,16 +4432,13 @@ function abrirModalEvento(evento) {
   if (isEdit) title = 'Editar Evento';
   
   var evId = isEdit ? evento.id : '';
-  var evTitulo = isEdit ? (evento.title || '') : '';
+  var evTitulo = isEdit ? (evento.titulo || '') : '';
   var evDescripcion = isEdit ? (evento.descripcion || '') : '';
   var evEstado = isEdit ? (evento.estado || 'Pendiente') : 'Pendiente';
   
-  var d = isEdit ? (evento.start || '').split('T') : ['', ''];
-  var evFecha = d[0] || '';
-  var evHoraInicio = d[1] || '';
-  
-  var e = isEdit ? (evento.end || '').split('T') : ['', ''];
-  var evHoraFin = e[1] || '';
+  var evFecha = isEdit ? (evento.fecha || '') : '';
+  var evHoraInicio = isEdit ? (evento.hora_inicio || '') : '';
+  var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
   
   var evArea = isEdit ? (evento.area || '') : '';
 

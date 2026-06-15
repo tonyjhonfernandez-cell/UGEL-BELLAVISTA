@@ -731,10 +731,11 @@
         
         <div class="page-hd" style="margin-bottom: 10px;"><h2>Mi Calendario</h2><span>Visualización y gestión de actividades</span></div>
         
-        <!-- Botones Horizontales -->
-        <div style="display:flex; gap:15px; flex-wrap: wrap; margin-bottom: 20px;">
-           <button class="btn btn-success" onclick="abrirModalEvento()" style="padding:12px 20px; font-size:0.9rem; border-radius:8px;"><i class="fas fa-plus-circle" style="margin-right:6px;"></i> Registrar Nueva Actividad</button>
-           <button class="btn" style="background-color:#10b981; color:white; border:none; padding:12px 20px; font-size:0.9rem; border-radius:8px;" onclick="descargarExcelAreas()"><i class="fas fa-file-excel" style="margin-right:6px;"></i> Descargar Excel por Áreas</button>
+        <!-- Botones Horizontales Premium -->
+        <div style="display:flex; gap:15px; flex-wrap: wrap; margin-bottom: 24px;">
+           <button onclick="abrirModalEvento()" style="background: linear-gradient(135deg, #7A1E2C 0%, #9c2840 100%); color: white; border: none; padding: 12px 24px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; box-shadow: 0 4px 15px rgba(122, 30, 44, 0.3); cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(122, 30, 44, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(122, 30, 44, 0.3)';"><i class="fas fa-plus-circle"></i> Registrar Nueva Actividad</button>
+           
+           <button onclick="descargarExcelAreas()" style="background: white; color: #7A1E2C; border: 2px solid #7A1E2C; padding: 12px 24px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='#fff0f2'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='white'; this.style.transform='none';"><i class="fas fa-file-excel"></i> Descargar Excel por Áreas</button>
         </div>
 
         <div class="cal-premium-wrapper">

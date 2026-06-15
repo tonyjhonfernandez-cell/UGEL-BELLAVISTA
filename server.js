@@ -2428,7 +2428,8 @@ app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
         const userId = req.session.user.id;
         // As per user's request "únicas entre supervisores", we filter by supervisor_id
         const eventos = await db.prepare(`
-            SELECT id, titulo as title, fecha || 'T' || hora_inicio as start, 
+            SELECT id, titulo, titulo as title, fecha, hora_inicio, hora_fin,
+                   fecha || 'T' || hora_inicio as start, 
                    fecha || 'T' || hora_fin as end,
                    estado, descripcion, area, sub_area
             FROM eventos_calendario
