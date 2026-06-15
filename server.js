@@ -1197,7 +1197,7 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
         if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id !== actividad.asignador_id) {
+        if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para editar esta actividad' });
         }
 
@@ -1259,7 +1259,7 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         const asigCheck = await db.prepare('SELECT a.asignador_id FROM asignaciones ase JOIN actividades a ON ase.actividad_id = a.id WHERE ase.id = ?').get(req.params.id);
         if (!asigCheck) return res.status(404).json({ error: 'Asignación no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id !== asigCheck.asignador_id) {
+        if (!isSuperAdminAct && req.session.user.id != asigCheck.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para cambiar el estado de esta actividad' });
         }
 
@@ -1291,7 +1291,7 @@ app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
         if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id !== actividad.asignador_id) {
+        if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
         }
         await db.prepare('DELETE FROM actividades WHERE id = ?').run(req.params.id);
@@ -1310,7 +1310,7 @@ app.post('/api/actividades/bulk-delete', authSupervisor, async (req, res) => {
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         for (const id of ids) {
             const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(id);
-            if (actividad && (isSuperAdminAct || req.session.user.id === actividad.asignador_id)) {
+            if (actividad && (isSuperAdminAct || req.session.user.id == actividad.asignador_id)) {
                 await db.prepare('DELETE FROM actividades WHERE id = ?').run(id);
             }
         }
