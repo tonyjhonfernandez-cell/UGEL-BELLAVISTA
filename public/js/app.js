@@ -425,6 +425,7 @@ function buildSidebar() {
   }
 
   html += '<div class="label">Cuenta</div>';
+  html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
   html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
 
   nav.innerHTML = html;
@@ -496,6 +497,7 @@ function loadViewData(vista) {
     case 'directores': loadDirectores(); break;
     case 'ies': loadIEs(); break;
     case 'notificaciones': loadNotificaciones(); loadDirectoresForNotif(); break;
+    case 'calendario': loadCalendario(); break;
     case 'perfil': loadPerfil(); break;
     case 'admin-usuarios': loadAdminUsuarios(); break;
     case 'cap': capInitView(); break;
@@ -4301,5 +4303,61 @@ function capDescargarPDF() {
     html2pdf().set(opt).from(el).save();
   } else {
     alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
+  }
+}
+// ===================== CALENDARIO =====================
+let calendar = null;
+
+async function loadCalendario() {
+  var container = document.getElementById('calendar-container');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+  try {
+    var acts = await api('/api/actividades');
+    var events = acts.map(function(a) {
+      var pct = a.total_asignaciones > 0 ? (a.completadas / a.total_asignaciones) * 100 : 0;
+      var color = pct >= 80 ? 'var(--success)' : pct > 0 ? 'var(--warning)' : 'var(--primary)';
+      
+      var end = new Date(a.fecha_limite);
+      end.setDate(end.getDate() + 1);
+      var endStr = end.toISOString().split('T')[0];
+
+      return {
+        id: a.id,
+        title: a.titulo,
+        start: a.fecha_inicio || a.fecha_limite,
+        end: endStr,
+        allDay: true,
+        backgroundColor: color,
+        borderColor: color
+      };
+    });
+
+    container.innerHTML = '';
+    calendar = new FullCalendar.Calendar(container, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,listMonth'
+      },
+      events: events,
+      locale: 'es',
+      buttonText: {
+        today: 'Hoy',
+        month: 'Mes',
+        week: 'Semana',
+        list: 'Lista'
+      },
+      eventClick: function(info) {
+        cambiarVista('monitoreo');
+        setTimeout(function() {
+          openMonModal(parseInt(info.event.id));
+        }, 500);
+      }
+    });
+    calendar.render();
+  } catch (e) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
   }
 }

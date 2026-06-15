@@ -2482,3 +2482,8 @@ body.director-mode #app-shell {
   box-shadow: var(--shadow-md), 0 12px 24px rgba(99, 102, 241, 0.04) !important;
   transform: translateY(-2px);
 }
+
+
+/* FullCalendar Overrides */
+.fc .fc-button-primary { background-color: var(--primary); border-color: var(--primary); }
+.fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--primary-hover); border-color: var(--primary-hover); }
