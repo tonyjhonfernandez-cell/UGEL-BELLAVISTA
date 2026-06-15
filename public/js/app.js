@@ -4318,8 +4318,13 @@ async function loadCalendario() {
     var eventos = await api('/api/calendario/eventos');
     var events = eventos.map(function(e) {
       var color = 'var(--primary)';
-      if (e.estado === 'Cumplida') color = 'var(--success)';
-      else if (e.estado === 'En Proceso') color = 'var(--warning)';
+      var textC = '#ffffff';
+      if (e.estado === 'Cumplida') {
+          color = 'var(--success)';
+      } else if (e.estado === 'En Proceso') {
+          color = 'var(--warning)';
+          textC = '#000000';
+      }
 
       let finalEnd = e.end || undefined;
       if (e.fecha_fin_actividad) {
@@ -4344,6 +4349,7 @@ async function loadCalendario() {
         allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
         backgroundColor: color,
         borderColor: color,
+        textColor: textC,
         extendedProps: e
       };
     });

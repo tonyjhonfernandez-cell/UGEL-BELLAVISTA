@@ -413,7 +413,7 @@
             box-shadow: 0 6px 20px rgba(0,0,0,0.25) !important;
             transform: translateY(-1px) !important;
         }
-        .fc .fc-event .fc-event-main { padding: 4px 8px !important; border-radius: 12px !important; color: white !important; }
+        .fc .fc-event .fc-event-main { padding: 4px 8px !important; border-radius: 12px !important; }
         .fc .fc-event .fc-event-main-frame { border-radius: 12px !important; }
         .fc .fc-event.fc-short-event {
             border-radius: 8px !important;

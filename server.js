@@ -2429,6 +2429,16 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
 
 app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
     try {
+        const userId = req.session.user.id;
+        const userRol = req.session.user.rol;
+        let whereClause = '';
+        let params = [];
+        
+        if (userRol !== 'admin') {
+            whereClause = 'WHERE e.supervisor_id = ?';
+            params.push(userId);
+        }
+
         const eventos = await db.prepare(`
             SELECT e.id, e.supervisor_id, e.titulo, e.titulo as title, e.fecha, e.fecha_fin_actividad, e.hora_inicio, e.hora_fin,
                    e.fecha || CASE WHEN e.hora_inicio IS NOT NULL THEN 'T' || e.hora_inicio ELSE '' END as start,
@@ -2437,7 +2447,8 @@ app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
                    u.nombre_completo as creador
             FROM eventos_calendario e
             JOIN usuarios u ON e.supervisor_id = u.id
-        `).all();
+            ${whereClause}
+        `).all(...params);
         res.json(eventos);
     } catch (err) {
         console.error(err);
