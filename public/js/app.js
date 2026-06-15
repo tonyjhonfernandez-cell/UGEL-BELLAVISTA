@@ -4325,8 +4325,8 @@ async function loadCalendario() {
         id: e.id,
         title: e.title,
         start: e.start,
-        end: e.end !== (e.fecha + 'T') ? e.end : undefined,
-        allDay: e.start.endsWith('T') || e.start.endsWith('T00:00'),
+        end: e.end || undefined,
+        allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
         backgroundColor: color,
         borderColor: color,
         extendedProps: e
@@ -4436,7 +4436,7 @@ function abrirModalEvento(evento) {
   var evDescripcion = isEdit ? (evento.descripcion || '') : '';
   var evEstado = isEdit ? (evento.estado || 'Pendiente') : 'Pendiente';
   
-  var evFecha = isEdit ? (evento.fecha || '') : '';
+  var evFecha = isEdit ? (evento.fecha ? evento.fecha.toString().split('T')[0] : '') : '';
   var evHoraInicio = isEdit ? (evento.hora_inicio || '') : '';
   var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
   
