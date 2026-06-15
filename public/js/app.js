@@ -4361,10 +4361,10 @@ async function loadCalendario() {
       initialView: 'timeGridWeek',
       headerToolbar: false,
       expandRows: true,
-      height: 'auto',
+      height: 500,
       contentHeight: 'auto',
       slotMinTime: '06:00:00',
-      slotMaxTime: '18:00:00',
+      slotMaxTime: '21:00:00',
       events: events,
       locale: 'es',
       eventClick: function(info) {

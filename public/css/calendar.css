@@ -389,7 +389,7 @@
         /* Time grid */
         .fc .fc-timegrid-body { border-top: none !important; }
         .fc .fc-timegrid-slots td { border-color: #f0f2ff !important; border-left: 1px solid #f0f2ff !important; }
-        .fc .fc-timegrid-slots tr { height: 52px !important; }
+        .fc .fc-timegrid-slots tr { height: 20px !important; }
         .fc .fc-timegrid-axis-cushion { font-size: 11px !important; color: #bbb !important; font-weight: 500 !important; padding-right: 8px !important; }
         .fc .fc-timegrid-slot-label { border-right: 1px solid #f0f2ff !important; background: #fafbff !important; }
         .fc .fc-timegrid-slot-label-cushion { font-size: 11px !important; color: #bbb !important; font-weight: 500 !important; }
