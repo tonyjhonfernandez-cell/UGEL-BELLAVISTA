@@ -398,18 +398,7 @@ function buildSidebar() {
   var ft = document.getElementById('sidebar-footer');
   if (!currentUser) return;
 
-  // Brand header
-  var brandHtml = '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px 18px;">' +
-    '<div style="width:34px;height:34px;background:var(--sidebar-active-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-      '<i class="fas fa-graduation-cap" style="color:var(--sidebar-active);font-size:.9rem;"></i>' +
-    '</div>' +
-    '<div style="flex:1;min-width:0;">' +
-      '<div style="font-size:.78rem;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">UGEL Bellavista</div>' +
-      '<div style="font-size:.62rem;color:#64748b;font-weight:500;">Sistema de Monitoreo</div>' +
-    '</div>' +
-  '</div>';
-
-  let html = brandHtml;
+  let html = '';
 
   if (currentUser.rol === 'admin') {
     html += '<div class="label">Administración</div>';
