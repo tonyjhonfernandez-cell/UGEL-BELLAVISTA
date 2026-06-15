@@ -4360,7 +4360,9 @@ async function loadCalendario() {
     calendar = new FullCalendar.Calendar(container, {
       initialView: 'timeGridWeek',
       headerToolbar: false,
-      height: 'auto',
+      height: '100%',
+      expandRows: true,
+      slotDuration: '01:00:00',
       slotMinTime: '06:00:00',
       slotMaxTime: '21:00:00',
       events: events,
