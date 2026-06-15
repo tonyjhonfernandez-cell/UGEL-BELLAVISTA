@@ -2321,13 +2321,30 @@ body.director-mode #app-shell {
 
 @media(max-width: 768px) {
   .dir-kpis { grid-template-columns: repeat(2, 1fr); }
-  .dir-header { flex-direction: column; text-align: center; padding: 18px; gap: 14px; }
-  .dir-header h1 { font-size: 1.35rem; width: 100%; order: 1; margin-top: 0; }
-  .dir-header .dh-left { order: 2; justify-content: center; width: 100%; }
-  .dir-header .dh-right { order: 3; justify-content: center; width: 100%; }
-  .dir-body { padding: 12px 16px; }
+  .dir-header { flex-direction: column; text-align: center; padding: 14px 12px; gap: 10px; }
+  .dir-header h1 { font-size: 1.1rem; width: 100%; margin-top: 0; }
+  .dir-header .dh-left { justify-content: center; width: 100%; }
+  .dir-header .dh-right { justify-content: center; width: 100%; }
+  .dir-body { padding: 10px 12px 20px; }
   .dir-kpi { padding: 10px; }
-  .dir-kpi .kpi-number { font-size: 1.95rem; }
+  .dir-kpi .kpi-number { font-size: 1.7rem; }
+
+  /* Filter panel goes horizontal on tablet/mobile */
+  .dir-filter-panel {
+    width: 100% !important;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px;
+    box-sizing: border-box;
+  }
+  .dir-filter-panel h3 { width: 100%; margin-bottom: 4px; }
+  .dir-filter-panel label { width: auto; margin-bottom: 0; }
+  .dir-filter-panel input { flex: 1; min-width: 160px; margin-bottom: 0; }
+  .dir-filter-panel .dir-ie-name { width: 100%; text-align: left; }
+  .dir-chart-box { min-height: 180px; }
+  .dir-table-wrap { max-height: none !important; }
   
   .dir-table-section table, 
   .dir-table-section thead, 
@@ -2370,6 +2387,17 @@ body.director-mode #app-shell {
     text-transform: uppercase;
     margin-bottom: 3px;
   }
+}
+
+@media(max-width: 480px) {
+  .dir-header h1 { font-size: 0.9rem; }
+  .dir-header .dh-left img { height: 52px; }
+  .dir-kpis { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dir-kpi .kpi-number { font-size: 1.4rem; }
+  .dir-kpi .kpi-title { font-size: 0.62rem; }
+  .dir-filter-panel { flex-direction: column; align-items: stretch; }
+  .dir-filter-panel input { width: 100%; min-width: unset; }
+  .dir-body { padding: 8px 10px 16px; }
 }
 
 .autocomplete-item:hover {
