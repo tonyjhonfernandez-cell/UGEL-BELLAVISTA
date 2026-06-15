@@ -1426,12 +1426,12 @@ app.get('/api/ranking-ies', authAdmin, async (req, res) => {
     try {
         const query = `
             SELECT 
-                ie.id, ie.codigo, ie.nombre, ie.niveles, ie.ruralidad,
+                ie.id, ie.codigo, ie.nombre, ie.ruralidad,
                 COUNT(a.id) as total_asignadas,
                 SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) as total_cumplidas
             FROM instituciones_educativas ie
             LEFT JOIN asignaciones a ON ie.id = a.ie_id
-            GROUP BY ie.id, ie.codigo, ie.nombre, ie.niveles, ie.ruralidad
+            GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
             HAVING COUNT(a.id) > 0
             ORDER BY 
                 (CAST(SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(a.id)) DESC,

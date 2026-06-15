@@ -575,7 +575,7 @@ async function abrirModalRankingIEs() {
                         <td style="padding:12px 8px; text-align:center;">${badge}</td>
                         <td style="padding:12px 8px;">
                             <div style="font-weight:600; color:#1e293b; font-size:0.9rem;">${ie.nombre || 'IE Sin Nombre'}</div>
-                            <div style="font-size:0.75rem; color:#64748b;">${ie.codigo || '-'} | ${ie.niveles || '-'}</div>
+                            <div style="font-size:0.75rem; color:#64748b;">${ie.codigo || '-'} | ${ie.ruralidad || '-'}</div>
                         </td>
                         <td style="padding:12px 8px; vertical-align:middle; width:30%;">
                             <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; color:#64748b;">
