@@ -4364,7 +4364,7 @@ async function loadCalendario() {
       height: 500,
       contentHeight: 'auto',
       slotMinTime: '06:00:00',
-      slotMaxTime: '19:00:00',
+      slotMaxTime: '20:00:00',
       events: events,
       locale: 'es',
       eventClick: function(info) {
