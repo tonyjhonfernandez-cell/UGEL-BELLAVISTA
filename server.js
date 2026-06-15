@@ -2519,7 +2519,7 @@ app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
 app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
     try {
         const eventos = await db.prepare(`
-            SELECT e.*, u.dependencia as area_usuario, u.nombre_completo as asignador_nombre
+            SELECT e.*, u.dependencia as area_usuario, u.nombre_completo as asignador_nombre, u.puesto
             FROM eventos_calendario e
             LEFT JOIN usuarios u ON e.supervisor_id = u.id
             ORDER BY COALESCE(NULLIF(e.area, ''), u.dependencia), e.fecha ASC
@@ -2527,7 +2527,7 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
 
         const ExcelJS = require('exceljs');
         const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'UGEL';
+        workbook.creator = 'UGEL Bellavista';
         
         const areasMap = {};
         eventos.forEach(e => {
@@ -2536,38 +2536,75 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
             areasMap[area].push(e);
         });
 
-        // Hoja de Resumen
-        const resumenSheet = workbook.addWorksheet('Resumen');
-        resumenSheet.columns = [
-            { header: 'Área', key: 'area', width: 30 },
-            { header: 'Total Eventos', key: 'total', width: 20 }
-        ];
-        resumenSheet.getRow(1).font = { bold: true };
-
         for (const [area, acts] of Object.entries(areasMap)) {
-            resumenSheet.addRow({ area: area, total: acts.length });
-            
-            // Hoja por área
             const sheetName = area.substring(0, 31).replace(/[\[\]\*\?\:\/]/g, '');
             const sheet = workbook.addWorksheet(sheetName);
+            
+            // 1. Título principal
+            sheet.mergeCells('A1:I1');
+            const titleCell = sheet.getCell('A1');
+            titleCell.value = 'UGEL Bellavista — ' + area;
+            titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF800000' } }; // Burgundy/Dark Red
+            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            sheet.getRow(1).height = 30;
+
+            // 2. Fila en blanco
+            sheet.addRow([]);
+
+            // 3. Cabeceras
+            const headers = ['Responsable', 'Puesto', 'Actividad', 'Área', 'Sub-área', 'Fecha', 'Desde', 'Hasta', 'Estado'];
+            const headerRow = sheet.addRow(headers);
+            headerRow.height = 25;
+            headerRow.eachCell((cell) => {
+                cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800000' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.border = { top: {style:'thin', color: {argb:'FFCCCCCC'}}, left: {style:'thin', color: {argb:'FFCCCCCC'}}, bottom: {style:'thin', color: {argb:'FFCCCCCC'}}, right: {style:'thin', color: {argb:'FFCCCCCC'}} };
+            });
+
+            // Configurar anchos de columna
             sheet.columns = [
-                { header: 'ID', key: 'id', width: 10 },
-                { header: 'Título', key: 'titulo', width: 40 },
-                { header: 'Fecha', key: 'fecha', width: 15 },
-                { header: 'Horario', key: 'horario', width: 20 },
-                { header: 'Supervisor', key: 'supervisor', width: 30 },
-                { header: 'Estado', key: 'estado', width: 15 }
+                { key: 'responsable', width: 28 },
+                { key: 'puesto', width: 25 },
+                { key: 'actividad', width: 55 },
+                { key: 'area_col', width: 12 },
+                { key: 'sub_area', width: 22 },
+                { key: 'fecha', width: 15 },
+                { key: 'desde', width: 10 },
+                { key: 'hasta', width: 10 },
+                { key: 'estado', width: 15 }
             ];
-            sheet.getRow(1).font = { bold: true };
+
+            // 4. Filas de datos
             acts.forEach(a => {
-                sheet.addRow({
-                    id: a.id,
-                    titulo: a.titulo,
-                    fecha: a.fecha ? new Date(a.fecha).toLocaleDateString('es-PE') : '-',
-                    horario: (a.hora_inicio || '') + ' - ' + (a.hora_fin || ''),
-                    supervisor: a.asignador_nombre,
-                    estado: a.estado
+                const row = sheet.addRow({
+                    responsable: a.asignador_nombre || '',
+                    puesto: a.puesto || '-',
+                    actividad: a.titulo || '',
+                    area_col: a.area || a.area_usuario || '',
+                    sub_area: a.sub_area || '',
+                    fecha: a.fecha || '',
+                    desde: a.hora_inicio || '',
+                    hasta: a.hora_fin || '',
+                    estado: a.estado || 'Pendiente'
                 });
+                
+                row.eachCell((cell, colNumber) => {
+                    cell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
+                    cell.border = { top: {style:'thin', color:{argb:'FFDDDDDD'}}, bottom: {style:'thin', color:{argb:'FFDDDDDD'}}, left: {style:'thin', color:{argb:'FFDDDDDD'}}, right: {style:'thin', color:{argb:'FFDDDDDD'}} };
+                    cell.alignment = { vertical: 'middle', wrapText: true };
+                });
+
+                // Color específico para la columna Estado (columna 9)
+                const estadoCell = row.getCell(9);
+                estadoCell.font = { name: 'Arial', size: 10, bold: true };
+                if (a.estado === 'Cumplió' || a.estado === 'Cumplida') {
+                    estadoCell.font.color = { argb: 'FF059669' }; // Verde
+                } else if (a.estado === 'No Cumplió' || a.estado === 'Vencida') {
+                    estadoCell.font.color = { argb: 'FF800000' }; // Rojo oscuro
+                } else {
+                    estadoCell.font.color = { argb: 'FFD97706' }; // Ámbar/Naranja
+                }
             });
         }
 
