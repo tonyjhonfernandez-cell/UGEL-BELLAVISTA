@@ -2425,16 +2425,13 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
 
 app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
     try {
-        const userId = req.session.user.id;
-        // As per user's request "únicas entre supervisores", we filter by supervisor_id
         const eventos = await db.prepare(`
             SELECT id, titulo, titulo as title, fecha, hora_inicio, hora_fin,
                    fecha || CASE WHEN hora_inicio IS NOT NULL THEN 'T' || hora_inicio ELSE '' END as start,
                    CASE WHEN hora_fin IS NOT NULL THEN fecha || 'T' || hora_fin ELSE NULL END as end,
                    estado, descripcion, area, sub_area
             FROM eventos_calendario
-            WHERE supervisor_id = ?
-        `).all(userId);
+        `).all();
         res.json(eventos);
     } catch (err) {
         console.error(err);
@@ -2460,12 +2457,11 @@ app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
 app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const supervisor_id = req.session.user.id;
         const { titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area } = req.body;
         
-        // Verifica que le pertenezca
-        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ? AND supervisor_id = ?').get(id, supervisor_id);
-        if (!ev) return res.status(403).json({ error: 'No autorizado' });
+        // Verifica que el evento exista
+        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ?').get(id);
+        if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
 
         if (titulo) {
             await db.prepare(`
@@ -2487,9 +2483,8 @@ app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
 app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const supervisor_id = req.session.user.id;
-        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ? AND supervisor_id = ?').get(id, supervisor_id);
-        if (!ev) return res.status(403).json({ error: 'No autorizado' });
+        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ?').get(id);
+        if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
 
         await db.prepare('DELETE FROM eventos_calendario WHERE id=?').run(id);
         res.json({ success: true });
