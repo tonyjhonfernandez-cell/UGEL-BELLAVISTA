@@ -1131,10 +1131,7 @@ app.get('/api/actividades', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();
         let actividades;
-        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
-            const supFilter = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? 'WHERE a.asignador_id = ?' : '';
-            const supParams = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? [req.session.user.id] : [];
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre,
                 (SELECT COUNT(*) FROM asignaciones WHERE actividad_id = a.id) as total_asignaciones,
@@ -1143,9 +1140,8 @@ app.get('/api/actividades', authDirector, async (req, res) => {
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN usuarios u ON a.asignador_id = u.id
-                ${supFilter}
                 ORDER BY a.fecha_limite ASC
-            `).all(...supParams);
+            `).all();
         } else {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
@@ -1345,9 +1341,6 @@ app.get('/api/asignaciones', async (req, res) => {
         const isSuperAdmin = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
-            // Supervisors only see activities THEY created, unless super-admin
-            const supervisorWhere = (!isSuperAdmin && req.session.user.rol === 'supervisor') ? 'AND a.asignador_id = ?' : '';
-            if (!isSuperAdmin && req.session.user.rol === 'supervisor') params.push(req.session.user.id);
             asignaciones = await db.prepare(`
                 SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                        ta.nombre as tipo_nombre,
@@ -1360,7 +1353,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${supervisorWhere} ${mesWhere} ${anioWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${mesWhere} ${anioWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
