@@ -4317,12 +4317,12 @@ async function loadCalendario() {
   try {
     var eventos = await api('/api/calendario/eventos');
     var events = eventos.map(function(e) {
-      var color = 'var(--primary)';
+      var color = '#6b21a8';
       var textC = '#ffffff';
       if (e.estado === 'Cumplida') {
-          color = 'var(--success)';
+          color = '#10b981';
       } else if (e.estado === 'En Proceso') {
-          color = 'var(--warning)';
+          color = '#f59e0b';
           textC = '#000000';
       }
 
@@ -4360,7 +4360,7 @@ async function loadCalendario() {
     calendar = new FullCalendar.Calendar(container, {
       initialView: 'timeGridWeek',
       headerToolbar: false,
-      height: '100%',
+      height: 500,
       slotMinTime: '06:00:00',
       slotMaxTime: '21:00:00',
       events: events,
