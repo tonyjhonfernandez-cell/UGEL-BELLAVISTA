@@ -486,7 +486,7 @@
         <div class="modal-content" style="max-width: 700px; border-radius: 16px; padding: 0;">
           <div style="background: #1e293b; color: white; padding: 20px 24px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
             <h3 style="margin: 0; font-size: 1.25rem;"><i class="fas fa-trophy" style="color: #f59e0b;"></i> Ranking Institucional (Cumplimiento)</h3>
-            <span class="close-modal" onclick="cerrarModal('modalRankingIEs')" style="color: white; opacity: 0.8;">&times;</span>
+            <span class="close-modal" onclick="document.getElementById('modalRankingIEs').style.display='none'" style="color: white; opacity: 0.8;">&times;</span>
           </div>
           <div style="padding: 24px; max-height: 60vh; overflow-y: auto;">
             <div id="ranking-loading" style="text-align: center; padding: 40px; color: #64748b;">
@@ -497,7 +497,7 @@
             </div>
           </div>
           <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 16px 16px; text-align: right;">
-            <button class="btn btn-outline-secondary" onclick="cerrarModal('modalRankingIEs')">Cerrar</button>
+            <button class="btn btn-outline-secondary" onclick="document.getElementById('modalRankingIEs').style.display='none'">Cerrar</button>
           </div>
         </div>
       </div>
