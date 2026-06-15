@@ -4306,7 +4306,9 @@ function capDescargarPDF() {
   }
 }
 // ===================== CALENDARIO =====================
-let calendar = null;
+window.calendar = null;
+
+window.todosLosEventosCalendario = [];
 
 async function loadCalendario() {
   var container = document.getElementById('calendar-container');
@@ -4331,31 +4333,97 @@ async function loadCalendario() {
       };
     });
 
+    window.todosLosEventosCalendario = events;
+    
     container.innerHTML = '';
     calendar = new FullCalendar.Calendar(container, {
-      initialView: 'dayGridMonth',
-      headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,listMonth'
-      },
+      initialView: 'timeGridWeek',
+      headerToolbar: false,
       events: events,
       locale: 'es',
-      buttonText: {
-        today: 'Hoy',
-        month: 'Mes',
-        week: 'Semana',
-        list: 'Lista'
-      },
       eventClick: function(info) {
         abrirModalEvento(info.event.extendedProps);
+      },
+      datesSet: function(info) {
+        if (document.getElementById('calMainTitle')) {
+          const title = info.view.title;
+          document.getElementById('calMainTitle').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+        }
+        if (typeof _miniCalDate !== 'undefined') {
+            _miniCalDate = info.view.currentStart;
+        }
+        if(typeof renderMiniCal === 'function') renderMiniCal();
       }
     });
     calendar.render();
+    
+    // Update KPIs and Legend
+    actualizarKpisCal(events);
+    renderLeyendaCal(events);
+    if(typeof renderMiniCal === 'function') renderMiniCal();
+
   } catch (e) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
   }
 }
+
+function filtrarCalendarioLocal() {
+    if (!calendar) return;
+    const texto = (document.getElementById('calBuscarTexto').value || '').toLowerCase();
+    const estado = document.getElementById('calFiltroEstado').value;
+    
+    const filtrados = window.todosLosEventosCalendario.filter(ev => {
+        const textMatch = ev.title.toLowerCase().includes(texto) || (ev.extendedProps.area || '').toLowerCase().includes(texto);
+        const estMatch = !estado || ev.extendedProps.estado === estado;
+        return textMatch && estMatch;
+    });
+    
+    calendar.getEvents().forEach(e => e.remove());
+    filtrados.forEach(e => calendar.addEvent(e));
+    
+    actualizarKpisCal(filtrados);
+    renderLeyendaCal(filtrados);
+}
+
+function actualizarKpisCal(eventos) {
+    const now = new Date();
+    const mesActual = now.getMonth();
+    const anioActual = now.getFullYear();
+    const delMes = eventos.filter(ev => {
+        const d = new Date(ev.start);
+        return d.getMonth() === mesActual && d.getFullYear() === anioActual;
+    });
+    const total = delMes.length;
+    const pendiente = delMes.filter(e => e.extendedProps.estado === 'Pendiente').length;
+    const cumplio = delMes.filter(e => e.extendedProps.estado === 'Cumplida').length;
+    const noCumplio = delMes.filter(e => e.extendedProps.estado === 'En Proceso').length;
+    const t = document.getElementById('kpiTotal'); if(t) t.textContent = total;
+    const p = document.getElementById('kpiPendiente'); if(p) p.textContent = pendiente;
+    const c = document.getElementById('kpiCumplio'); if(c) c.textContent = cumplio;
+    const n = document.getElementById('kpiNoCumplio'); if(n) n.textContent = noCumplio;
+}
+
+function renderLeyendaCal(eventos) {
+    const legendEl = document.getElementById('calLegend');
+    if (!legendEl) return;
+    const areas = [...new Set(eventos.map(e => e.extendedProps.area).filter(Boolean))];
+    const conteos = {};
+    eventos.forEach(e => { if (e.extendedProps.area) conteos[e.extendedProps.area] = (conteos[e.extendedProps.area]||0)+1; });
+    
+    if (areas.length === 0) {
+        legendEl.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:8px 0;">Sin áreas asignadas</p>';
+    } else {
+        legendEl.innerHTML = areas.map(sa => {
+            const cnt = conteos[sa] || 0;
+            return `<div class="cal-area-chip" title="${sa}">
+                <div class="cal-area-dot" style="background:var(--granate);"></div>
+                <span class="cal-area-name">${sa}</span>
+                <span class="cal-area-count">${cnt}</span>
+            </div>`;
+        }).join('');
+    }
+}
+
 
 // ==================== CALENDARIO EVENTOS (SUPERVISORES) ====================
 let modalEvento;
