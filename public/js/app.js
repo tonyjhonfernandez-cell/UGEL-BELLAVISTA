@@ -4364,13 +4364,12 @@ async function loadCalendario() {
     container.innerHTML = '';
     var initView = (currentUser && currentUser.rol === 'admin') ? 'listDay' : 'timeGridWeek';
     
-    // Hide view buttons for admin
-    var viewBtnsContainer = document.getElementById('vbtnWeek')?.parentElement;
-    if (viewBtnsContainer) {
-        if (currentUser && currentUser.rol === 'admin') {
-            viewBtnsContainer.style.display = 'none';
-        } else {
-            viewBtnsContainer.style.display = 'flex';
+    if (currentUser && currentUser.rol === 'admin') {
+        document.querySelectorAll('.cal-view-btn').forEach(b => b.classList.remove('active'));
+        var btnLista = document.getElementById('vbtnList');
+        if (btnLista) {
+            btnLista.classList.add('active');
+            btnLista.setAttribute('onclick', "setCalView('listDay', this)");
         }
     }
 
