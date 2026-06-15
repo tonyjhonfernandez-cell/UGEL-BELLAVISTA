@@ -2407,6 +2407,69 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
     }
 });
 
+app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
+    try {
+        const actividades = await db.prepare(`
+            SELECT a.*, u.dependencia as area, u.nombre_completo as asignador_nombre
+            FROM actividades a
+            LEFT JOIN usuarios u ON a.asignador_id = u.id
+            ORDER BY u.dependencia, a.fecha_limite ASC
+        `).all();
+
+        const ExcelJS = require('exceljs');
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'UGEL';
+        
+        const areasMap = {};
+        actividades.forEach(a => {
+            const area = a.area || 'Sin Área';
+            if (!areasMap[area]) areasMap[area] = [];
+            areasMap[area].push(a);
+        });
+
+        // Hoja de Resumen
+        const resumenSheet = workbook.addWorksheet('Resumen');
+        resumenSheet.columns = [
+            { header: 'Área', key: 'area', width: 30 },
+            { header: 'Total Actividades', key: 'total', width: 20 }
+        ];
+        resumenSheet.getRow(1).font = { bold: true };
+
+        for (const [area, acts] of Object.entries(areasMap)) {
+            resumenSheet.addRow({ area: area, total: acts.length });
+            
+            // Hoja por área
+            const sheetName = area.substring(0, 31).replace(/[\[\]\*\?\:\/]/g, '');
+            const sheet = workbook.addWorksheet(sheetName);
+            sheet.columns = [
+                { header: 'ID', key: 'id', width: 10 },
+                { header: 'Título', key: 'titulo', width: 40 },
+                { header: 'Fecha Inicio', key: 'inicio', width: 15 },
+                { header: 'Fecha Límite', key: 'limite', width: 15 },
+                { header: 'Asignador', key: 'asignador', width: 30 }
+            ];
+            sheet.getRow(1).font = { bold: true };
+            acts.forEach(a => {
+                sheet.addRow({
+                    id: a.id,
+                    titulo: a.titulo,
+                    inicio: a.fecha_inicio ? new Date(a.fecha_inicio).toLocaleDateString('es-PE') : '-',
+                    limite: a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-',
+                    asignador: a.asignador_nombre
+                });
+            });
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="actividades_por_areas.xlsx"');
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error al generar Excel' });
+    }
+});
+
 app.get('/api/export/asignaciones', async (req, res) => {
     try {
         const { nivel, estado, buscar, asignador_id, mes, anio } = req.query;

@@ -4361,3 +4361,40 @@ async function loadCalendario() {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
   }
 }
+
+function switchCalTab(tab) {
+  var bCal = document.getElementById('cal-tab-btn-cal');
+  var bActs = document.getElementById('cal-tab-btn-acts');
+  
+  if (tab === 'cal') {
+    bCal.className = 'btn btn-primary';
+    bCal.style.background = '';
+    bCal.style.borderColor = '';
+    bCal.style.color = '';
+    
+    bActs.className = 'btn btn-outline-primary';
+    bActs.style.background = 'transparent';
+    bActs.style.borderColor = 'transparent';
+    bActs.style.color = 'var(--text2)';
+  } else {
+    bActs.className = 'btn btn-primary';
+    bActs.style.background = '';
+    bActs.style.borderColor = '';
+    bActs.style.color = '';
+    
+    bCal.className = 'btn btn-outline-primary';
+    bCal.style.background = 'transparent';
+    bCal.style.borderColor = 'transparent';
+    bCal.style.color = 'var(--text2)';
+  }
+
+  document.getElementById('cal-content-cal').style.display = tab === 'cal' ? 'block' : 'none';
+  document.getElementById('cal-content-acts').style.display = tab === 'acts' ? 'block' : 'none';
+  if (tab === 'cal' && calendar) {
+    calendar.render();
+  }
+}
+
+function descargarExcelAreas() {
+  descargarExcel('/api/export/actividades-areas');
+}
