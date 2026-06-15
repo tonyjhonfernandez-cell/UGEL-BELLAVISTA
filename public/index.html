@@ -728,28 +728,18 @@
       <!-- ==================== CALENDARIO ==================== -->
       <div class="view-section" id="view-calendario" style="display:none">
         
-        <!-- Pestañas horizontales -->
-        <div style="display: flex; gap: 15px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-          <button class="btn btn-primary" id="cal-tab-btn-cal" onclick="switchCalTab('cal')" style="font-weight:600;"><i class="fas fa-calendar-alt"></i> Calendario</button>
-          <button class="btn btn-outline-primary" id="cal-tab-btn-acts" onclick="switchCalTab('acts')" style="font-weight:600; color:var(--text2); background:transparent; border-color:transparent;"><i class="fas fa-tasks"></i> Mis Actividades</button>
+        <div class="page-hd" style="margin-bottom: 10px;"><h2>Mi Calendario</h2><span>Visualización y gestión de actividades</span></div>
+        
+        <!-- Botones Horizontales -->
+        <div style="display:flex; gap:15px; flex-wrap: wrap; margin-bottom: 20px;">
+           <button class="btn btn-success" onclick="cambiarVista('asignar-actividad')" style="padding:12px 20px; font-size:0.9rem; border-radius:8px;"><i class="fas fa-plus-circle" style="margin-right:6px;"></i> Registrar Nueva Actividad</button>
+           <button class="btn" style="background-color:#10b981; color:white; border:none; padding:12px 20px; font-size:0.9rem; border-radius:8px;" onclick="descargarExcelAreas()"><i class="fas fa-file-excel" style="margin-right:6px;"></i> Descargar Excel por Áreas</button>
+           <button class="btn btn-primary" onclick="cambiarVista('monitoreo')" style="padding:12px 20px; font-size:0.9rem; border-radius:8px;"><i class="fas fa-list" style="margin-right:6px;"></i> Lista de Actividades</button>
         </div>
 
-        <!-- Contenido Calendario -->
-        <div id="cal-content-cal">
-          <div class="page-hd" style="margin-bottom: 15px;"><h2>Mi Calendario</h2><span>Visualización mensual y lista de actividades</span></div>
-          <div class="t-card" style="padding:22px; background:white; border-radius:12px; box-shadow:var(--shadow-sm);">
-            <div id="calendar-container"></div>
-          </div>
-        </div>
-
-        <!-- Contenido Mis Actividades -->
-        <div id="cal-content-acts" style="display:none;">
-          <div class="page-hd" style="margin-bottom: 15px;"><h2>Mis Actividades</h2><span>Gestión rápida de tus actividades</span></div>
-          <div style="display:flex; gap:15px; flex-wrap: wrap;">
-             <button class="btn btn-success" onclick="cambiarVista('asignar-actividad')" style="padding:15px 25px; font-size:1rem; border-radius:10px;"><i class="fas fa-plus-circle" style="margin-right:8px;"></i> Registrar Nueva Actividad</button>
-             <button class="btn" style="background-color:#10b981; color:white; border:none; padding:15px 25px; font-size:1rem; border-radius:10px;" onclick="descargarExcelAreas()"><i class="fas fa-file-excel" style="margin-right:8px;"></i> Descargar Excel por Áreas</button>
-             <button class="btn btn-primary" onclick="cambiarVista('monitoreo')" style="padding:15px 25px; font-size:1rem; border-radius:10px;"><i class="fas fa-list" style="margin-right:8px;"></i> Lista de Actividades</button>
-          </div>
+        <!-- Contenedor del Calendario -->
+        <div class="t-card" style="padding:22px; background:white; border-radius:12px; box-shadow:var(--shadow-sm);">
+          <div id="calendar-container"></div>
         </div>
 
       </div>
