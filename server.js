@@ -292,12 +292,16 @@ async function initDatabase() {
             descripcion TEXT,
             estado VARCHAR(20) DEFAULT 'Pendiente',
             fecha DATE NOT NULL,
+            fecha_fin_actividad DATE,
             hora_inicio TIME DEFAULT '',
             hora_fin TIME DEFAULT '',
             area TEXT DEFAULT '',
             sub_area TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT NOW()
         );
+        
+        -- Añadir columna si la tabla ya existe
+        ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS fecha_fin_actividad DATE;
 
         CREATE TABLE IF NOT EXISTS notificaciones (
             id SERIAL PRIMARY KEY,
@@ -2426,11 +2430,13 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
 app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
     try {
         const eventos = await db.prepare(`
-            SELECT id, titulo, titulo as title, fecha, hora_inicio, hora_fin,
-                   fecha || CASE WHEN hora_inicio IS NOT NULL THEN 'T' || hora_inicio ELSE '' END as start,
-                   CASE WHEN hora_fin IS NOT NULL THEN fecha || 'T' || hora_fin ELSE NULL END as end,
-                   estado, descripcion, area, sub_area
-            FROM eventos_calendario
+            SELECT e.id, e.supervisor_id, e.titulo, e.titulo as title, e.fecha, e.fecha_fin_actividad, e.hora_inicio, e.hora_fin,
+                   e.fecha || CASE WHEN e.hora_inicio IS NOT NULL THEN 'T' || e.hora_inicio ELSE '' END as start,
+                   CASE WHEN e.hora_fin IS NOT NULL THEN e.fecha || 'T' || e.hora_fin ELSE NULL END as end,
+                   e.estado, e.descripcion, e.area, e.sub_area,
+                   u.nombre_completo as creador
+            FROM eventos_calendario e
+            JOIN usuarios u ON e.supervisor_id = u.id
         `).all();
         res.json(eventos);
     } catch (err) {
@@ -2441,12 +2447,12 @@ app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
 
 app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
     try {
-        const { titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
         const supervisor_id = req.session.user.id;
         const result = await db.prepare(`
-            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, hora_inicio || null, hora_fin || null, area || '', sub_area || '');
+            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '');
         res.json({ success: true, id: result.id });
     } catch (err) {
         console.error(err);
@@ -2457,18 +2463,22 @@ app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
 app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, descripcion, estado, fecha, hora_inicio, hora_fin, area, sub_area } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
         
         // Verifica que el evento exista
-        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ?').get(id);
+        const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
         if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
+        
+        if (ev.supervisor_id !== req.session.user.id) {
+            return res.status(403).json({ error: 'No tienes permiso para modificar esta actividad' });
+        }
 
         if (titulo) {
             await db.prepare(`
                 UPDATE eventos_calendario 
-                SET titulo=?, descripcion=?, estado=?, fecha=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?
+                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?
                 WHERE id=?
-            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, hora_inicio || null, hora_fin || null, area || '', sub_area || '', id);
+            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', id);
         } else if (estado) {
             // Solo estado
             await db.prepare('UPDATE eventos_calendario SET estado=? WHERE id=?').run(estado, id);
@@ -2483,8 +2493,9 @@ app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
 app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const ev = await db.prepare('SELECT id FROM eventos_calendario WHERE id = ?').get(id);
+        const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
         if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
+        if (ev.supervisor_id !== req.session.user.id) return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
 
         await db.prepare('DELETE FROM eventos_calendario WHERE id=?').run(id);
         res.json({ success: true });

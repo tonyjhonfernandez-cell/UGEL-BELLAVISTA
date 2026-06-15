@@ -4321,11 +4321,26 @@ async function loadCalendario() {
       if (e.estado === 'Cumplida') color = 'var(--success)';
       else if (e.estado === 'En Proceso') color = 'var(--warning)';
 
+      let finalEnd = e.end || undefined;
+      if (e.fecha_fin_actividad) {
+          let f = e.fecha_fin_actividad;
+          if (typeof f === 'string') f = f.substring(0,10);
+          else f = new Date(f).toISOString().substring(0,10);
+          
+          if (!e.hora_fin) {
+             let df = new Date(f + 'T12:00:00Z');
+             df.setDate(df.getDate() + 1);
+             finalEnd = df.toISOString().substring(0,10);
+          } else {
+             finalEnd = f + 'T' + e.hora_fin;
+          }
+      }
+
       return {
         id: e.id,
         title: e.title,
         start: e.start,
-        end: e.end || undefined,
+        end: finalEnd,
         allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
         backgroundColor: color,
         borderColor: color,
@@ -4339,7 +4354,7 @@ async function loadCalendario() {
     calendar = new FullCalendar.Calendar(container, {
       initialView: 'timeGridWeek',
       headerToolbar: false,
-      height: 650,
+      height: '100%',
       slotMinTime: '06:00:00',
       slotMaxTime: '21:00:00',
       events: events,
@@ -4432,52 +4447,86 @@ function renderLeyendaCal(eventos) {
 function abrirModalEvento(evento) {
   var title = 'Nuevo Evento';
   var isEdit = evento && evento.id;
-  if (isEdit) title = 'Editar Evento';
+  if (isEdit) title = 'Detalles del Evento';
+  
+  var isCreator = true;
+  if (isEdit && currentUser && evento.supervisor_id) {
+      isCreator = (evento.supervisor_id === currentUser.id);
+  }
+  var disabledAttr = isCreator ? '' : 'disabled';
   
   var evId = isEdit ? evento.id : '';
   var evTitulo = isEdit ? (evento.titulo || '') : '';
   var evDescripcion = isEdit ? (evento.descripcion || '') : '';
   var evEstado = isEdit ? (evento.estado || 'Pendiente') : 'Pendiente';
   
-  var evFecha = isEdit ? (evento.fecha ? evento.fecha.toString().split('T')[0] : '') : '';
+  var fechaStr = '';
+  if (isEdit && evento.fecha) {
+    if (typeof evento.fecha === 'string') fechaStr = evento.fecha.substring(0,10);
+    else fechaStr = new Date(evento.fecha).toISOString().substring(0,10);
+  }
+  var evFecha = fechaStr;
+  
+  var fechaFinStr = '';
+  if (isEdit && evento.fecha_fin_actividad) {
+    if (typeof evento.fecha_fin_actividad === 'string') fechaFinStr = evento.fecha_fin_actividad.substring(0,10);
+    else fechaFinStr = new Date(evento.fecha_fin_actividad).toISOString().substring(0,10);
+  }
+  var evFechaFin = fechaFinStr;
+
   var evHoraInicio = isEdit ? (evento.hora_inicio || '') : '';
   var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
   
   var evArea = isEdit ? (evento.area || '') : '';
 
+  var creadorHtml = '';
+  if (isEdit && evento.creador) {
+    creadorHtml = `<div style="background:#f0f2ff; padding:10px 15px; border-radius:8px; margin-bottom:15px; font-size:13px; color:#1a1a2e; border: 1px solid #d0d7ff; display:flex; align-items:center; gap:8px;">
+      <i class="fas fa-user-circle" style="font-size:16px; color:#4a6cf7;"></i> 
+      <span><strong>Asignado por:</strong> ${evento.creador}</span>
+    </div>`;
+  }
+
   var bodyHtml = `
     <div id="formEventoCalendario">
       <input type="hidden" id="evId" value="${evId}">
+      ${creadorHtml}
       <div class="mb-3">
         <label>Título del Evento</label>
-        <input type="text" id="evTitulo" class="form-control" value="${evTitulo}" required>
+        <input type="text" id="evTitulo" class="form-control" value="${evTitulo}" required ${disabledAttr}>
       </div>
       <div style="display:flex; gap:10px; margin-bottom:15px;">
         <div style="flex:1;">
-          <label>Fecha</label>
-          <input type="date" id="evFecha" class="form-control" value="${evFecha}" required>
+          <label>Fecha Inicio</label>
+          <input type="date" id="evFecha" class="form-control" value="${evFecha}" required ${disabledAttr}>
         </div>
         <div style="flex:1;">
+          <label>Fecha Fin <small>(Opcional)</small></label>
+          <input type="date" id="evFechaFin" class="form-control" value="${evFechaFin}" ${disabledAttr}>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="flex:1;">
           <label>Hora Inicio</label>
-          <input type="time" id="evHoraInicio" class="form-control" value="${evHoraInicio}">
+          <input type="time" id="evHoraInicio" class="form-control" value="${evHoraInicio}" ${disabledAttr}>
         </div>
         <div style="flex:1;">
           <label>Hora Fin</label>
-          <input type="time" id="evHoraFin" class="form-control" value="${evHoraFin}">
+          <input type="time" id="evHoraFin" class="form-control" value="${evHoraFin}" ${disabledAttr}>
         </div>
       </div>
       <div class="mb-3">
         <label>Descripción</label>
-        <textarea id="evDescripcion" class="form-control" rows="2">${evDescripcion}</textarea>
+        <textarea id="evDescripcion" class="form-control" rows="2" ${disabledAttr}>${evDescripcion}</textarea>
       </div>
       <div style="display:flex; gap:10px; margin-bottom:15px;">
         <div style="flex:1;">
           <label>Área</label>
-          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}">
+          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}" ${disabledAttr}>
         </div>
         <div style="flex:1;">
           <label>Estado</label>
-          <select id="evEstado" class="form-select">
+          <select id="evEstado" class="form-select" ${disabledAttr}>
             <option value="Pendiente" ${evEstado==='Pendiente'?'selected':''}>Pendiente</option>
             <option value="En Proceso" ${evEstado==='En Proceso'?'selected':''}>En Proceso</option>
             <option value="Cumplida" ${evEstado==='Cumplida'?'selected':''}>Cumplida</option>
@@ -4488,11 +4537,15 @@ function abrirModalEvento(evento) {
   `;
 
   var footerHtml = '';
-  if (isEdit) {
-    footerHtml += `<button type="button" class="btn btn-danger" style="margin-right:auto;" onclick="eliminarEvento()">Eliminar</button>`;
+  if (isCreator) {
+    if (isEdit) {
+      footerHtml += `<button type="button" class="btn btn-danger" style="margin-right:auto;" onclick="eliminarEvento()">Eliminar</button>`;
+    }
+    footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                   <button type="button" class="btn btn-primary" onclick="guardarEvento()">Guardar</button>`;
+  } else {
+    footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cerrar</button>`;
   }
-  footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                 <button type="button" class="btn btn-primary" onclick="guardarEvento()">Guardar</button>`;
 
   showModal(title, bodyHtml, footerHtml);
 }
@@ -4502,6 +4555,7 @@ async function guardarEvento() {
   var payload = {
     titulo: document.getElementById('evTitulo').value,
     fecha: document.getElementById('evFecha').value,
+    fecha_fin_actividad: document.getElementById('evFechaFin').value,
     hora_inicio: document.getElementById('evHoraInicio').value,
     hora_fin: document.getElementById('evHoraFin').value,
     descripcion: document.getElementById('evDescripcion').value,

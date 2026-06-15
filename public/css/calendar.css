@@ -1,11 +1,19 @@
         /* ====================== CALENDAR PREMIUM ====================== */
 
         /* Contenedor principal del calendario premium */
+        #view-calendario.active {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px); /* Adjust based on header height */
+            min-height: 500px;
+        }
         .cal-premium-wrapper {
             display: grid;
             grid-template-columns: 300px 1fr;
             gap: 24px;
-            align-items: start;
+            align-items: stretch;
+            flex: 1;
+            min-height: 0;
         }
         /* Panel izquierdo del calendario */
         .cal-left-panel {
@@ -221,6 +229,15 @@
             border-radius: 24px;
             overflow: hidden;
             box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #calendar-container {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            padding: 10px;
         }
         /* Toolbar del calendario principal */
         .cal-main-toolbar {
