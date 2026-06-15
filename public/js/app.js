@@ -4516,9 +4516,9 @@ async function guardarEvento() {
 
   try {
     if (id) {
-      await api('/api/calendario/eventos/' + id, 'PUT', payload);
+      await api('/api/calendario/eventos/' + id, { method: 'PUT', body: payload });
     } else {
-      await api('/api/calendario/eventos', 'POST', payload);
+      await api('/api/calendario/eventos', { method: 'POST', body: payload });
     }
     closeModal();
     loadCalendario();
@@ -4532,7 +4532,7 @@ async function eliminarEvento() {
   if (!id) return;
   if (!confirm('¿Seguro que desea eliminar este evento?')) return;
   try {
-    await api('/api/calendario/eventos/' + id, 'DELETE');
+    await api('/api/calendario/eventos/' + id, { method: 'DELETE' });
     closeModal();
     loadCalendario();
   } catch(e) {
