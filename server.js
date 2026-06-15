@@ -1384,27 +1384,6 @@ app.get('/api/asignaciones', async (req, res) => {
     }
 });
 
-app.get('/api/ranking-ies', authSupervisor, async (req, res) => {
-    try {
-        const ranking = await db.prepare(`
-            SELECT 
-                ie.nombre AS ie_nombre, 
-                ie.codigo AS ie_codigo,
-                COUNT(a.id) FILTER (WHERE a.estado = 'completada') AS cumplidas,
-                COUNT(a.id) FILTER (WHERE a.estado = 'no_cumplida') AS incumplidas,
-                COUNT(a.id) AS total
-            FROM asignaciones a
-            JOIN instituciones_educativas ie ON a.ie_id = ie.id
-            GROUP BY ie.id, ie.nombre, ie.codigo
-            ORDER BY cumplidas DESC, incumplidas ASC
-        `).all();
-        res.json(ranking);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();

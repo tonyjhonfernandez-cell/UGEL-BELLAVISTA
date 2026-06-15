@@ -539,10 +539,7 @@
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
           <div><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por actividad</span></div>
-          <div>
-            <button class="btn btn-sm btn-outline-primary me-2 admin-only" onclick="verRankingIEs()" title="Ranking de Cumplimiento" style="display:none;"><i class="fas fa-trophy"></i> Ranking</button>
-            <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
-          </div>
+          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
         </div>
         <div class="filter-bar">
           <div class="filter-group" style="flex:1;">
