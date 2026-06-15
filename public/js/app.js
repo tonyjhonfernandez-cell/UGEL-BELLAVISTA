@@ -4426,35 +4426,75 @@ function renderLeyendaCal(eventos) {
 
 
 // ==================== CALENDARIO EVENTOS (SUPERVISORES) ====================
-let modalEvento;
-
 function abrirModalEvento(evento) {
-  if (!modalEvento) modalEvento = new bootstrap.Modal(document.getElementById('modalEventoCalendario'));
-  var form = document.getElementById('formEventoCalendario');
-  form.reset();
+  var title = 'Nuevo Evento';
+  var isEdit = evento && evento.id;
+  if (isEdit) title = 'Editar Evento';
   
-  if (evento && evento.id) {
-    document.getElementById('modalEventoTitle').innerText = 'Editar Evento';
-    document.getElementById('evId').value = evento.id;
-    document.getElementById('evTitulo').value = evento.title || '';
-    document.getElementById('evDescripcion').value = evento.descripcion || '';
-    document.getElementById('evEstado').value = evento.estado || 'Pendiente';
-    
-    var d = (evento.start || '').split('T');
-    document.getElementById('evFecha').value = d[0] || '';
-    document.getElementById('evHoraInicio').value = d[1] || '';
-    
-    var e = (evento.end || '').split('T');
-    document.getElementById('evHoraFin').value = e[1] || '';
-    
-    document.getElementById('evArea').value = evento.area || '';
-    document.getElementById('btnEliminarEvento').style.display = 'block';
-  } else {
-    document.getElementById('modalEventoTitle').innerText = 'Nuevo Evento';
-    document.getElementById('evId').value = '';
-    document.getElementById('btnEliminarEvento').style.display = 'none';
+  var evId = isEdit ? evento.id : '';
+  var evTitulo = isEdit ? (evento.title || '') : '';
+  var evDescripcion = isEdit ? (evento.descripcion || '') : '';
+  var evEstado = isEdit ? (evento.estado || 'Pendiente') : 'Pendiente';
+  
+  var d = isEdit ? (evento.start || '').split('T') : ['', ''];
+  var evFecha = d[0] || '';
+  var evHoraInicio = d[1] || '';
+  
+  var e = isEdit ? (evento.end || '').split('T') : ['', ''];
+  var evHoraFin = e[1] || '';
+  
+  var evArea = isEdit ? (evento.area || '') : '';
+
+  var bodyHtml = `
+    <div id="formEventoCalendario">
+      <input type="hidden" id="evId" value="${evId}">
+      <div class="mb-3">
+        <label>Título del Evento</label>
+        <input type="text" id="evTitulo" class="form-control" value="${evTitulo}" required>
+      </div>
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="flex:1;">
+          <label>Fecha</label>
+          <input type="date" id="evFecha" class="form-control" value="${evFecha}" required>
+        </div>
+        <div style="flex:1;">
+          <label>Hora Inicio</label>
+          <input type="time" id="evHoraInicio" class="form-control" value="${evHoraInicio}">
+        </div>
+        <div style="flex:1;">
+          <label>Hora Fin</label>
+          <input type="time" id="evHoraFin" class="form-control" value="${evHoraFin}">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label>Descripción</label>
+        <textarea id="evDescripcion" class="form-control" rows="2">${evDescripcion}</textarea>
+      </div>
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="flex:1;">
+          <label>Área</label>
+          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}">
+        </div>
+        <div style="flex:1;">
+          <label>Estado</label>
+          <select id="evEstado" class="form-select">
+            <option value="Pendiente" ${evEstado==='Pendiente'?'selected':''}>Pendiente</option>
+            <option value="En Proceso" ${evEstado==='En Proceso'?'selected':''}>En Proceso</option>
+            <option value="Cumplida" ${evEstado==='Cumplida'?'selected':''}>Cumplida</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `;
+
+  var footerHtml = '';
+  if (isEdit) {
+    footerHtml += `<button type="button" class="btn btn-danger" style="margin-right:auto;" onclick="eliminarEvento()">Eliminar</button>`;
   }
-  modalEvento.show();
+  footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                 <button type="button" class="btn btn-primary" onclick="guardarEvento()">Guardar</button>`;
+
+  showModal(title, bodyHtml, footerHtml);
 }
 
 async function guardarEvento() {
@@ -4480,7 +4520,7 @@ async function guardarEvento() {
     } else {
       await api('/api/calendario/eventos', 'POST', payload);
     }
-    modalEvento.hide();
+    closeModal();
     loadCalendario();
   } catch(e) {
     alert('Error al guardar evento: ' + e.message);
@@ -4493,7 +4533,7 @@ async function eliminarEvento() {
   if (!confirm('¿Seguro que desea eliminar este evento?')) return;
   try {
     await api('/api/calendario/eventos/' + id, 'DELETE');
-    modalEvento.hide();
+    closeModal();
     loadCalendario();
   } catch(e) {
     alert('Error al eliminar evento: ' + e.message);

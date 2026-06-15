@@ -941,63 +941,6 @@
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- Modal Evento Calendario -->
-<div class="modal" id="modalEventoCalendario" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalEventoTitle">Nuevo Evento</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formEventoCalendario">
-          <input type="hidden" id="evId">
-          <div class="mb-3">
-            <label>Título del Evento</label>
-            <input type="text" id="evTitulo" class="form-control" required>
-          </div>
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <label>Fecha</label>
-              <input type="date" id="evFecha" class="form-control" required>
-            </div>
-            <div class="col-md-4 mb-3">
-              <label>Hora Inicio</label>
-              <input type="time" id="evHoraInicio" class="form-control">
-            </div>
-            <div class="col-md-4 mb-3">
-              <label>Hora Fin</label>
-              <input type="time" id="evHoraFin" class="form-control">
-            </div>
-          </div>
-          <div class="mb-3">
-            <label>Descripción</label>
-            <textarea id="evDescripcion" class="form-control" rows="2"></textarea>
-          </div>
-          <div class="row">
-            <div class="col-md-6 mb-3">
-              <label>Área</label>
-              <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP">
-            </div>
-            <div class="col-md-6 mb-3">
-              <label>Estado</label>
-              <select id="evEstado" class="form-select">
-                <option value="Pendiente">Pendiente</option>
-                <option value="En Proceso">En Proceso</option>
-                <option value="Cumplida">Cumplida</option>
-              </select>
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-danger me-auto" id="btnEliminarEvento" style="display:none;" onclick="eliminarEvento()">Eliminar</button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" onclick="guardarEvento()">Guardar</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="/js/app.js"></script>
