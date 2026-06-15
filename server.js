@@ -1421,6 +1421,41 @@ app.get('/api/asignaciones', async (req, res) => {
     }
 });
 
+// Endpoint para el Ranking de IEs (Solo Administrador)
+app.get('/api/ranking-ies', authAdmin, async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                ie.id, ie.codigo, ie.nombre, ie.niveles, ie.ruralidad,
+                COUNT(a.id) as total_asignadas,
+                SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) as total_cumplidas
+            FROM instituciones_educativas ie
+            LEFT JOIN asignaciones a ON ie.id = a.ie_id
+            GROUP BY ie.id, ie.codigo, ie.nombre, ie.niveles, ie.ruralidad
+            HAVING COUNT(a.id) > 0
+            ORDER BY 
+                (CAST(SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(a.id)) DESC,
+                total_cumplidas DESC,
+                ie.nombre ASC
+        `;
+        const rows = await db.prepare(query).all();
+        
+        // Formatear porcentaje
+        const ranking = rows.map(row => {
+            const porcentaje = row.total_asignadas > 0 ? (row.total_cumplidas / row.total_asignadas) * 100 : 0;
+            return {
+                ...row,
+                porcentaje: parseFloat(porcentaje.toFixed(1))
+            };
+        });
+
+        res.json(ranking);
+    } catch (err) {
+        console.error('Error en /api/ranking-ies:', err);
+        res.status(500).json({ error: 'Error al obtener el ranking de IEs' });
+    }
+});
+
 app.get('/api/dashboard', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();

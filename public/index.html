@@ -481,6 +481,27 @@
         </div>
       </div>
 
+      <!-- Modal: Ranking IEs -->
+      <div id="modalRankingIEs" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width: 700px; border-radius: 16px; padding: 0;">
+          <div style="background: #1e293b; color: white; padding: 20px 24px; border-radius: 16px 16px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.25rem;"><i class="fas fa-trophy" style="color: #f59e0b;"></i> Ranking Institucional (Cumplimiento)</h3>
+            <span class="close-modal" onclick="cerrarModal('modalRankingIEs')" style="color: white; opacity: 0.8;">&times;</span>
+          </div>
+          <div style="padding: 24px; max-height: 60vh; overflow-y: auto;">
+            <div id="ranking-loading" style="text-align: center; padding: 40px; color: #64748b;">
+              <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Calculando ranking...
+            </div>
+            <div id="ranking-content" style="display: none;">
+              <!-- Se llena dinámicamente -->
+            </div>
+          </div>
+          <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; border-radius: 0 0 16px 16px; text-align: right;">
+            <button class="btn btn-outline-secondary" onclick="cerrarModal('modalRankingIEs')">Cerrar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Modal: Detalle consolidado -->
       <div class="modal-overlay" id="modal-consolidado-detalle">
         <div class="modal-box modal-lg">
@@ -540,7 +561,10 @@
       <div class="view-section" id="view-monitoreo">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
           <div><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por actividad</span></div>
-          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-sm admin-only" id="btn-ranking-ies" style="display:none; background:#f59e0b; color:white; border:none;" onclick="abrirModalRankingIEs()" title="Ranking IEs"><i class="fas fa-trophy"></i> Ranking IEs</button>
+            <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+          </div>
         </div>
         <div class="filter-bar">
           <div class="filter-group" style="flex:1;">

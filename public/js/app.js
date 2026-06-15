@@ -535,6 +535,73 @@ function getFilterParams() {
 }
 
 // ===================== TIPOS =====================
+async function abrirModalRankingIEs() {
+    document.getElementById('modalRankingIEs').style.display = 'flex';
+    document.getElementById('ranking-loading').style.display = 'block';
+    document.getElementById('ranking-content').style.display = 'none';
+    
+    try {
+        const ranking = await api('/api/ranking-ies');
+        
+        const contentDiv = document.getElementById('ranking-content');
+        if (!ranking || ranking.length === 0) {
+            contentDiv.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No hay datos de asignaciones.</div>';
+        } else {
+            let html = `
+                <table class="table" style="width:100%; border-collapse:collapse; margin-top:10px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e2e8f0;">
+                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Pos</th>
+                            <th style="padding:12px 8px; text-align:left; color:#475569; font-size:0.85rem;">Institución</th>
+                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Progreso</th>
+                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Efectividad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            ranking.forEach((ie, index) => {
+                let badge = `<span style="display:inline-block; width:24px; height:24px; line-height:24px; text-align:center; border-radius:50%; background:#f1f5f9; color:#64748b; font-weight:bold; font-size:0.8rem;">${index + 1}</span>`;
+                if (index === 0) badge = `<span style="font-size:1.2rem;">🥇</span>`;
+                if (index === 1) badge = `<span style="font-size:1.2rem;">🥈</span>`;
+                if (index === 2) badge = `<span style="font-size:1.2rem;">🥉</span>`;
+                
+                let percentColor = '#10b981'; // Green
+                if (ie.porcentaje < 50) percentColor = '#ef4444'; // Red
+                else if (ie.porcentaje < 80) percentColor = '#f59e0b'; // Amber
+                
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding:12px 8px; text-align:center;">${badge}</td>
+                        <td style="padding:12px 8px;">
+                            <div style="font-weight:600; color:#1e293b; font-size:0.9rem;">${ie.nombre || 'IE Sin Nombre'}</div>
+                            <div style="font-size:0.75rem; color:#64748b;">${ie.codigo || '-'} | ${ie.niveles || '-'}</div>
+                        </td>
+                        <td style="padding:12px 8px; vertical-align:middle; width:30%;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; color:#64748b;">
+                                <span>${ie.total_cumplidas} / ${ie.total_asignadas} acts.</span>
+                            </div>
+                            <div style="width:100%; background:#e2e8f0; border-radius:4px; height:6px; overflow:hidden;">
+                                <div style="width:${ie.porcentaje}%; background:${percentColor}; height:100%; border-radius:4px; transition:width 1s ease;"></div>
+                            </div>
+                        </td>
+                        <td style="padding:12px 8px; text-align:center; font-weight:700; color:${percentColor}; font-size:1.1rem;">
+                            ${ie.porcentaje}%
+                        </td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            contentDiv.innerHTML = html;
+        }
+        
+        document.getElementById('ranking-loading').style.display = 'none';
+        document.getElementById('ranking-content').style.display = 'block';
+    } catch (e) {
+        document.getElementById('ranking-loading').innerHTML = '<div style="color:#ef4444;">Error al cargar el ranking.</div>';
+    }
+}
+
 async function cargarTiposActividad() {
   try {
     var d = await api('/api/tipos-actividad');
