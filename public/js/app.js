@@ -4341,9 +4341,14 @@ async function loadCalendario() {
           }
       }
 
+      var finalTitle = e.title;
+      if (currentUser && currentUser.rol === 'admin' && e.creador) {
+          finalTitle = e.title + ' - ' + e.creador;
+      }
+
       return {
         id: e.id,
-        title: e.title,
+        title: finalTitle,
         start: e.start,
         end: finalEnd,
         allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
@@ -4357,8 +4362,20 @@ async function loadCalendario() {
     window.todosLosEventosCalendario = events;
     
     container.innerHTML = '';
+    var initView = (currentUser && currentUser.rol === 'admin') ? 'listDay' : 'timeGridWeek';
+    
+    // Hide view buttons for admin
+    var viewBtnsContainer = document.getElementById('vbtnWeek')?.parentElement;
+    if (viewBtnsContainer) {
+        if (currentUser && currentUser.rol === 'admin') {
+            viewBtnsContainer.style.display = 'none';
+        } else {
+            viewBtnsContainer.style.display = 'flex';
+        }
+    }
+
     calendar = new FullCalendar.Calendar(container, {
-      initialView: 'timeGridWeek',
+      initialView: initView,
       headerToolbar: false,
       height: '100%',
       expandRows: true,
