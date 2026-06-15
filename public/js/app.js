@@ -1792,7 +1792,7 @@ async function loadMonitoreo() {
       var pctN = total > 0 ? (noCumplidas/total*100).toFixed(1) : 0;
       var pctP = total > 0 ? (pendientes/total*100).toFixed(1) : 0;
 
-      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id === grp.asignador_id));
+      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == grp.asignador_id));
       var editBtn = canEdit ? '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad" style="padding:5px 8px;"><i class="fas fa-pen"></i></button>' : '';
       var checkboxHtml = canEdit ? '<input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onclick="event.stopPropagation()" onchange="updateBulkDeleteButtonState()" style="width:14px;height:14px;accent-color:var(--primary);flex-shrink:0;">' : '<div style="width:14px;height:14px;flex-shrink:0;"></div>';
 
@@ -1871,7 +1871,7 @@ function renderMonModalRows(ies, filter) {
       var badgeCls = ie.estado === 'completada' ? 'badge-completada' : ie.estado === 'no_cumplida' ? 'badge-no_cumplida' : ie.estado === 'inconclusa' ? 'badge-inconclusa' : 'badge-pendiente';
       var badge = '<span class="badge ' + badgeCls + '">' + (ie.estado || 'pendiente').replace('_',' ').toUpperCase() + '</span>';
       var btns = '';
-      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id === ie.asignador_id));
+      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == ie.asignador_id));
       if (canEdit) {
         if (ie.estado !== 'completada') {
           btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';

@@ -1193,6 +1193,14 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio, link_url, niveles_aplicados } = req.body;
+        
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
+        if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
+        if (!isSuperAdminAct && req.session.user.id !== actividad.asignador_id) {
+            return res.status(403).json({ error: 'No tienes permiso para editar esta actividad' });
+        }
+
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
         const tituloUp = titulo ? titulo.toUpperCase() : titulo;
@@ -1247,6 +1255,14 @@ app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
 app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     try {
         const { estado, notas_supervisor } = req.body;
+        
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        const asigCheck = await db.prepare('SELECT a.asignador_id FROM asignaciones ase JOIN actividades a ON ase.actividad_id = a.id WHERE ase.id = ?').get(req.params.id);
+        if (!asigCheck) return res.status(404).json({ error: 'Asignación no encontrada' });
+        if (!isSuperAdminAct && req.session.user.id !== asigCheck.asignador_id) {
+            return res.status(403).json({ error: 'No tienes permiso para cambiar el estado de esta actividad' });
+        }
+
         const fecha = estado === 'completada' ? new Date().toISOString() : null;
         await db.prepare(
             'UPDATE asignaciones SET estado=?, notas_supervisor=?, fecha_completado=? WHERE id=?'
@@ -1272,6 +1288,12 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
 
 app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
+        if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
+        if (!isSuperAdminAct && req.session.user.id !== actividad.asignador_id) {
+            return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
+        }
         await db.prepare('DELETE FROM actividades WHERE id = ?').run(req.params.id);
         res.json({ ok: true });
     } catch (err) {
@@ -1285,8 +1307,12 @@ app.post('/api/actividades/bulk-delete', authSupervisor, async (req, res) => {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return res.status(400).json({ error: 'No se especificaron IDs para eliminar' });
         }
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         for (const id of ids) {
-            await db.prepare('DELETE FROM actividades WHERE id = ?').run(id);
+            const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(id);
+            if (actividad && (isSuperAdminAct || req.session.user.id === actividad.asignador_id)) {
+                await db.prepare('DELETE FROM actividades WHERE id = ?').run(id);
+            }
         }
         res.json({ ok: true });
     } catch (err) {
@@ -1342,7 +1368,7 @@ app.get('/api/asignaciones', async (req, res) => {
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url, a.asignador_id,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
