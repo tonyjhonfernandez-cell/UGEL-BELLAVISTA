@@ -13,7 +13,7 @@ let currentDirectorRows = [];
 
 // ===================== API =====================
 async function api(url, opts = {}) {
-  const defaults = { headers: {}, credentials: 'include' };
+  const defaults = { headers: {}, credentials: 'include', cache: 'no-store' };
   if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
     defaults.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(opts.body);
