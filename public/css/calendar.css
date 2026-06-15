@@ -17,7 +17,7 @@
         }
         /* Card de glassmorphism */
         .cal-glass-card {
-            background: linear-gradient(135deg, #3d0f16 0%, #5a1520 30%, #7A1E2C 60%, #9c2840 100%);
+            background: linear-gradient(135deg, #3b0764 0%, #581c87 30%, #6b21a8 60%, #9333ea 100%);
             border-radius: 24px;
             padding: 24px;
             color: white;
@@ -111,7 +111,7 @@
         .mini-cal-day:hover { background: rgba(255,255,255,0.18); }
         .mini-cal-day.today {
             background: white;
-            color: #7A1E2C;
+            color: #6b21a8;
             font-weight: 700;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
         }
@@ -154,7 +154,7 @@
             font-size: 18px;
             margin-bottom: 10px;
         }
-        .cal-kpi-icon.azul { background: rgba(122,30,44,0.12); color: #7A1E2C; }
+        .cal-kpi-icon.azul { background: rgba(122,30,44,0.12); color: #6b21a8; }
         .cal-kpi-icon.dorado { background: rgba(255,183,0,0.15); color: #e6a600; }
         .cal-kpi-icon.verde { background: rgba(34,197,94,0.12); color: #16a34a; }
         .cal-kpi-icon.rojo { background: rgba(239,68,68,0.12); color: #dc2626; }
@@ -254,7 +254,7 @@
             transition: all 0.2s;
         }
         .cal-search-wrap:focus-within {
-            border-color: #7A1E2C;
+            border-color: #6b21a8;
             background: white;
             box-shadow: 0 0 0 3px rgba(122,30,44,0.08);
         }
@@ -284,7 +284,7 @@
             background-size: 16px;
             padding-right: 32px;
         }
-        .cal-filter-select:focus { border-color: #7A1E2C; background-color: white; box-shadow: 0 0 0 3px rgba(122,30,44,0.08); }
+        .cal-filter-select:focus { border-color: #6b21a8; background-color: white; box-shadow: 0 0 0 3px rgba(122,30,44,0.08); }
         .cal-switch-wrap {
             display: flex;
             align-items: center;
@@ -320,7 +320,7 @@
         }
         .cal-view-btn.active, .cal-view-btn:hover {
             background: white;
-            color: #7A1E2C;
+            color: #6b21a8;
             box-shadow: 0 1px 6px rgba(0,0,0,0.1);
         }
         /* FullCalendar overrides premium */
@@ -442,11 +442,11 @@
         .fc .fc-daygrid-day-events { padding: 0 4px 4px !important; }
         .fc .fc-daygrid-event { border-radius: 8px !important; margin: 1px 0 !important; font-size: 11px !important; padding: 0 !important; }
         .fc .fc-daygrid-event .fc-event-main { padding: 4px 8px !important; border-radius: 8px !important; }
-        .fc .fc-daygrid-more-link { font-size: 11px !important; font-weight: 600 !important; color: #7A1E2C !important; border-radius: 6px !important; padding: 2px 8px !important; }
+        .fc .fc-daygrid-more-link { font-size: 11px !important; font-weight: 600 !important; color: #6b21a8 !important; border-radius: 6px !important; padding: 2px 8px !important; }
         .fc .fc-scrollgrid { border-color: #f0f2ff !important; }
         .fc .fc-scrollgrid td, .fc .fc-scrollgrid th { border-color: #f0f2ff !important; }
         .fc .fc-day-today .fc-daygrid-day-number {
-            background: linear-gradient(135deg, #7A1E2C, #9c2840);
+            background: linear-gradient(135deg, #6b21a8, #9333ea);
             color: white;
             border-radius: 50%;
             width: 28px; height: 28px;
