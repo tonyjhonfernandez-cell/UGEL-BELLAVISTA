@@ -607,7 +607,6 @@ function buildSidebar() {
 
   if (currentUser.rol === 'director') {
     html += '<div class="label">Principal</div>';
-    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
     
     html += '<div class="label">Cuenta</div>';
@@ -619,7 +618,6 @@ function buildSidebar() {
     // 1. Gestión (Dashboard y Calendario)
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
-    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
@@ -2135,6 +2133,18 @@ function openMonModal(actId) {
   '</div>';
 
   document.getElementById('mon-modal-title').textContent = 'Monitoreo: ' + grp.titulo;
+  document.getElementById('mon-modal-search').value = '';
+
+  var btnImport = document.getElementById('btn-import-excel');
+  if (btnImport) {
+    var canEditAct = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == grp.asignador_id));
+    if (canEditAct) {
+      btnImport.style.display = 'inline-block';
+    } else {
+      btnImport.style.display = 'none';
+    }
+  }
+
   document.getElementById('mon-modal-act-info').innerHTML = infoHtml;
   document.getElementById('mon-modal-search').value = '';
 
