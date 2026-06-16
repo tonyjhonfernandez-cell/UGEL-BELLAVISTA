@@ -2116,6 +2116,7 @@ async function loadMonitoreo() {
 function openMonModal(actId) {
   var grp = monitoreoData[actId];
   if (!grp) return;
+  window._monCurrentActId = actId;
 
   // Header info
   var infoHtml = '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">' +
@@ -4271,8 +4272,9 @@ async function loadConsolidadoDetalle() {
 }
 
 function descargarConsolidadoExcel() {
-  if (!currentConsoladoActividadId) return;
-  descargarExcel('/api/export/consolidado/' + currentConsoladoActividadId);
+  var id = window._monCurrentActId || currentConsoladoActividadId;
+  if (!id) return;
+  descargarExcel('/api/export/consolidado/' + id);
 }
 
 function descargarConsolidadoGlobal() {
