@@ -1,0 +1,21 @@
+{
+  "name": "sistema-monitoreo-ugel",
+  "version": "1.0.0",
+  "description": "Sistema de Monitoreo de Actividades - UGEL Bellavista",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "dev": "node server.js",
+    "vercel-build": "echo Build OK"
+  },
+  "dependencies": {
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "pg": "^8.13.3",
+    "xlsx": "^0.18.5"
+  }
+}

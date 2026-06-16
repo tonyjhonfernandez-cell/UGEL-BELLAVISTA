@@ -848,6 +848,278 @@
 
       </div>
 
+      <!-- ==================== CAPACITACIONES ==================== -->
+      <div class="view-section" id="view-capacitaciones">
+        <!-- Create View -->
+        <div id="cap-create-subview">
+          <div class="page-hd">
+            <h2>Crear Capacitación</h2>
+            <span>Programar una sesión y seleccionar las instituciones educativas que deben asistir</span>
+          </div>
+          <div class="t-card">
+            <div class="t-hd"><i class="fas fa-plus-circle"></i> Programar Nueva Capacitación</div>
+            <div style="padding:22px">
+              <form id="cap-create-form" onsubmit="event.preventDefault();submitCrearCapacitacion()">
+                <div class="mb-3">
+                  <label class="form-label">Nombre de la Actividad / Tema *</label>
+                  <input type="text" class="form-control" id="cap-titulo" required oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;" placeholder="TÍTULO DE LA CAPACITACIÓN">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Descripción</label>
+                  <textarea class="form-control" id="cap-descripcion" rows="2" placeholder="Detalles de la capacitación, hora, lugar, ponente..."></textarea>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Fecha del Evento *</label>
+                    <input type="date" class="form-control" id="cap-fecha" required>
+                  </div>
+                  <div class="col-md-8 style-flex-end" style="display:flex; align-items:center; gap:8px; padding-top:28px;">
+                    <input type="checkbox" id="cap-incluye-encuesta" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                    <label for="cap-incluye-encuesta" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Incluir Encuesta de Satisfacción y Sugerencias</label>
+                  </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">¿A quiénes convocar? *</label>
+                  <div class="d-flex flex-wrap gap-3 mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-todas" value="todas" onchange="onChangeAlcanceCap('todas')" checked>
+                      <label class="form-check-label" for="cap-alc-todas">Todas las IEs activas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-nivel" value="nivel" onchange="onChangeAlcanceCap('nivel')">
+                      <label class="form-check-label" for="cap-alc-nivel">Por nivel</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-manual" value="manual" onchange="onChangeAlcanceCap('manual')">
+                      <label class="form-check-label" for="cap-alc-manual">Manualmente</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-lista" value="lista" onchange="onChangeAlcanceCap('lista')">
+                      <label class="form-check-label" for="cap-alc-lista">Lista guardada</label>
+                    </div>
+                  </div>
+
+                  <!-- Por nivel -->
+                  <div id="alcance-cap-nivel" style="display:none;" class="mb-3">
+                    <label class="form-label">Seleccionar nivel(es) *</label>
+                    <div class="d-flex flex-wrap gap-3" id="cap-alcance-niveles-container">
+                      <!-- Rendered from nivelesCache -->
+                    </div>
+                  </div>
+
+                  <!-- Manual -->
+                  <div id="alcance-cap-manual" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label mb-0">Instituciones Educativas</label>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllCapIEs(true)">Seleccionar todas</button>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllCapIEs(false)">Deseleccionar</button>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-md-5">
+                        <input type="text" class="form-control" id="cap-ie-search" placeholder="Buscar por código o nombre..." oninput="filterCapIEList()">
+                      </div>
+                      <div class="col-md-3">
+                        <select class="form-select" id="cap-ie-filter-nivel" onchange="filterCapIEList()">
+                          <option value="">Todos los niveles</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="ie-list" id="cap-ie-checkbox-list"></div>
+                  </div>
+
+                  <!-- Lista guardada -->
+                  <div id="alcance-cap-lista" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label mb-0">Seleccionar lista guardada</label>
+                    </div>
+                    <div id="cap-listas-ie-container" style="display:flex; flex-wrap:wrap; gap:8px;">
+                      <!-- Rendered dynamically -->
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-4 text-center d-flex gap-2 justify-content-center">
+                  <button type="submit" class="btn btn-primary px-5">Crear Capacitación</button>
+                  <button type="button" class="btn btn-secondary px-4" onclick="cancelarCrearCapacitacion()">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== MONITOREO DE CAPACITACIONES ==================== -->
+      <div class="view-section" id="view-monitoreo-capacitaciones">
+        <!-- List View -->
+        <div id="cap-list-subview">
+          <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h2>Monitoreo de Capacitaciones</h2>
+              <span>Gestión de eventos de capacitación y reportes de asistencia en tiempo real</span>
+            </div>
+            <button class="btn btn-primary" onclick="mostrarCrearCapacitacion()" style="display:flex; align-items:center; gap:8px; font-weight:700; border-radius:20px; padding:8px 20px;">
+              <i class="fas fa-plus-circle"></i> Crear Capacitación
+            </button>
+          </div>
+          <div id="cap-cards-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+            <!-- Rendered dynamically -->
+          </div>
+          <div id="cap-empty-state" style="display:none; text-align:center; padding:60px 20px; background:rgba(255,255,255,0.4); border-radius:16px; border: 1.5px dashed var(--slate-300); backdrop-filter: blur(8px); margin-top:20px;">
+            <i class="fas fa-chalkboard-teacher" style="font-size:3.5rem; color:var(--slate-300); margin-bottom:16px; display:block;"></i>
+            <h4 style="font-weight:800; color:var(--slate-900); font-size:1.15rem; margin-bottom:6px;">No hay capacitaciones creadas</h4>
+            <p style="color:var(--slate-600); font-size:0.85rem; max-width:320px; margin:0 auto 16px;">Crea eventos de capacitación para generar enlaces únicos y registrar la asistencia de los directores.</p>
+            <button class="btn btn-primary btn-sm" onclick="mostrarCrearCapacitacion()">Crear primera capacitación</button>
+          </div>
+        </div>
+
+        <!-- Detail/Report View -->
+        <div id="cap-detail-subview" style="display:none;">
+          <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <button class="btn btn-sm btn-outline mb-2" onclick="volverACapacitaciones()"><i class="fas fa-arrow-left"></i> Volver</button>
+              <h2 id="cap-detail-title">Detalle de Capacitación</h2>
+              <span id="cap-detail-meta">Asistencia e información detallada de la sesión</span>
+            </div>
+            <button class="btn btn-outline-success" id="btn-export-excel-asistencia" style="display:flex; align-items:center; gap:8px; font-weight:700; border-radius:20px;">
+              <i class="fas fa-file-excel"></i> Exportar Reporte Excel
+            </button>
+          </div>
+          
+          <div class="filter-bar" style="margin-bottom:16px;">
+            <div class="filter-group" style="flex:1;">
+              <label>Buscar IE o Asistente</label>
+              <input type="text" class="form-control" id="cap-det-buscar" placeholder="Código, N° o Nombre..." oninput="filterCapDetTable()">
+            </div>
+            <div class="filter-group" style="width:180px;">
+              <label>Estado Asistencia</label>
+              <select class="form-select" id="cap-det-asistencia-filter" onchange="filterCapDetTable()">
+                <option value="">Todos</option>
+                <option value="si">Asistieron</option>
+                <option value="no">No Asistieron</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="t-card">
+            <div class="t-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Institución Educativa</th>
+                    <th>Nivel</th>
+                    <th style="text-align:center;">Asistencia</th>
+                    <th>Participante</th>
+                    <th>DNI</th>
+                    <th>Cargo</th>
+                    <th>Hora de Registro</th>
+                    <th>Calificación</th>
+                    <th>Sugerencias</th>
+                  </tr>
+                </thead>
+                <tbody id="cap-det-tbody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PUBLIC: REGISTRO CAPACITACION ==================== -->
+      <div class="view-section" id="view-public-capacitacion" style="display:none;">
+        <div class="login-card" style="width:100%; max-width:560px; margin: 40px auto; background:rgba(255,255,255,0.75); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.4); border-radius:20px; box-shadow:0 20px 40px rgba(0,0,0,0.06); padding:28px 36px; color:#1f2937;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <img src="logo.png" alt="UGEL" style="height:68px; width:auto; object-fit:contain; margin-bottom:10px;">
+            <h2 style="font-size:1.25rem; font-weight:800; color:var(--granate); margin:0; letter-spacing:0.5px;">UGEL BELLAVISTA</h2>
+            <p style="font-size:0.75rem; color:#6b7280; font-weight:600; text-transform:uppercase; margin-top:2px;">Registro de Asistencia a Capacitación</p>
+          </div>
+
+          <!-- Training Info card (premium look) -->
+          <div style="background:linear-gradient(135deg, rgba(30,58,138,0.05), rgba(59,130,246,0.05)); border:1px solid rgba(59,130,246,0.1); border-radius:12px; padding:16px; margin-bottom:24px;">
+            <h3 id="pub-cap-title" style="font-size:0.95rem; font-weight:800; color:#1e3a8a; margin:0; text-transform:uppercase;">Cargando...</h3>
+            <p id="pub-cap-desc" style="font-size:0.78rem; color:#4b5563; margin:6px 0 0; line-height:1.45;"></p>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#3b82f6; font-weight:700; margin-top:10px;">
+              <i class="far fa-calendar-alt"></i> <span id="pub-cap-date">-</span>
+            </div>
+          </div>
+
+          <form id="pub-cap-form" onsubmit="event.preventDefault();submitPublicAsistencia()">
+            <!-- STEP 1: SELECT IE -->
+            <div class="mb-4" style="position:relative;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:6px;">1. Seleccione su Institución Educativa *</label>
+              <div style="position:relative;">
+                <input type="text" id="pub-cap-ie-search" class="form-control" style="background:#fff; border-radius:10px; border:1px solid #d1d5db; padding:10px 14px; padding-left:36px; font-size:0.85rem;" placeholder="Escriba código local, modular o nombre..." required autocomplete="off" oninput="onSearchPublicCapIE(this.value)">
+                <i class="fas fa-search" style="position:absolute; top:13px; left:12px; color:#9ca3af; font-size:0.9rem;"></i>
+              </div>
+              <input type="hidden" id="pub-cap-ie-id" required>
+              <div id="pub-cap-autocomplete" style="display:none; position:absolute; top:72px; left:0; right:0; background:#fff; border:1px solid #d1d5db; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:2000; max-height:200px; overflow-y:auto; border-radius:10px;"></div>
+              <div id="pub-cap-selected-ie-badge" style="display:none; margin-top:8px; background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; font-size:0.8rem; font-weight:700; padding:8px 12px; border-radius:8px; align-items:center; gap:8px;">
+                <i class="fas fa-check-circle"></i> <span id="pub-cap-selected-ie-text">IE Seleccionada</span>
+              </div>
+            </div>
+
+            <!-- STEP 2: PARTICIPANT DATA -->
+            <div id="pub-cap-step2" style="display:none; animation: fadeIn 0.3s ease;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:12px;">2. Datos del Participante</label>
+              
+              <div class="mb-3">
+                <input type="text" id="pub-cap-nombre" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem; text-transform:uppercase;" placeholder="NOMBRES Y APELLIDOS COMPLETOS *" required oninput="this.value=this.value.toUpperCase()">
+              </div>
+              
+              <div class="row mb-3">
+                <div class="col-sm-6 mb-3 mb-sm-0">
+                  <input type="text" id="pub-cap-dni" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem;" placeholder="DNI / DOCUMENTO *" required maxlength="9" pattern="\d+" title="Ingrese solo números">
+                </div>
+                <div class="col-sm-6">
+                  <input type="text" id="pub-cap-cargo" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem; text-transform:uppercase;" placeholder="CARGO / PUESTO (ej. DIRECTOR) *" required oninput="this.value=this.value.toUpperCase()">
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 3: SATISFACTION SURVEY -->
+            <div id="pub-cap-step3" style="display:none; animation: fadeIn 0.3s ease; border-top:1px dashed #d1d5db; padding-top:18px; margin-top:18px;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:10px;">3. Encuesta de Satisfacción</label>
+              
+              <div class="mb-3">
+                <span style="font-size:0.8rem; font-weight:600; color:#4b5563; display:block; margin-bottom:6px;">¿Cómo califica esta capacitación? *</span>
+                <div style="display:flex; gap:10px; font-size:1.8rem; color:#d1d5db; justify-content:center; margin-bottom:8px;">
+                  <i class="fas fa-star star-btn" data-val="1" onclick="selectSurveyRating(1)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="2" onclick="selectSurveyRating(2)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="3" onclick="selectSurveyRating(3)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="4" onclick="selectSurveyRating(4)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="5" onclick="selectSurveyRating(5)" style="cursor:pointer; transition:all 0.15s;"></i>
+                </div>
+                <input type="hidden" id="pub-cap-rating">
+              </div>
+
+              <div class="mb-3">
+                <textarea id="pub-cap-sugerencias" class="form-control" rows="2" style="background:#fff; border-radius:10px; font-size:0.85rem;" placeholder="Sugerencias, comentarios o aspectos a mejorar..."></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="pub-cap-submit-btn" style="display:none; border-radius:10px; padding:12px; font-weight:700; font-size:0.9rem; margin-top:16px;">Registrar Asistencia</button>
+          </form>
+
+          <!-- SUCCESS SCREEN -->
+          <div id="pub-cap-success" style="display:none; text-align:center; padding:20px 0; animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div style="width:72px; height:72px; background:#ecfdf5; color:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.2rem; margin:0 auto 16px; box-shadow:0 8px 16px rgba(16,185,129,0.12);">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:#065f46; margin-bottom:6px;">¡Asistencia Registrada!</h3>
+            <p style="font-size:0.85rem; color:#047857; margin-bottom:18px;">Su asistencia ha sido procesada de manera correcta en el sistema.</p>
+            <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; text-align:left; font-size:0.8rem; color:#4b5563; line-height:1.6; margin-bottom:20px;">
+              <div><strong>IE:</strong> <span id="success-ie-name">-</span></div>
+              <div><strong>Participante:</strong> <span id="success-user-name">-</span></div>
+              <div><strong>Hora de Registro:</strong> <span id="success-time">-</span></div>
+            </div>
+            <button class="btn btn-primary" onclick="window.location.reload()" style="border-radius:8px; padding:8px 24px; font-size:0.85rem; font-weight:700;">Registrar otra IE</button>
+          </div>
+
+        </div>
+      </div>
+
       <!-- ==================== PERFIL ==================== -->
       <div class="view-section" id="view-perfil">
         <div class="page-hd"><h2>Mi Perfil</h2><span>Información personal y configuración de cuenta</span></div>

@@ -13,7 +13,7 @@ let currentDirectorRows = [];
 
 // ===================== API =====================
 async function api(url, opts = {}) {
-  const defaults = { headers: {}, credentials: 'include', cache: 'no-store' };
+  const defaults = { headers: {}, credentials: 'include' };
   if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
     defaults.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(opts.body);
@@ -233,7 +233,7 @@ function highlightSearchInput() {
     var tooltip = document.createElement('div');
     tooltip.id = 'dir-search-tooltip';
     tooltip.className = 'dir-tooltip';
-    tooltip.innerHTML = '💡 Ingresa aquí';
+    tooltip.innerHTML = 'ingresar aquí';
     
     panel.insertBefore(tooltip, input);
     
@@ -286,11 +286,11 @@ async function login() {
     const data = await api('/api/login', { method: 'POST', body: { usuario, password } });
     currentUser = data.usuario || data.user;
     if (currentUser.rol === 'director') {
-      err.textContent = 'Acceso denegado: los directores no pueden iniciar sesión aquí. Use el panel público.';
-      err.style.display = 'block';
-      currentUser = null;
-      return;
-    }
+    html += '<div class="label">Principal</div>';
+    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
+
+  }
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app-shell').style.display = 'block';
     initSupervisorApp();
@@ -305,14 +305,23 @@ async function logout() {
   window.location.reload();
 }
 async function checkSession() {
+  initThemeColor();
   const params = new URLSearchParams(window.location.search);
   const capId = params.get('capacitacion');
   
+  const hideLoader = () => {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.style.opacity = '0';
+      setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    }
+  };
+  
   if (capId) {
     showPublicCapacitacionForm(capId);
+    hideLoader();
     return;
   }
-  
   try {
     const data = await api('/api/check-session');
     if (data.usuario || data.user) {
@@ -332,11 +341,14 @@ async function checkSession() {
   } catch (e) {
     currentUser = null;
     showPublicDashboardFromLogin();
+  } finally {
+    hideLoader();
   }
 }
 
 // ===================== INIT =====================
 function initDirectorApp() {
+  document.body.classList.add('director-mode');
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = 'none';
   document.getElementById('sidebar').style.display = 'none';
@@ -374,6 +386,7 @@ function initDirectorApp() {
   loadDirectorMain();
 }
 function initSupervisorApp() {
+  document.body.classList.remove('director-mode');
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = '';
   document.getElementById('sidebar').style.display = '';
@@ -393,11 +406,10 @@ function initSupervisorApp() {
   
   if (currentUser.rol === 'admin') {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = '');
-    cambiarVista('admin-usuarios');
   } else {
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
-    cambiarVista('avance-mensual');
   }
+  cambiarVista('avance-mensual');
 }
 
 // ===================== SIDEBAR =====================
@@ -406,42 +418,48 @@ function buildSidebar() {
   var ft = document.getElementById('sidebar-footer');
   if (!currentUser) return;
 
-  let html = '';
+  // Brand header
+  var brandHtml = '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px 18px;">' +
+    '<div style="width:34px;height:34px;background:var(--sidebar-active-bg);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+      '<i class="fas fa-graduation-cap" style="color:var(--sidebar-active);font-size:.9rem;"></i>' +
+    '</div>' +
+    '<div style="flex:1;min-width:0;">' +
+      '<div style="font-size:.78rem;font-weight:800;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">UGEL Bellavista</div>' +
+      '<div style="font-size:.62rem;color:#64748b;font-weight:500;">Sistema de Monitoreo</div>' +
+    '</div>' +
+  '</div>';
+
+  let html = brandHtml;
 
   if (currentUser.rol === 'director') {
     html += '<div class="label">Principal</div>';
-    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
     
     html += '<div class="label">Cuenta</div>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
     html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
-    // 1. Gestión (Dashboard y Calendario)
+    // 1. Gestión (Dashboard y CAP)
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
-    html += '<a href="#" data-view="consolidado" onclick="cambiarVista(\'consolidado\',this)"><i class="fas fa-chart-bar"></i> Consolidado</a>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a>';
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar Actividades</a>';
     html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-tasks"></i> Monitoreo de Actividades</a>';
-    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
     html += '<a href="#" data-view="capacitaciones" onclick="cambiarVista(\'capacitaciones\',this)"><i class="fas fa-plus-square"></i> Capacitaciones</a>';
     html += '<a href="#" data-view="monitoreo-capacitaciones" onclick="cambiarVista(\'monitoreo-capacitaciones\',this)"><i class="fas fa-chalkboard-teacher"></i> Monitoreo de Capacitaciones</a>';
 
-    // 3. Administración (Instituciones Educativas, Usuarios y Configuraciones)
-    if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
+    // 3. Administración (Instituciones Educativas, Usuarios y Configuraciones) - At the end
+    if (currentUser.rol === 'admin') {
       html += '<div class="label">Administración</div>';
       html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
-      if (currentUser.rol === 'admin') {
-        html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
-      }
+      html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-cog"></i> Configuraciones</a>';
     } else {
+      // For supervisor (not admin), show account perfil under Cuenta
       html += '<div class="label">Cuenta</div>';
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
     }
@@ -475,18 +493,17 @@ function updateUserHeader() {
 var viewTitles = {
   'director-main': 'Mis Actividades',
   'dashboard-supervisor': 'Dashboard General',
-  'asignar-actividad': 'Asignar',
+  'asignar-actividad': 'Asignar Actividades',
   'avance-mensual': 'Avance Mensual',
-  'consolidado': 'Consolidado',
-  'monitoreo': 'Monitoreo',
+  'monitoreo': 'Monitoreo de Actividades',
   'directores': 'Directores',
-  'ies': 'IEs',
+  'ies': 'Inst. Educativas',
   'notificaciones': 'Notificaciones',
   'perfil': 'Mi Perfil',
   'cap': 'CAP',
-  'capacitaciones': 'Capacitaciones',
+  'capacitaciones': 'Programar Capacitación',
   'monitoreo-capacitaciones': 'Monitoreo de Capacitaciones',
-  'public-capacitacion': 'Registro de Asistencia'
+  'admin-usuarios': 'Usuarios'
 };
 
 function cambiarVista(vista, el) {
@@ -505,6 +522,22 @@ function cambiarVista(vista, el) {
   if (vista === 'perfil' && currentUser) {
     var inits = currentUser.nombre.split(' ').map(function (w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
     document.getElementById('perfil-avatar-letter').textContent = inits;
+    
+    // Si es administrador, cambiar encabezados a "Configuraciones" y mostrar la tarjeta de configuración
+    if (currentUser.rol === 'admin') {
+      document.getElementById('perfil-title').textContent = 'Configuraciones';
+      document.getElementById('perfil-subtitle').textContent = 'Ajustes del sistema y de cuenta';
+      document.getElementById('perfil-card-title').textContent = 'Configuraciones';
+      document.getElementById('perfil-card-desc').textContent = 'Configuraciones del sistema y perfil';
+      document.getElementById('system-config-card').style.display = 'block';
+      loadSystemSettings(); // Cargar la configuración de evaluación desde la API
+    } else {
+      document.getElementById('perfil-title').textContent = 'Mi Perfil';
+      document.getElementById('perfil-subtitle').textContent = 'Información personal y configuración de cuenta';
+      document.getElementById('perfil-card-title').textContent = 'Mi Perfil';
+      document.getElementById('perfil-card-desc').textContent = 'Información personal y de cuenta';
+      document.getElementById('system-config-card').style.display = 'none';
+    }
   }
 }
 
@@ -514,17 +547,22 @@ function loadViewData(vista) {
     case 'dashboard-supervisor': loadDashboardSupervisor(); break;
     case 'asignar-actividad': loadIEsForAsignar(); break;
     case 'avance-mensual': loadAvanceMensual(); break;
-    case 'consolidado': loadConsolidado(); break;
     case 'monitoreo': loadMonitoreo(); break;
+    case 'capacitaciones':
+      document.getElementById('cap-titulo').value = '';
+      document.getElementById('cap-descripcion').value = '';
+      document.getElementById('cap-fecha').value = '';
+      document.getElementById('cap-incluye-encuesta').checked = false;
+      document.getElementById('cap-alc-todas').checked = true;
+      onChangeAlcanceCap('todas');
+      break;
+    case 'monitoreo-capacitaciones': loadCapacitaciones(); break;
     case 'directores': loadDirectores(); break;
     case 'ies': loadIEs(); break;
     case 'notificaciones': loadNotificaciones(); loadDirectoresForNotif(); break;
-    case 'calendario': loadCalendario(); break;
     case 'perfil': loadPerfil(); break;
     case 'admin-usuarios': loadAdminUsuarios(); break;
     case 'cap': capInitView(); break;
-    case 'capacitaciones': loadCapacitaciones(); break;
-    case 'monitoreo-capacitaciones': loadCapacitaciones(); break;
   }
 }
 
@@ -559,73 +597,6 @@ function getFilterParams() {
 }
 
 // ===================== TIPOS =====================
-async function abrirModalRankingIEs() {
-    document.getElementById('modalRankingIEs').style.display = 'flex';
-    document.getElementById('ranking-loading').style.display = 'block';
-    document.getElementById('ranking-content').style.display = 'none';
-    
-    try {
-        const ranking = await api('/api/ranking-ies');
-        
-        const contentDiv = document.getElementById('ranking-content');
-        if (!ranking || ranking.length === 0) {
-            contentDiv.innerHTML = '<div style="text-align:center; color:#64748b; padding:20px;">No hay datos de asignaciones.</div>';
-        } else {
-            let html = `
-                <table class="table" style="width:100%; border-collapse:collapse; margin-top:10px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid #e2e8f0;">
-                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Pos</th>
-                            <th style="padding:12px 8px; text-align:left; color:#475569; font-size:0.85rem;">Institución</th>
-                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Progreso</th>
-                            <th style="padding:12px 8px; text-align:center; color:#475569; font-size:0.85rem;">Efectividad</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            ranking.forEach((ie, index) => {
-                let badge = `<span style="display:inline-block; width:24px; height:24px; line-height:24px; text-align:center; border-radius:50%; background:#f1f5f9; color:#64748b; font-weight:bold; font-size:0.8rem;">${index + 1}</span>`;
-                if (index === 0) badge = `<span style="font-size:1.2rem;">🥇</span>`;
-                if (index === 1) badge = `<span style="font-size:1.2rem;">🥈</span>`;
-                if (index === 2) badge = `<span style="font-size:1.2rem;">🥉</span>`;
-                
-                let percentColor = '#10b981'; // Green
-                if (ie.porcentaje < 50) percentColor = '#ef4444'; // Red
-                else if (ie.porcentaje < 80) percentColor = '#f59e0b'; // Amber
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                        <td style="padding:12px 8px; text-align:center;">${badge}</td>
-                        <td style="padding:12px 8px;">
-                            <div style="font-weight:600; color:#1e293b; font-size:0.9rem;">${ie.nombre || 'IE Sin Nombre'}</div>
-                            <div style="font-size:0.75rem; color:#64748b;">${ie.codigo || '-'} | ${ie.ruralidad || '-'}</div>
-                        </td>
-                        <td style="padding:12px 8px; vertical-align:middle; width:30%;">
-                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; color:#64748b;">
-                                <span>${ie.total_cumplidas} / ${ie.total_asignadas} acts.</span>
-                            </div>
-                            <div style="width:100%; background:#e2e8f0; border-radius:4px; height:6px; overflow:hidden;">
-                                <div style="width:${ie.porcentaje}%; background:${percentColor}; height:100%; border-radius:4px; transition:width 1s ease;"></div>
-                            </div>
-                        </td>
-                        <td style="padding:12px 8px; text-align:center; font-weight:700; color:${percentColor}; font-size:1.1rem;">
-                            ${ie.porcentaje}%
-                        </td>
-                    </tr>
-                `;
-            });
-            html += `</tbody></table>`;
-            contentDiv.innerHTML = html;
-        }
-        
-        document.getElementById('ranking-loading').style.display = 'none';
-        document.getElementById('ranking-content').style.display = 'block';
-    } catch (e) {
-        document.getElementById('ranking-loading').innerHTML = '<div style="color:#ef4444;">Error al cargar el ranking.</div>';
-    }
-}
-
 async function cargarTiposActividad() {
   try {
     var d = await api('/api/tipos-actividad');
@@ -696,6 +667,7 @@ function renderDonut(completadas, pendientes, vencidas, containerId) {
 // ===================== DIRECTOR MAIN VIEW =====================
 async function loadDirectorMain(ieCodigo) {
   try {
+    loadDirectorEvaluationSettings();
     var codigo = ieCodigo !== undefined ? ieCodigo : document.getElementById('dir-filter-codigo').value;
     if (!codigo) {
       document.getElementById('kpi-total').textContent = '0';
@@ -1112,7 +1084,7 @@ function renderDirectorActividadesTable() {
               <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">¡Al día con todo!</h4>
               <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">¡Felicidades! Estás al día con tus actividades pendientes.</p>
             </div>
-            <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
+            <div id="dir-mini-calendar-container" style="flex:1; min-width:240px; display:flex; justify-content:center;"></div>
           </div>
         `;
       } else {
@@ -1125,7 +1097,7 @@ function renderDirectorActividadesTable() {
               <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--slate-900); margin-bottom: 6px;">Actividades Vencidas</h4>
               <p style="font-size: 0.85rem; color: var(--slate-600); max-width: 260px; line-height: 1.4; margin: 0;">Tienes <strong>${vencidasCount}</strong> actividad(es) vencida(s) o no cumplida(s) este periodo. Por favor, regulariza con tu supervisor.</p>
             </div>
-            <div id="dir-mini-calendar-container" style="flex:1; min-width:280px; display:flex; justify-content:center;"></div>
+            <div id="dir-mini-calendar-container" style="flex:1; min-width:240px; display:flex; justify-content:center;"></div>
           </div>
         `;
       }
@@ -1838,7 +1810,6 @@ async function loadMonitoreo() {
           fecha_limite: a.fecha_limite,
           link_url: a.link_url || '',
           asignador_nombre: a.asignador_nombre,
-          asignador_id: a.asignador_id,
           area: a.area,
           ies: []
         };
@@ -1874,15 +1845,11 @@ async function loadMonitoreo() {
       var pctN = total > 0 ? (noCumplidas/total*100).toFixed(1) : 0;
       var pctP = total > 0 ? (pendientes/total*100).toFixed(1) : 0;
 
-      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == grp.asignador_id));
-      var editBtn = canEdit ? '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad" style="padding:5px 8px;"><i class="fas fa-pen"></i></button>' : '';
-      var checkboxHtml = canEdit ? '<input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onclick="event.stopPropagation()" onchange="updateBulkDeleteButtonState()" style="width:14px;height:14px;accent-color:var(--primary);flex-shrink:0;">' : '<div style="width:14px;height:14px;flex-shrink:0;"></div>';
-
       html += '<div class="mon-act-card">' +
         '<div class="mon-act-hd" onclick="openMonModal(' + grp.id + ')">' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
-              checkboxHtml +
+              '<input type="checkbox" class="mon-row-checkbox" value="' + grp.id + '" onclick="event.stopPropagation()" onchange="updateBulkDeleteButtonState()" style="width:14px;height:14px;accent-color:var(--primary);flex-shrink:0;">' +
               '<span class="act-title">' + grp.titulo + '</span>' +
             '</div>' +
             '<div class="act-meta">Por: ' + (grp.asignador_nombre || '-') + (grp.area ? ' · ' + grp.area : '') + ' &nbsp;·&nbsp; <span style="color:var(--text2);font-weight:700;">' + completadas + ' completadas · ' + pendientes + ' pendientes · ' + inconclusas + ' inconclusas de ' + total + '</span></div>' +
@@ -1899,7 +1866,7 @@ async function loadMonitoreo() {
               '<div style="font-size:1.1rem;font-weight:800;color:' + pctColor + ';">' + pct + '%</div>' +
               '<div style="font-size:.62rem;color:var(--text3);font-weight:600;">cumplim.</div>' +
             '</div>' +
-            editBtn +
+            '<button class="btn btn-xs btn-warning" onclick="event.stopPropagation();editarActividadModal(' + grp.id + ')" title="Editar actividad" style="padding:5px 8px;"><i class="fas fa-pen"></i></button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1913,6 +1880,9 @@ async function loadMonitoreo() {
 function openMonModal(actId) {
   var grp = monitoreoData[actId];
   if (!grp) return;
+
+  window._monCurrentActId = actId;
+  window._monCurrentGroup = grp;
 
   // Header info
   var infoHtml = '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">' +
@@ -1953,16 +1923,11 @@ function renderMonModalRows(ies, filter) {
       var badgeCls = ie.estado === 'completada' ? 'badge-completada' : ie.estado === 'no_cumplida' ? 'badge-no_cumplida' : ie.estado === 'inconclusa' ? 'badge-inconclusa' : 'badge-pendiente';
       var badge = '<span class="badge ' + badgeCls + '">' + (ie.estado || 'pendiente').replace('_',' ').toUpperCase() + '</span>';
       var btns = '';
-      var canEdit = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == ie.asignador_id));
-      if (canEdit) {
-        if (ie.estado !== 'completada') {
-          btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';
-        }
-        btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-minus-circle"></i></button>';
-        btns += '<button class="btn btn-xs btn-danger" style="padding:5px 8px;" onclick="monModalEliminar(' + ie.id + ',' + ie.actividad_id + ')" title="Eliminar asignación"><i class="fas fa-trash-alt"></i></button>';
-      } else {
-        btns = '<span style="font-size:0.75rem; color:var(--text3);"><i class="fas fa-lock" title="No puedes editar actividades de otros"></i></span>';
+      if (ie.estado !== 'completada') {
+        btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';
       }
+      btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-minus-circle"></i></button>';
+      btns += '<button class="btn btn-xs btn-danger" style="padding:5px 8px;" onclick="monModalEliminar(' + ie.id + ',' + ie.actividad_id + ')" title="Eliminar asignación"><i class="fas fa-trash-alt"></i></button>';
       html += '<tr>' +
         '<td style="padding:10px 22px;">' +
           '<div style="font-weight:700;font-size:.82rem;color:var(--text1);">' + (ie.ie_nombre || '-') + '</div>' +
@@ -4396,356 +4361,245 @@ function capDescargarPDF() {
     alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
   }
 }
-// ===================== CALENDARIO =====================
-window.calendar = null;
 
-window.todosLosEventosCalendario = [];
+async function handleExcelImport(event) {
+  var file = event.target.files[0];
+  if (!file) return;
 
-async function loadCalendario() {
-  var container = document.getElementById('calendar-container');
-  if (!container) return;
-  container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
-  try {
-    var eventos = await api('/api/calendario/eventos');
-    var events = eventos.map(function(e) {
-      var color = '#6b21a8';
-      var textC = '#ffffff';
-      if (e.estado === 'Cumplida') {
-          color = '#10b981';
-      } else if (e.estado === 'En Proceso') {
-          color = '#f59e0b';
-          textC = '#000000';
-      }
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    var base64 = e.target.result.split(',')[1];
+    var statusSpan = document.getElementById('import-excel-status');
+    statusSpan.textContent = 'Procesando archivo...';
+    statusSpan.style.color = 'var(--primary)';
 
-      let finalEnd = e.end || undefined;
-      if (e.fecha_fin_actividad) {
-          let f = e.fecha_fin_actividad;
-          if (typeof f === 'string') f = f.substring(0,10);
-          else f = new Date(f).toISOString().substring(0,10);
-          
-          if (!e.hora_fin) {
-             let df = new Date(f + 'T12:00:00Z');
-             df.setDate(df.getDate() + 1);
-             finalEnd = df.toISOString().substring(0,10);
-          } else {
-             finalEnd = f + 'T' + e.hora_fin;
-          }
-      }
+    try {
+      var res = await api('/api/actividades/' + window._monCurrentActId + '/import-excel', {
+        method: 'POST',
+        body: { file: base64 }
+      });
 
-      var finalTitle = e.title;
-      if (currentUser && currentUser.rol === 'admin' && e.creador) {
-          finalTitle = e.title + ' - ' + e.creador;
-      }
+      if (res.ok) {
+        statusSpan.textContent = '¡Actualizado!';
+        statusSpan.style.color = 'var(--success)';
+        showToast(res.mensaje, 'success');
 
-      return {
-        id: e.id,
-        title: finalTitle,
-        start: e.start,
-        end: finalEnd,
-        allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
-        backgroundColor: color,
-        borderColor: color,
-        textColor: textC,
-        extendedProps: e
-      };
-    });
-
-    window.todosLosEventosCalendario = events;
-    
-    container.innerHTML = '';
-    var initView = (currentUser && currentUser.rol === 'admin') ? 'listDay' : 'timeGridWeek';
-    
-    if (currentUser && currentUser.rol === 'admin') {
-        document.querySelectorAll('.cal-view-btn').forEach(b => b.classList.remove('active'));
-        var btnLista = document.getElementById('vbtnList');
-        if (btnLista) {
-            btnLista.classList.add('active');
-            btnLista.setAttribute('onclick', "setCalView('listDay', this)");
+        if (res.errors && res.errors.length > 0) {
+          // Si hubo algunos errores de validación, alertar al usuario
+          alert('Algunas filas no pudieron ser procesadas:\n\n' + res.errors.join('\n'));
         }
-    }
 
-    calendar = new FullCalendar.Calendar(container, {
-      initialView: initView,
-      headerToolbar: false,
-      height: '100%',
-      expandRows: true,
-      slotDuration: '01:00:00',
-      slotMinTime: '06:00:00',
-      slotMaxTime: '21:00:00',
-      events: events,
-      locale: 'es',
-      eventClick: function(info) {
-        abrirModalEvento(info.event.extendedProps);
-      },
-      datesSet: function(info) {
-        if (document.getElementById('calMainTitle')) {
-          const title = info.view.title;
-          document.getElementById('calMainTitle').textContent = title.charAt(0).toUpperCase() + title.slice(1);
-        }
-        if (typeof _miniCalDate !== 'undefined') {
-            _miniCalDate = info.view.currentStart;
-        }
-        if(typeof renderMiniCal === 'function') renderMiniCal();
+        // Refrescar lista de monitoreo y reabrir modal
+        await loadMonitoreo();
+        openMonModal(window._monCurrentActId);
+      } else {
+        statusSpan.textContent = 'Error al procesar.';
+        statusSpan.style.color = 'var(--danger)';
+        showToast(res.error || 'Error en el servidor', 'error');
       }
-    });
-    calendar.render();
-    
-    // Update KPIs and Legend
-    actualizarKpisCal(events);
-    renderLeyendaCal(events);
-    if(typeof renderMiniCal === 'function') renderMiniCal();
-
-  } catch (e) {
-    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
-  }
-}
-
-function filtrarCalendarioLocal() {
-    if (!calendar) return;
-    const texto = (document.getElementById('calBuscarTexto').value || '').toLowerCase();
-    const estado = document.getElementById('calFiltroEstado').value;
-    
-    const filtrados = window.todosLosEventosCalendario.filter(ev => {
-        const textMatch = ev.title.toLowerCase().includes(texto) || (ev.extendedProps.area || '').toLowerCase().includes(texto);
-        const estMatch = !estado || ev.extendedProps.estado === estado;
-        return textMatch && estMatch;
-    });
-    
-    calendar.getEvents().forEach(e => e.remove());
-    filtrados.forEach(e => calendar.addEvent(e));
-    
-    actualizarKpisCal(filtrados);
-    renderLeyendaCal(filtrados);
-}
-
-function actualizarKpisCal(eventos) {
-    const now = new Date();
-    const mesActual = now.getMonth();
-    const anioActual = now.getFullYear();
-    const delMes = eventos.filter(ev => {
-        const d = new Date(ev.start);
-        return d.getMonth() === mesActual && d.getFullYear() === anioActual;
-    });
-    const total = delMes.length;
-    const pendiente = delMes.filter(e => e.extendedProps.estado === 'Pendiente').length;
-    const cumplio = delMes.filter(e => e.extendedProps.estado === 'Cumplida').length;
-    const noCumplio = delMes.filter(e => e.extendedProps.estado === 'En Proceso').length;
-    const t = document.getElementById('kpiTotal'); if(t) t.textContent = total;
-    const p = document.getElementById('kpiPendiente'); if(p) p.textContent = pendiente;
-    const c = document.getElementById('kpiCumplio'); if(c) c.textContent = cumplio;
-    const n = document.getElementById('kpiNoCumplio'); if(n) n.textContent = noCumplio;
-}
-
-function renderLeyendaCal(eventos) {
-    const legendEl = document.getElementById('calLegend');
-    if (!legendEl) return;
-    const areas = [...new Set(eventos.map(e => e.extendedProps.area).filter(Boolean))];
-    const conteos = {};
-    eventos.forEach(e => { if (e.extendedProps.area) conteos[e.extendedProps.area] = (conteos[e.extendedProps.area]||0)+1; });
-    
-    if (areas.length === 0) {
-        legendEl.innerHTML = '<p style="font-size:12px;color:#aaa;text-align:center;padding:8px 0;">Sin áreas asignadas</p>';
-    } else {
-        legendEl.innerHTML = areas.map(sa => {
-            const cnt = conteos[sa] || 0;
-            return `<div class="cal-area-chip" title="${sa}">
-                <div class="cal-area-dot" style="background:var(--granate);"></div>
-                <span class="cal-area-name">${sa}</span>
-                <span class="cal-area-count">${cnt}</span>
-            </div>`;
-        }).join('');
+    } catch(err) {
+      statusSpan.textContent = 'Error.';
+      statusSpan.style.color = 'var(--danger)';
+      showToast('Error: ' + err.message, 'error');
     }
-}
-
-
-// ==================== CALENDARIO EVENTOS (SUPERVISORES) ====================
-function abrirModalEvento(evento) {
-  var title = 'Nuevo Evento';
-  var isEdit = evento && evento.id;
-  if (isEdit) title = 'Detalles del Evento';
-  
-  var isCreator = true;
-  if (isEdit && currentUser && evento.supervisor_id) {
-      isCreator = (evento.supervisor_id === currentUser.id);
-  }
-  var disabledAttr = isCreator ? '' : 'disabled';
-  
-  var evId = isEdit ? evento.id : '';
-  var evTitulo = isEdit ? (evento.titulo || '') : '';
-  var evDescripcion = isEdit ? (evento.descripcion || '') : '';
-  var evEstado = isEdit ? (evento.estado || 'Pendiente') : 'Pendiente';
-  
-  var fechaStr = '';
-  if (isEdit && evento.fecha) {
-    if (typeof evento.fecha === 'string') fechaStr = evento.fecha.substring(0,10);
-    else fechaStr = new Date(evento.fecha).toISOString().substring(0,10);
-  }
-  var evFecha = fechaStr;
-  
-  var fechaFinStr = '';
-  if (isEdit && evento.fecha_fin_actividad) {
-    if (typeof evento.fecha_fin_actividad === 'string') fechaFinStr = evento.fecha_fin_actividad.substring(0,10);
-    else fechaFinStr = new Date(evento.fecha_fin_actividad).toISOString().substring(0,10);
-  }
-  var evFechaFin = fechaFinStr;
-
-  var evHoraInicio = isEdit ? (evento.hora_inicio || '') : '';
-  var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
-  
-  var evArea = isEdit ? (evento.area || '') : '';
-
-  var creadorHtml = '';
-  if (isEdit && evento.creador) {
-    creadorHtml = `<div style="background:#f0f2ff; padding:10px 15px; border-radius:8px; margin-bottom:15px; font-size:13px; color:#1a1a2e; border: 1px solid #d0d7ff; display:flex; align-items:center; gap:8px;">
-      <i class="fas fa-user-circle" style="font-size:16px; color:#4a6cf7;"></i> 
-      <span><strong>Asignado por:</strong> ${evento.creador}</span>
-    </div>`;
-  }
-
-  var bodyHtml = `
-    <div id="formEventoCalendario">
-      <input type="hidden" id="evId" value="${evId}">
-      ${creadorHtml}
-      <div class="mb-3">
-        <label>Título del Evento</label>
-        <input type="text" id="evTitulo" class="form-control" value="${evTitulo}" required ${disabledAttr}>
-      </div>
-      <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <div style="flex:1;">
-          <label>Fecha Inicio</label>
-          <input type="date" id="evFecha" class="form-control" value="${evFecha}" required ${disabledAttr}>
-        </div>
-        <div style="flex:1;">
-          <label>Fecha Fin <small>(Opcional)</small></label>
-          <input type="date" id="evFechaFin" class="form-control" value="${evFechaFin}" ${disabledAttr}>
-        </div>
-      </div>
-      <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <div style="flex:1;">
-          <label>Hora Inicio</label>
-          <input type="time" id="evHoraInicio" class="form-control" value="${evHoraInicio}" ${disabledAttr}>
-        </div>
-        <div style="flex:1;">
-          <label>Hora Fin</label>
-          <input type="time" id="evHoraFin" class="form-control" value="${evHoraFin}" ${disabledAttr}>
-        </div>
-      </div>
-      <div class="mb-3">
-        <label>Descripción</label>
-        <textarea id="evDescripcion" class="form-control" rows="2" ${disabledAttr}>${evDescripcion}</textarea>
-      </div>
-      <div style="display:flex; gap:10px; margin-bottom:15px;">
-        <div style="flex:1;">
-          <label>Área</label>
-          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}" ${disabledAttr}>
-        </div>
-        <div style="flex:1;">
-          <label>Estado</label>
-          <select id="evEstado" class="form-select" ${disabledAttr}>
-            <option value="Pendiente" ${evEstado==='Pendiente'?'selected':''}>Pendiente</option>
-            <option value="En Proceso" ${evEstado==='En Proceso'?'selected':''}>En Proceso</option>
-            <option value="Cumplida" ${evEstado==='Cumplida'?'selected':''}>Cumplida</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  `;
-
-  var footerHtml = '';
-  if (isCreator) {
-    if (isEdit) {
-      footerHtml += `<button type="button" class="btn btn-danger" style="margin-right:auto;" onclick="eliminarEvento()">Eliminar</button>`;
-    }
-    footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-                   <button type="button" class="btn btn-primary" onclick="guardarEvento()">Guardar</button>`;
-  } else {
-    footerHtml += `<button type="button" class="btn btn-secondary" onclick="closeModal()">Cerrar</button>`;
-  }
-
-  showModal(title, bodyHtml, footerHtml);
-}
-
-async function guardarEvento() {
-  var id = document.getElementById('evId').value;
-  var payload = {
-    titulo: document.getElementById('evTitulo').value,
-    fecha: document.getElementById('evFecha').value,
-    fecha_fin_actividad: document.getElementById('evFechaFin').value,
-    hora_inicio: document.getElementById('evHoraInicio').value,
-    hora_fin: document.getElementById('evHoraFin').value,
-    descripcion: document.getElementById('evDescripcion').value,
-    area: document.getElementById('evArea').value,
-    estado: document.getElementById('evEstado').value
+    // Limpiar input
+    event.target.value = '';
   };
-
-  if (!payload.titulo || !payload.fecha) {
-    alert('Por favor ingrese al menos el Título y la Fecha.');
-    return;
-  }
-
-  try {
-    if (id) {
-      await api('/api/calendario/eventos/' + id, { method: 'PUT', body: payload });
-    } else {
-      await api('/api/calendario/eventos', { method: 'POST', body: payload });
-    }
-    closeModal();
-    loadCalendario();
-  } catch(e) {
-    alert('Error al guardar evento: ' + e.message);
-  }
+  reader.readAsDataURL(file);
 }
 
-async function eliminarEvento() {
-  var id = document.getElementById('evId').value;
-  if (!id) return;
-  if (!confirm('¿Seguro que desea eliminar este evento?')) return;
-  try {
-    await api('/api/calendario/eventos/' + id, { method: 'DELETE' });
-    closeModal();
-    loadCalendario();
-  } catch(e) {
-    alert('Error al eliminar evento: ' + e.message);
+const THEME_MAP = {
+  indigo: {
+    primary: '#6366f1',
+    primaryDark: '#4f46e5',
+    primaryLight: 'rgba(99, 102, 241, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    sidebarActive: '#818cf8',
+    sidebarActiveBg: 'rgba(99, 102, 241, 0.12)'
+  },
+  blue: {
+    primary: '#3b82f6',
+    primaryDark: '#1d4ed8',
+    primaryLight: 'rgba(59, 130, 246, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    sidebarActive: '#60a5fa',
+    sidebarActiveBg: 'rgba(59, 130, 246, 0.12)'
+  },
+  sky: {
+    primary: '#0ea5e9',
+    primaryDark: '#0284c7',
+    primaryLight: 'rgba(14, 165, 233, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    sidebarActive: '#38bdf8',
+    sidebarActiveBg: 'rgba(14, 165, 233, 0.12)'
+  },
+  teal: {
+    primary: '#0d9488',
+    primaryDark: '#0f766e',
+    primaryLight: 'rgba(13, 148, 136, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+    sidebarActive: '#2dd4bf',
+    sidebarActiveBg: 'rgba(13, 148, 136, 0.12)'
+  },
+  emerald: {
+    primary: '#10b981',
+    primaryDark: '#059669',
+    primaryLight: 'rgba(16, 185, 129, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    sidebarActive: '#34d399',
+    sidebarActiveBg: 'rgba(16, 185, 129, 0.12)'
+  },
+  violet: {
+    primary: '#8b5cf6',
+    primaryDark: '#6d28d9',
+    primaryLight: 'rgba(139, 92, 246, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+    sidebarActive: '#a78bfa',
+    sidebarActiveBg: 'rgba(139, 92, 246, 0.12)'
+  },
+  rose: {
+    primary: '#f43f5e',
+    primaryDark: '#be123c',
+    primaryLight: 'rgba(244, 63, 94, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+    sidebarActive: '#fb7185',
+    sidebarActiveBg: 'rgba(244, 63, 94, 0.12)'
+  },
+  amber: {
+    primary: '#f59e0b',
+    primaryDark: '#d97706',
+    primaryLight: 'rgba(245, 158, 11, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    sidebarActive: '#fbbf24',
+    sidebarActiveBg: 'rgba(245, 158, 11, 0.12)'
   }
-}
+};
 
-function switchCalTab(tab) {
-  var bCal = document.getElementById('cal-tab-btn-cal');
-  var bActs = document.getElementById('cal-tab-btn-acts');
+window._currentThemeColor = 'indigo';
+
+function selectThemeColor(theme) {
+  if (!THEME_MAP[theme]) theme = 'indigo';
+  window._currentThemeColor = theme;
   
-  if (tab === 'cal') {
-    bCal.className = 'btn btn-primary';
-    bCal.style.background = '';
-    bCal.style.borderColor = '';
-    bCal.style.color = '';
-    
-    bActs.className = 'btn btn-outline-primary';
-    bActs.style.background = 'transparent';
-    bActs.style.borderColor = 'transparent';
-    bActs.style.color = 'var(--text2)';
-  } else {
-    bActs.className = 'btn btn-primary';
-    bActs.style.background = '';
-    bActs.style.borderColor = '';
-    bActs.style.color = '';
-    
-    bCal.className = 'btn btn-outline-primary';
-    bCal.style.background = 'transparent';
-    bCal.style.borderColor = 'transparent';
-    bCal.style.color = 'var(--text2)';
-  }
+  const colors = THEME_MAP[theme];
+  const root = document.documentElement;
+  root.style.setProperty('--primary', colors.primary);
+  root.style.setProperty('--primary-dark', colors.primaryDark);
+  root.style.setProperty('--primary-light', colors.primaryLight);
+  root.style.setProperty('--primary-grad', colors.primaryGrad);
+  root.style.setProperty('--sidebar-active', colors.sidebarActive);
+  root.style.setProperty('--sidebar-active-bg', colors.sidebarActiveBg);
+  
+  document.querySelectorAll('.theme-color-btn').forEach(btn => {
+    const btnTheme = btn.getAttribute('data-theme');
+    if (btnTheme === theme) {
+      btn.classList.add('active');
+      btn.style.boxShadow = `0 0 0 2px ${colors.primary}`;
+    } else {
+      btn.classList.remove('active');
+      btn.style.boxShadow = '0 0 0 1px #cbd5e1';
+    }
+  });
+}
 
-  document.getElementById('cal-content-cal').style.display = tab === 'cal' ? 'block' : 'none';
-  document.getElementById('cal-content-acts').style.display = tab === 'acts' ? 'block' : 'none';
-  if (tab === 'cal' && calendar) {
-    calendar.render();
+async function initThemeColor() {
+  try {
+    const settings = await api('/api/system-settings');
+    if (settings && settings.theme_color) {
+      selectThemeColor(settings.theme_color);
+    } else {
+      selectThemeColor('indigo');
+    }
+  } catch(e) {
+    console.error('Error al inicializar color de tema:', e);
+    selectThemeColor('indigo');
   }
 }
 
-function descargarExcelAreas() {
-  descargarExcel('/api/export/actividades-areas');
+function onBoxTypeChange(val) {
+  const urlGroup = document.getElementById('config-box-url-group');
+  if (urlGroup) {
+    urlGroup.style.display = 'block';
+  }
 }
 
+async function loadSystemSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
+    document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
+    document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
+    
+    const boxType = settings.evaluation_box_type || 'external';
+    const typeSelect = document.getElementById('config-box-type');
+    if (typeSelect) {
+      typeSelect.value = boxType;
+    }
+    onBoxTypeChange(boxType);
+    
+    const theme = settings.theme_color || 'indigo';
+    selectThemeColor(theme);
+  } catch(e) {
+    showToast('Error al cargar configuración: ' + e.message, 'error');
+  }
+}
+
+async function saveSystemSettings() {
+  try {
+    const active = document.getElementById('config-active-box').checked;
+    const title = document.getElementById('config-box-title').value.trim();
+    const url = document.getElementById('config-box-url').value.trim();
+    const type = document.getElementById('config-box-type').value;
+    const themeColor = window._currentThemeColor || 'indigo';
+    
+    if (active && !title) {
+      showToast('Si activa el recuadro, debe ingresar el título', 'error');
+      return;
+    }
+    if (active && type === 'external' && !url) {
+      showToast('Si activa el recuadro con enlace externo, debe ingresar el enlace/URL', 'error');
+      return;
+    }
+    
+    await api('/api/system-settings', {
+      method: 'PUT',
+      body: {
+        active_evaluation_box: active,
+        evaluation_box_title: title,
+        evaluation_box_url: url,
+        evaluation_box_type: type,
+        theme_color: themeColor
+      }
+    });
+    
+    showToast('Configuración del sistema guardada con éxito', 'success');
+  } catch(e) {
+    showToast('Error al guardar configuración: ' + e.message, 'error');
+  }
+}
+
+async function loadDirectorEvaluationSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    const evalBox = document.getElementById('dir-evaluation-box');
+    window._evaluationBoxType = settings.evaluation_box_type || 'external';
+    window._evaluationBoxUrl = settings.evaluation_box_url || '';
+    if (settings && settings.active_evaluation_box) {
+      document.getElementById('dir-eval-title').textContent = settings.evaluation_box_title || 'Evaluación de Actividad';
+      evalBox.style.display = 'flex';
+    } else {
+      evalBox.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Error al cargar configuración de evaluación:', e);
+  }
+}
+
+function openEvaluationLink() {
+  if (window._evaluationBoxUrl) {
+    window.open(window._evaluationBoxUrl, '_blank');
+  }
+}
 
 // ===================== CAPACITACIONES & ASISTENCIA =====================
 
@@ -5318,3 +5172,96 @@ function selectPublicCapIE(id, codigo, nombre) {
 }
 
 function selectSurveyRating(val) {
+  currentPublicRating = val;
+  document.getElementById('pub-cap-rating').value = val;
+  const stars = document.querySelectorAll('.star-btn');
+  stars.forEach((star, index) => {
+    if (index < val) {
+      star.style.color = '#eab308';
+    } else {
+      star.style.color = '#d1d5db';
+    }
+  });
+}
+
+function resetStars() {
+  currentPublicRating = 0;
+  document.getElementById('pub-cap-rating').value = '';
+  const stars = document.querySelectorAll('.star-btn');
+  stars.forEach(star => {
+    star.style.color = '#d1d5db';
+  });
+}
+
+async function submitPublicAsistencia() {
+  const capId = currentPublicCapacitacion.id;
+  const ieId = document.getElementById('pub-cap-ie-id').value;
+  const nombre = document.getElementById('pub-cap-nombre').value.trim();
+  const dni = document.getElementById('pub-cap-dni').value.trim();
+  const cargo = document.getElementById('pub-cap-cargo').value.trim();
+  const rating = document.getElementById('pub-cap-rating').value;
+  const sugerencias = document.getElementById('pub-cap-sugerencias').value.trim();
+  
+  if (!ieId) {
+    showToast('Debe seleccionar una Institución Educativa válida de la lista', 'error');
+    return;
+  }
+  
+  if (currentPublicCapacitacion.incluye_encuesta && !rating) {
+    showToast('Por favor califique la capacitación en la encuesta de satisfacción', 'error');
+    return;
+  }
+  
+  try {
+    const payload = {
+      ie_id: parseInt(ieId, 10),
+      nombre_completo: nombre,
+      dni: dni,
+      cargo: cargo
+    };
+    if (currentPublicCapacitacion.incluye_encuesta) {
+      payload.calificacion_satisfaccion = parseInt(rating, 10);
+      payload.sugerencias = sugerencias || null;
+    }
+    
+    document.getElementById('pub-cap-submit-btn').disabled = true;
+    document.getElementById('pub-cap-submit-btn').textContent = 'Registrando...';
+    
+    const res = await api('/api/public/capacitaciones/' + capId + '/registrar', {
+      method: 'POST',
+      body: payload
+    });
+    
+    document.getElementById('pub-cap-form').style.display = 'none';
+    const successScreen = document.getElementById('pub-cap-success');
+    successScreen.style.display = 'block';
+    
+    document.getElementById('success-ie-name').textContent = document.getElementById('pub-cap-selected-ie-text').textContent;
+    document.getElementById('success-user-name').textContent = nombre;
+    
+    const regDate = new Date(res.registro.fecha_registro);
+    const timeFormatted = regDate.toLocaleString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    document.getElementById('success-time').textContent = timeFormatted;
+    
+    showToast('Asistencia registrada con éxito', 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al registrar la asistencia', 'error');
+  } finally {
+    document.getElementById('pub-cap-submit-btn').disabled = false;
+    document.getElementById('pub-cap-submit-btn').textContent = 'Registrar Asistencia';
+  }
+}
+
+document.addEventListener('click', function(e) {
+  const container = document.getElementById('pub-cap-autocomplete');
+  if (container && !container.contains(e.target) && e.target.id !== 'pub-cap-ie-search') {
+    container.style.display = 'none';
+  }
+});

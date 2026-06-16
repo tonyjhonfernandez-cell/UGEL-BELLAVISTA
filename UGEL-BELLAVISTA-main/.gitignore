@@ -1,0 +1,17 @@
+node_modules/
+.env
+*.db
+*.db-shm
+*.db-wal
+*.xlsx
+~$*
+EJEMPLO/
+fix_db.js
+fix_phones.js
+parse.js
+raw_supervisors.tsv
+sync_supervisores.js
+test_seed.js
+update_seed.js
+
+.vercel

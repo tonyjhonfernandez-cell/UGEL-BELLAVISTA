@@ -1,43 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const { seedDatabase } = require('./seed');
+const db = require('./db');
+const pool = db.pool;
 
 const app = express();
-
-if (!process.env.DATABASE_URL) {
-    console.error('ERROR: DATABASE_URL no configurada en .env');
-}
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
-
-function toPgSql(sql) {
-    let i = 0;
-    return String(sql).replace(/\?/g, () => `$${++i}`);
-}
-
-const db = {
-    async exec(sql) { await pool.query(sql); },
-    prepare(sql) {
-        const pgSql = toPgSql(sql);
-        return {
-            all: async (...params) => (await pool.query(pgSql, params)).rows,
-            get: async (...params) => (await pool.query(pgSql, params)).rows[0],
-            run: async (...params) => {
-                let q = pgSql;
-                if (/^\s*insert/i.test(sql) && !/returning/i.test(sql)) q += ' RETURNING id';
-                const result = await pool.query(q, params);
-                return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
-            }
-        };
-    }
-};
 
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '10mb' }));
@@ -63,11 +33,11 @@ app.use(session({
 async function syncPasswords() {
     try {
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
-        // Solo para usuarios nuevos (password NULL/vacío) - no revertir cambios manuales
+        // Solo para usuarios nuevos o sin contraseña (password NULL/vacío)
         await pool.query(`
             UPDATE usuarios
-            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
-            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
+            SET password = COALESCE(NULLIF(TRIM(password),''), NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
+            WHERE (password IS NULL OR password = '') AND usuario != 'admin'
         `);
     } catch(e) {
         console.error('Error en syncPasswords:', e.message);
@@ -80,42 +50,37 @@ async function runUserMigration() {
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS usuario VARCHAR(100)");
         await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password TEXT");
 
-        // Asignar password = DNI donde falta (supervisores y directores)
+        // 1. Asignar usuario = DNI y password = DNI para todos los que tengan DNI (excepto el usuario 'admin')
         await pool.query(`
             UPDATE usuarios
-            SET password = COALESCE(NULLIF(TRIM(dni),''), NULLIF(ie_codigo,''), '12345678')
-            WHERE (password IS NULL OR password = '') AND rol NOT IN ('admin')
+            SET usuario = TRIM(dni),
+                password = COALESCE(NULLIF(TRIM(password), ''), TRIM(dni))
+            WHERE dni IS NOT NULL AND TRIM(dni) != '' AND usuario != 'admin'
         `);
 
-        // Asignar usuario para directores donde falta
+        // 2. Elevar DNI '74223117' a rol 'admin' y asegurar que su usuario es su DNI
         await pool.query(`
             UPDATE usuarios
-            SET usuario = 'director.' || COALESCE(ie_codigo, id::text)
-            WHERE (usuario IS NULL OR usuario = '') AND rol = 'director'
+            SET rol = 'admin',
+                usuario = '74223117',
+                password = COALESCE(NULLIF(TRIM(password), ''), '74223117')
+            WHERE dni = '74223117'
         `);
 
-        // Asignar usuario para supervisores: primer_nombre.primer_apellido
-        const sups = await pool.query(
-            "SELECT id, nombre_completo FROM usuarios WHERE (usuario IS NULL OR usuario = '') AND rol = 'supervisor'"
-        );
-        for (const u of sups.rows) {
-            const parts = (u.nombre_completo || '').trim().toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            let base = parts.length >= 2 ? parts[0] + '.' + parts[1] : (parts[0] || 'supervisor');
-            let uname = base, cnt = 2;
-            while ((await pool.query('SELECT id FROM usuarios WHERE usuario = $1 AND id != $2', [uname, u.id])).rows.length > 0) {
-                uname = base + cnt++;
-            }
-            await pool.query('UPDATE usuarios SET usuario = $1 WHERE id = $2', [uname, u.id]);
-        }
+        // 3. Asignar usuario para directores donde falta (si no tienen DNI)
+        await pool.query(`
+            UPDATE usuarios
+            SET usuario = 'director.' || COALESCE(ie_codigo, id::text),
+                password = COALESCE(NULLIF(TRIM(password), ''), COALESCE(ie_codigo, '12345678'))
+            WHERE (usuario IS NULL OR usuario = '' OR usuario LIKE 'director.%') AND rol = 'director' AND (dni IS NULL OR TRIM(dni) = '')
+        `);
 
-        // Crear/verificar admin
-        const adminR = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
+        // 4. Crear/verificar el usuario 'admin' (cuyo usuario es 'admin' y contraseña '1020')
+        const adminR = await pool.query("SELECT id FROM usuarios WHERE usuario = 'admin' LIMIT 1");
         if (adminR.rows.length === 0) {
-            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', 'admin', true)");
+            await pool.query("INSERT INTO usuarios (nombre_completo, rol, usuario, password, activo) VALUES ('Administrador', 'admin', 'admin', '1020', true)");
         } else {
-            await pool.query("UPDATE usuarios SET usuario = COALESCE(NULLIF(usuario,''), 'admin'), password = COALESCE(NULLIF(password,''), 'admin') WHERE rol = 'admin'");
+            await pool.query("UPDATE usuarios SET usuario = 'admin', password = '1020' WHERE usuario = 'admin'");
         }
     } catch(e) {
         console.error('Error en runUserMigration:', e.message);
@@ -200,8 +165,35 @@ async function applyMigrations() {
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (8) ON CONFLICT DO NOTHING');
     }
-
+    // Migración 9: tabla system_settings
     if (!applied.has(9)) {
+        try {
+            await pool.query(`CREATE TABLE IF NOT EXISTS system_settings (
+                key VARCHAR(100) PRIMARY KEY,
+                value TEXT NOT NULL
+            )`);
+            // Insert default values
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('active_evaluation_box', 'false') ON CONFLICT DO NOTHING");
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_title', 'Evaluación de Actividad') ON CONFLICT DO NOTHING");
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_url', '') ON CONFLICT DO NOTHING");
+        } catch(e){
+            console.error('Error en migración 9:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (9) ON CONFLICT DO NOTHING');
+    }
+
+    // Migración 11: agregar tipo de evaluación en system_settings
+    if (!applied.has(11)) {
+        try {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_type', 'external') ON CONFLICT DO NOTHING");
+        } catch(e){
+            console.error('Error en migración 11:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (11) ON CONFLICT DO NOTHING');
+    }
+
+    // Migración 12: tablas de capacitaciones y asistencia
+    if (!applied.has(12)) {
         try {
             await pool.query(`
                 CREATE TABLE IF NOT EXISTS capacitaciones (
@@ -231,9 +223,9 @@ async function applyMigrations() {
                 )
             `);
         } catch(e) {
-            console.error('Error en migración 9:', e.message);
+            console.error('Error en migración 12:', e.message);
         }
-        await pool.query('INSERT INTO schema_migrations (version) VALUES (9) ON CONFLICT DO NOTHING');
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (12) ON CONFLICT DO NOTHING');
     }
 }
 
@@ -320,24 +312,6 @@ async function initDatabase() {
             created_at TIMESTAMP DEFAULT NOW()
         );
 
-        CREATE TABLE IF NOT EXISTS eventos_calendario (
-            id SERIAL PRIMARY KEY,
-            supervisor_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
-            titulo TEXT NOT NULL,
-            descripcion TEXT,
-            estado VARCHAR(20) DEFAULT 'Pendiente',
-            fecha DATE NOT NULL,
-            fecha_fin_actividad DATE,
-            hora_inicio TIME DEFAULT '',
-            hora_fin TIME DEFAULT '',
-            area TEXT DEFAULT '',
-            sub_area TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-        
-        -- Añadir columna si la tabla ya existe
-        ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS fecha_fin_actividad DATE;
-
         CREATE TABLE IF NOT EXISTS notificaciones (
             id SERIAL PRIMARY KEY,
             usuario_id INTEGER REFERENCES usuarios(id),
@@ -378,14 +352,18 @@ async function initDatabase() {
             orden INTEGER DEFAULT 99,
             activo BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
-        );
+        )
+    `);
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS ie_niveles (
             id SERIAL PRIMARY KEY,
             ie_id INTEGER REFERENCES instituciones_educativas(id) ON DELETE CASCADE,
             nivel_id INTEGER REFERENCES niveles_educativos(id) ON DELETE CASCADE,
             codigo_modular VARCHAR(20),
             UNIQUE(ie_id, nivel_id)
-        );
+        )
+    `);
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS capacitaciones (
             id SERIAL PRIMARY KEY,
             titulo VARCHAR(255) NOT NULL,
@@ -395,7 +373,9 @@ async function initDatabase() {
             incluye_encuesta BOOLEAN DEFAULT false,
             niveles_aplicados TEXT,
             created_at TIMESTAMP DEFAULT NOW()
-        );
+        )
+    `);
+    await pool.query(`
         CREATE TABLE IF NOT EXISTS capacitaciones_asistencia (
             id SERIAL PRIMARY KEY,
             capacitacion_id INTEGER REFERENCES capacitaciones(id) ON DELETE CASCADE,
@@ -428,6 +408,9 @@ async function initDatabase() {
             await pool.query('INSERT INTO niveles_educativos (nombre, clave, color, orden) VALUES ($1, $2, $3, $4) ON CONFLICT (clave) DO NOTHING', [n.nombre, n.clave, n.color, n.orden]);
         }
     }
+
+    // Purge old mappings to re-seed clean relationships on start
+    await pool.query("DELETE FROM ie_niveles");
 
     // Migrate existing IE nivel columns → ie_niveles (one-time, idempotent)
     const colToNivel = [
@@ -504,8 +487,8 @@ ensureDb()
 app.get('/api/migrate', async (req, res) => {
     try {
         await runUserMigration();
-        // Restablecer contraseña del admin a 'admin' siempre
-        await pool.query("UPDATE usuarios SET password = 'admin', usuario = 'admin' WHERE rol = 'admin'");
+        // Restablecer contraseña del admin a '1020' siempre (sólo para la cuenta 'admin')
+        await pool.query("UPDATE usuarios SET password = '1020', usuario = 'admin' WHERE usuario = 'admin'");
         const stats = await pool.query(`
             SELECT
                 COUNT(*) FILTER (WHERE usuario IS NOT NULL AND usuario != '') AS con_usuario,
@@ -618,19 +601,9 @@ app.get('/api/import-excel', async (req, res) => {
             
             if (!nombre || !dni) continue;
 
-            const parts = nombreCompleto.toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-            
-            let uname = 'supervisor';
-            if (parts.length > 0) {
-                const primerNombre = parts[0];
-                const partsApellidos = apellidos.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
-                const primerApellido = partsApellidos.length > 0 ? partsApellidos[0] : (parts.length > 1 ? parts[1] : 'sup');
-                uname = `${primerNombre}.${primerApellido}`;
-            }
+            let uname = dni || 'supervisor';
 
-            const existing = await pool.query("SELECT id FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
+            const existing = await pool.query("SELECT id, rol, password FROM usuarios WHERE dni = $1 OR nombre_completo = $2", [dni, nombreCompleto]);
             
             if (existing.rows.length > 0) {
                 const uId = existing.rows[0].id;
@@ -640,11 +613,14 @@ app.get('/api/import-excel', async (req, res) => {
                     finalUname = uname + (++c);
                 }
                 
+                // Si es el DNI 74223117 o ya era admin, mantener rol admin
+                const targetRol = (dni === '74223117' || existing.rows[0].rol === 'admin') ? 'admin' : 'supervisor';
+
                 await pool.query(`
                     UPDATE usuarios 
-                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = 'supervisor', usuario = $6, password = $7
-                    WHERE id = $8
-                `, [nombreCompleto, dependencia, puesto, celular, email, finalUname, dni, uId]);
+                    SET nombre_completo = $1, dependencia = $2, puesto = $3, telefono = $4, email = $5, rol = $6, usuario = $7, password = COALESCE(NULLIF(TRIM(password), ''), $8)
+                    WHERE id = $9
+                `, [nombreCompleto, dependencia, puesto, celular, email, targetRol, finalUname, dni, uId]);
             } else {
                 let finalUname = uname;
                 let c = 1;
@@ -652,10 +628,12 @@ app.get('/api/import-excel', async (req, res) => {
                     finalUname = uname + (++c);
                 }
 
+                const targetRol = (dni === '74223117') ? 'admin' : 'supervisor';
+
                 await pool.query(`
                     INSERT INTO usuarios (nombre_completo, dni, rol, dependencia, puesto, telefono, email, usuario, password, activo)
-                    VALUES ($1, $2, 'supervisor', $3, $4, $5, $6, $7, $8, true)
-                `, [nombreCompleto, dni, dependencia, puesto, celular, email, finalUname, dni]);
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+                `, [nombreCompleto, dni, targetRol, dependencia, puesto, celular, email, finalUname, dni]);
             }
             supCount++;
         }
@@ -1205,7 +1183,10 @@ app.get('/api/actividades', authDirector, async (req, res) => {
     try {
         await autoExpireAssignments();
         let actividades;
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
+            const supFilter = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? 'WHERE a.asignador_id = ?' : '';
+            const supParams = (!isSuperAdminAct && req.session.user.rol === 'supervisor') ? [req.session.user.id] : [];
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, u.nombre_completo as asignador_nombre,
                 (SELECT COUNT(*) FROM asignaciones WHERE actividad_id = a.id) as total_asignaciones,
@@ -1214,8 +1195,9 @@ app.get('/api/actividades', authDirector, async (req, res) => {
                 FROM actividades a
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 LEFT JOIN usuarios u ON a.asignador_id = u.id
+                ${supFilter}
                 ORDER BY a.fecha_limite ASC
-            `).all();
+            `).all(...supParams);
         } else {
             actividades = await db.prepare(`
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
@@ -1267,14 +1249,6 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio, link_url, niveles_aplicados } = req.body;
-        
-        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
-        const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
-        if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
-            return res.status(403).json({ error: 'No tienes permiso para editar esta actividad' });
-        }
-
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
         const tituloUp = titulo ? titulo.toUpperCase() : titulo;
@@ -1329,14 +1303,6 @@ app.get('/api/asignaciones/:id', authDirector, async (req, res) => {
 app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     try {
         const { estado, notas_supervisor } = req.body;
-        
-        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
-        const asigCheck = await db.prepare('SELECT a.asignador_id FROM asignaciones ase JOIN actividades a ON ase.actividad_id = a.id WHERE ase.id = ?').get(req.params.id);
-        if (!asigCheck) return res.status(404).json({ error: 'Asignación no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id != asigCheck.asignador_id) {
-            return res.status(403).json({ error: 'No tienes permiso para cambiar el estado de esta actividad' });
-        }
-
         const fecha = estado === 'completada' ? new Date().toISOString() : null;
         await db.prepare(
             'UPDATE asignaciones SET estado=?, notas_supervisor=?, fecha_completado=? WHERE id=?'
@@ -1362,12 +1328,6 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
 
 app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
-        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
-        const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
-        if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
-        if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
-            return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
-        }
         await db.prepare('DELETE FROM actividades WHERE id = ?').run(req.params.id);
         res.json({ ok: true });
     } catch (err) {
@@ -1381,12 +1341,8 @@ app.post('/api/actividades/bulk-delete', authSupervisor, async (req, res) => {
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return res.status(400).json({ error: 'No se especificaron IDs para eliminar' });
         }
-        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         for (const id of ids) {
-            const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(id);
-            if (actividad && (isSuperAdminAct || req.session.user.id == actividad.asignador_id)) {
-                await db.prepare('DELETE FROM actividades WHERE id = ?').run(id);
-            }
+            await db.prepare('DELETE FROM actividades WHERE id = ?').run(id);
         }
         res.json({ ok: true });
     } catch (err) {
@@ -1441,8 +1397,11 @@ app.get('/api/asignaciones', async (req, res) => {
         const isSuperAdmin = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         let asignaciones;
         if (req.session.user.rol === 'supervisor' || req.session.user.rol === 'admin') {
+            // Supervisors only see activities THEY created, unless super-admin
+            const supervisorWhere = (!isSuperAdmin && req.session.user.rol === 'supervisor') ? 'AND a.asignador_id = ?' : '';
+            if (!isSuperAdmin && req.session.user.rol === 'supervisor') params.push(req.session.user.id);
             asignaciones = await db.prepare(`
-                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url, a.asignador_id,
+                SELECT ase.*, a.titulo as actividad_titulo, a.fecha_limite, a.fecha_inicio, a.descripcion as actividad_descripcion, a.hora_limite, a.link_url,
                        ta.nombre as tipo_nombre,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria,
                        u.nombre_completo as director_nombre,
@@ -1453,7 +1412,7 @@ app.get('/api/asignaciones', async (req, res) => {
                 LEFT JOIN instituciones_educativas ie ON ase.ie_id = ie.id
                 LEFT JOIN usuarios u ON ase.director_id = u.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${mesWhere} ${anioWhere}
+                WHERE 1=1 ${nivelWhere} ${estadoWhere} ${buscarWhere} ${asignadorWhere} ${supervisorWhere} ${mesWhere} ${anioWhere}
                 ORDER BY a.fecha_limite ASC
             `).all(...params);
         } else {
@@ -1474,41 +1433,6 @@ app.get('/api/asignaciones', async (req, res) => {
         res.json(asignaciones);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    }
-});
-
-// Endpoint para el Ranking de IEs (Solo Administrador)
-app.get('/api/ranking-ies', authAdmin, async (req, res) => {
-    try {
-        const query = `
-            SELECT 
-                ie.id, ie.codigo, ie.nombre, ie.ruralidad,
-                COUNT(a.id) as total_asignadas,
-                SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) as total_cumplidas
-            FROM instituciones_educativas ie
-            LEFT JOIN asignaciones a ON ie.id = a.ie_id
-            GROUP BY ie.id, ie.codigo, ie.nombre, ie.ruralidad
-            HAVING COUNT(a.id) > 0
-            ORDER BY 
-                (CAST(SUM(CASE WHEN a.estado = 'completada' OR a.estado = 'Cumplida' THEN 1 ELSE 0 END) AS FLOAT) / COUNT(a.id)) DESC,
-                total_cumplidas DESC,
-                ie.nombre ASC
-        `;
-        const rows = await db.prepare(query).all();
-        
-        // Formatear porcentaje
-        const ranking = rows.map(row => {
-            const porcentaje = row.total_asignadas > 0 ? (row.total_cumplidas / row.total_asignadas) * 100 : 0;
-            return {
-                ...row,
-                porcentaje: parseFloat(porcentaje.toFixed(1))
-            };
-        });
-
-        res.json(ranking);
-    } catch (err) {
-        console.error('Error en /api/ranking-ies:', err);
-        res.status(500).json({ error: 'Error al obtener el ranking de IEs' });
     }
 });
 
@@ -1775,6 +1699,351 @@ app.put('/api/perfil', authDirector, async (req, res) => {
             await db.prepare(`UPDATE usuarios SET ${updates.join(',')} WHERE id=?`).run(...params);
             if (nombre) req.session.user.nombre = nombre;
         }
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================== CONFIGURACIONES DEL SISTEMA =====================
+app.get('/api/system-settings', async (req, res) => {
+    try {
+        const rows = await pool.query("SELECT * FROM system_settings");
+        const settings = {};
+        rows.rows.forEach(r => {
+            if (r.key === 'active_evaluation_box') {
+                settings[r.key] = r.value === 'true';
+            } else {
+                settings[r.key] = r.value;
+            }
+        });
+        res.json({
+            active_evaluation_box: settings.active_evaluation_box || false,
+            evaluation_box_title: settings.evaluation_box_title || 'Evaluación de Actividad',
+            evaluation_box_url: settings.evaluation_box_url || '',
+            evaluation_box_type: 'external',
+            theme_color: settings.theme_color || 'indigo'
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/system-settings', authAdmin, async (req, res) => {
+    try {
+        const { active_evaluation_box, evaluation_box_title, evaluation_box_url, evaluation_box_type, theme_color } = req.body;
+        
+        await pool.query("INSERT INTO system_settings (key, value) VALUES ('active_evaluation_box', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [active_evaluation_box ? 'true' : 'false']);
+        if (evaluation_box_title !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_title', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_title]);
+        }
+        if (evaluation_box_url !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_url', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [evaluation_box_url]);
+        }
+        await pool.query("INSERT INTO system_settings (key, value) VALUES ('evaluation_box_type', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", ['external']);
+        if (theme_color !== undefined) {
+            await pool.query("INSERT INTO system_settings (key, value) VALUES ('theme_color', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value", [theme_color]);
+        }
+        
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==================== CAPACITACIONES & ASISTENCIA ====================
+
+app.post('/api/capacitaciones', authSupervisor, async (req, res) => {
+    try {
+        const { titulo, descripcion, fecha, incluye_encuesta, alcance, nivelIds, ieIds, listaId } = req.body;
+        const creador_id = req.session.usuarioId || req.session.userId;
+        
+        if (!titulo || !fecha || !alcance) {
+            return res.status(400).json({ error: 'Faltan campos obligatorios' });
+        }
+        
+        let nivelesStr = null;
+        if (alcance === 'nivel' && Array.isArray(nivelIds)) {
+            const levels = await pool.query('SELECT clave FROM niveles_educativos WHERE id = ANY($1::int[])', [nivelIds]);
+            nivelesStr = levels.rows.map(l => l.clave).join(',');
+        } else if (alcance === 'todas') {
+            nivelesStr = 'todas';
+        }
+        
+        const result = await pool.query(
+            'INSERT INTO capacitaciones (titulo, descripcion, fecha, creador_id, incluye_encuesta, niveles_aplicados) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+            [titulo.toUpperCase(), descripcion, fecha, creador_id, incluye_encuesta || false, nivelesStr]
+        );
+        const capId = result.rows[0].id;
+        
+        let targetIes = [];
+        if (alcance === 'todas') {
+            const ies = await pool.query('SELECT id FROM instituciones_educativas WHERE activa = true');
+            targetIes = ies.rows.map(ie => ie.id);
+        } else if (alcance === 'nivel' && Array.isArray(nivelIds)) {
+            const ies = await pool.query(
+                'SELECT DISTINCT ie_id FROM ie_niveles WHERE nivel_id = ANY($1::int[])',
+                [nivelIds]
+            );
+            targetIes = ies.rows.map(ie => ie.ie_id);
+        } else if (alcance === 'manual' && Array.isArray(ieIds)) {
+            targetIes = ieIds;
+        } else if (alcance === 'lista' && listaId) {
+            const ies = await pool.query('SELECT ie_id FROM listas_ie_det WHERE lista_id = $1', [listaId]);
+            targetIes = ies.rows.map(ie => ie.ie_id);
+        }
+        
+        for (const ieId of targetIes) {
+            await pool.query(
+                'INSERT INTO capacitaciones_asistencia (capacitacion_id, ie_id, asistio) VALUES ($1, $2, false) ON CONFLICT (capacitacion_id, ie_id) DO NOTHING',
+                [capId, ieId]
+            );
+        }
+        
+        res.json({ ok: true, id: capId });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/capacitaciones', authSupervisor, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT c.*, u.nombre_completo as creador_nombre,
+                   COUNT(ca.id) as total_invitadas,
+                   COUNT(ca.id) FILTER (WHERE ca.asistio = true) as total_asistentes
+            FROM capacitaciones c
+            LEFT JOIN usuarios u ON c.creador_id = u.id
+            LEFT JOIN capacitaciones_asistencia ca ON c.id = ca.capacitacion_id
+            GROUP BY c.id, u.nombre_completo
+            ORDER BY c.fecha DESC, c.created_at DESC
+        `);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/capacitaciones/:id', authSupervisor, async (req, res) => {
+    try {
+        await pool.query('DELETE FROM capacitaciones WHERE id = $1', [req.params.id]);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/capacitaciones/:id/asistencia', authSupervisor, async (req, res) => {
+    try {
+        const capId = req.params.id;
+        const info = await pool.query('SELECT * FROM capacitaciones WHERE id = $1', [capId]);
+        if (info.rows.length === 0) {
+            return res.status(404).json({ error: 'Capacitación no encontrada' });
+        }
+        
+        const list = await pool.query(`
+            SELECT ca.*, ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                   (SELECT string_agg(ne.nombre, ', ') FROM ie_niveles iln JOIN niveles_educativos ne ON iln.nivel_id = ne.id WHERE iln.ie_id = ie.id) as ie_niveles
+            FROM capacitaciones_asistencia ca
+            JOIN instituciones_educativas ie ON ca.ie_id = ie.id
+            WHERE ca.capacitacion_id = $1
+            ORDER BY ie.nombre ASC
+        `, [capId]);
+        
+        res.json({
+            capacitacion: info.rows[0],
+            asistencia: list.rows
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/capacitaciones/:id/export-excel', authSupervisor, async (req, res) => {
+    try {
+        const capId = req.params.id;
+        const info = await pool.query('SELECT titulo, fecha FROM capacitaciones WHERE id = $1', [capId]);
+        if (info.rows.length === 0) {
+            return res.status(404).json({ error: 'Capacitación no encontrada' });
+        }
+        
+        const list = await pool.query(`
+            SELECT ca.*, ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                   (SELECT string_agg(ne.nombre, ', ') FROM ie_niveles iln JOIN niveles_educativos ne ON iln.nivel_id = ne.id WHERE iln.ie_id = ie.id) as ie_niveles
+            FROM capacitaciones_asistencia ca
+            JOIN instituciones_educativas ie ON ca.ie_id = ie.id
+            WHERE ca.capacitacion_id = $1
+            ORDER BY ie.nombre ASC
+        `, [capId]);
+        
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Asistencia');
+        
+        ws.columns = [
+            { header: '#', key: 'num', width: 5 },
+            { header: 'CÓDIGO IE', key: 'ie_codigo', width: 14 },
+            { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie_nombre', width: 42 },
+            { header: 'NIVELES', key: 'ie_niveles', width: 24 },
+            { header: 'ASISTENCIA', key: 'asistencia', width: 16 },
+            { header: 'NOMBRES Y APELLIDOS', key: 'nombre_completo', width: 32 },
+            { header: 'DNI', key: 'dni', width: 14 },
+            { header: 'CARGO', key: 'cargo', width: 20 },
+            { header: 'FECHA Y HORA REGISTRO', key: 'fecha_registro', width: 24 },
+            { header: 'SATISFACCIÓN (1-5)', key: 'calificacion', width: 20 },
+            { header: 'SUGERENCIAS / COMENTARIOS', key: 'sugerencias', width: 48 }
+        ];
+        
+        const headerStyle = {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } },
+            font: { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' },
+            alignment: { horizontal: 'center', vertical: 'middle', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
+            }
+        };
+        
+        const headerRow = ws.getRow(1);
+        headerRow.height = 32;
+        ws.columns.forEach((col, i) => {
+            const cell = headerRow.getCell(i + 1);
+            cell.value = col.header;
+            Object.assign(cell, headerStyle);
+        });
+        
+        const assistStyles = {
+            true: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F5E9' } }, font: { color: { argb: 'FF2E7D32' }, bold: true } },
+            false: { fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEBEE' } }, font: { color: { argb: 'FFC62828' }, bold: true } }
+        };
+        
+        const dataStyle = {
+            alignment: { vertical: 'middle', wrapText: true },
+            border: {
+                top: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                left: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } },
+                right: { style: 'thin', color: { argb: 'FFE0E0E0' } }
+            }
+        };
+        
+        list.rows.forEach((r, i) => {
+            const rowNum = i + 2;
+            const row = ws.getRow(rowNum);
+            row.height = 24;
+            
+            const localTimeStr = r.fecha_registro ? new Date(r.fecha_registro).toLocaleString('es-PE', { timeZone: 'America/Lima' }) : '';
+            const vals = [
+                i + 1,
+                r.ie_codigo,
+                r.ie_nombre,
+                r.ie_niveles || '',
+                r.asistio ? 'ASISTIÓ' : 'NO ASISTIÓ',
+                r.nombre_completo || '',
+                r.dni || '',
+                r.cargo || '',
+                localTimeStr,
+                r.calificacion_satisfaccion || '',
+                r.sugerencias || ''
+            ];
+            
+            vals.forEach((v, ci) => {
+                const cell = row.getCell(ci + 1);
+                cell.value = v;
+                Object.assign(cell, dataStyle);
+            });
+            
+            const assistCell = row.getCell(5);
+            const statusKey = r.asistio ? 'true' : 'false';
+            if (assistStyles[statusKey]) {
+                Object.assign(assistCell, assistStyles[statusKey]);
+            }
+        });
+        
+        ws.autoFilter = {
+            from: { row: 1, column: 1 },
+            to: { row: list.rows.length + 1, column: ws.columns.length }
+        };
+        ws.views = [{ state: 'frozen', ySplit: 1 }];
+        
+        const filename = `Reporte_Asistencia_${info.rows[0].titulo.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error exportando Excel asistencia:', err);
+        res.status(500).json({ error: 'Error al exportar reporte de asistencia' });
+    }
+});
+
+app.get('/api/public/capacitaciones/:id', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, titulo, descripcion, fecha, incluye_encuesta FROM capacitaciones WHERE id = $1', [req.params.id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Capacitación no encontrada' });
+        }
+        
+        const eligibleIes = await pool.query(`
+            SELECT ie.id, ie.nombre, ie.codigo
+            FROM capacitaciones_asistencia ca
+            JOIN instituciones_educativas ie ON ca.ie_id = ie.id
+            WHERE ca.capacitacion_id = $1
+            ORDER BY ie.nombre ASC
+        `, [req.params.id]);
+        
+        res.json({
+            capacitacion: result.rows[0],
+            ies: eligibleIes.rows
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/public/capacitaciones/:id/registrar', async (req, res) => {
+    try {
+        const capId = req.params.id;
+        const { ie_id, nombre_completo, DNI, dni, cargo, calificacion_satisfaccion, sugerencias } = req.body;
+        const finalDni = dni || DNI;
+        
+        if (!ie_id || !nombre_completo || !finalDni || !cargo) {
+            return res.status(400).json({ error: 'Faltan campos obligatorios' });
+        }
+        
+        const check = await pool.query('SELECT id, asistio FROM capacitaciones_asistencia WHERE capacitacion_id = $1 AND ie_id = $2', [capId, ie_id]);
+        if (check.rows.length === 0) {
+            return res.status(400).json({ error: 'Esta institución educativa no está invitada a esta capacitación' });
+        }
+        
+        if (check.rows[0].asistio) {
+            return res.status(400).json({ error: 'La asistencia de esta institución educativa ya ha sido registrada previamente' });
+        }
+        
+        await pool.query(`
+            UPDATE capacitaciones_asistencia
+            SET nombre_completo = $1,
+                dni = $2,
+                cargo = $3,
+                asistio = true,
+                fecha_registro = NOW(),
+                calificacion_satisfaccion = $4,
+                sugerencias = $5
+            WHERE capacitacion_id = $6 AND ie_id = $7
+        `, [
+            nombre_completo.toUpperCase(),
+            finalDni,
+            cargo.toUpperCase(),
+            calificacion_satisfaccion ? parseInt(calificacion_satisfaccion) : null,
+            sugerencias || null,
+            capId,
+            ie_id
+        ]);
+        
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -2201,6 +2470,190 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
     }
 });
 
+// ===================== EXPORT EXCEL PLANTILLA MONITOREO =====================
+app.get('/api/actividades/:id/export-excel', authSupervisor, async (req, res) => {
+    try {
+        const actividadId = req.params.id;
+        const actividad = await db.prepare('SELECT titulo FROM actividades WHERE id = ?').get(actividadId);
+        if (!actividad) {
+            return res.status(404).json({ error: 'Actividad no encontrada' });
+        }
+
+        const query = `
+            SELECT ase.id as asignacion_id, ase.estado, ase.notas_supervisor,
+                   ie.codigo as ie_codigo, ie.nombre as ie_nombre
+            FROM asignaciones ase
+            INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            WHERE ase.actividad_id = ?
+            ORDER BY ie.nombre
+        `;
+        const rows = await db.prepare(query).all(actividadId);
+
+        const ExcelJS = require('exceljs');
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'UGEL Bellavista';
+        wb.created = new Date();
+        const ws = wb.addWorksheet('Control de Actividad');
+
+        ws.columns = [
+            { header: 'Cód. Modular', key: 'ie_codigo', width: 16 },
+            { header: 'Institución Educativa', key: 'ie_nombre', width: 44 },
+            { header: 'Estado (completada / inconclusa / pendiente)', key: 'estado', width: 36 },
+            { header: 'Observación (Obligatorio si está inconclusa)', key: 'notas_supervisor', width: 50 }
+        ];
+
+        // Format header row
+        ws.getRow(1).font = { name: 'Arial', family: 4, size: 11, bold: true, color: { argb: 'FFFFFF' } };
+        ws.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+        ws.getRow(1).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '002060' }
+        };
+
+        rows.forEach(r => {
+            ws.addRow({
+                ie_codigo: r.ie_codigo,
+                ie_nombre: r.ie_nombre,
+                estado: r.estado || 'pendiente',
+                notas_supervisor: r.notas_supervisor || ''
+            });
+        });
+
+        ws.eachRow((row, rowNumber) => {
+            if (rowNumber > 1) {
+                row.eachCell(cell => {
+                    cell.border = {
+                        top: { style: 'thin' },
+                        left: { style: 'thin' },
+                        bottom: { style: 'thin' },
+                        right: { style: 'thin' }
+                    };
+                });
+            }
+        });
+
+        const safeTitle = actividad.titulo.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="control_${safeTitle}.xlsx"`);
+        await wb.xlsx.write(res);
+        res.end();
+    } catch (err) {
+        console.error('Error al exportar Excel:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================== IMPORT EXCEL CONTROL MONITOREO =====================
+app.post('/api/actividades/:id/import-excel', authSupervisor, async (req, res) => {
+    try {
+        const actividadId = req.params.id;
+        const { file } = req.body;
+        if (!file) {
+            return res.status(400).json({ error: 'No se recibió ningún archivo' });
+        }
+
+        const buffer = Buffer.from(file, 'base64');
+        const xlsx = require('xlsx');
+        const wb = xlsx.read(buffer, { type: 'buffer' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = xlsx.utils.sheet_to_json(ws, { defval: '' });
+
+        let codModularKey = '';
+        let estadoKey = '';
+        let observacionKey = '';
+
+        if (rows.length > 0) {
+            const keys = Object.keys(rows[0]);
+            codModularKey = keys.find(k => k.toLowerCase().includes('cód') || k.toLowerCase().includes('cod') || k.toLowerCase().includes('modular')) || keys[0];
+            estadoKey = keys.find(k => k.toLowerCase().includes('estado')) || keys[2];
+            observacionKey = keys.find(k => k.toLowerCase().includes('observa') || k.toLowerCase().includes('nota') || k.toLowerCase().includes('comentario')) || keys[3];
+        }
+
+        if (!codModularKey || !estadoKey) {
+            return res.status(400).json({ error: 'El archivo Excel no tiene el formato correcto. Debe tener columnas para "Cód. Modular" y "Estado".' });
+        }
+
+        let updatedCount = 0;
+        let errors = [];
+
+        const assignments = await db.prepare(`
+            SELECT ase.id, ie.codigo as ie_codigo, ase.estado, ase.director_id
+            FROM asignaciones ase
+            INNER JOIN instituciones_educativas ie ON ase.ie_id = ie.id
+            WHERE ase.actividad_id = ?
+        `).all(actividadId);
+
+        const assignmentMap = new Map();
+        assignments.forEach(a => {
+            assignmentMap.set(a.ie_codigo.trim(), a);
+        });
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const ieCodigo = (row[codModularKey] || '').toString().trim();
+            if (!ieCodigo) continue;
+
+            const asig = assignmentMap.get(ieCodigo);
+            if (!asig) {
+                continue;
+            }
+
+            let rawEstado = (row[estadoKey] || '').toString().trim().toLowerCase();
+            let newEstado = asig.estado;
+            if (rawEstado.includes('complet')) {
+                newEstado = 'completada';
+            } else if (rawEstado.includes('inconcl') || rawEstado.includes('inconcluso')) {
+                newEstado = 'inconclusa';
+            } else if (rawEstado.includes('pendien')) {
+                newEstado = 'pendiente';
+            } else if (rawEstado.includes('no cumpl') || rawEstado.includes('no_cumpl')) {
+                newEstado = 'no_cumplida';
+            }
+
+            let obs = (row[observacionKey] || '').toString().trim();
+
+            if (newEstado === 'inconclusa' && !obs) {
+                errors.push(`Fila ${i + 2} (IE ${ieCodigo}): El estado es "inconclusa" pero no tiene observación.`);
+                continue;
+            }
+
+            const fecha = newEstado === 'completada' ? new Date().toISOString() : null;
+
+            await db.prepare(
+                'UPDATE asignaciones SET estado = ?, notas_supervisor = ?, fecha_completado = ? WHERE id = ?'
+            ).run(newEstado, obs || null, fecha, asig.id);
+
+            if (newEstado !== asig.estado && asig.director_id) {
+                try {
+                    const act = await db.prepare('SELECT titulo FROM actividades WHERE id = ?').get(actividadId);
+                    const mensaje = newEstado === 'completada'
+                        ? `Tu actividad "${act?.titulo}" fue marcada como completada`
+                        : `Tu actividad "${act?.titulo}" fue marcada como inconclusa / no cumplida`;
+                    await db.prepare(
+                        'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
+                    ).run(asig.director_id, `Actividad ${newEstado}`, mensaje, 'estado');
+                } catch (e) {
+                    console.error('Error enviando notificación en import excel:', e);
+                }
+            }
+
+            updatedCount++;
+        }
+
+        res.json({
+            ok: true,
+            mensaje: `Se actualizaron ${updatedCount} asignaciones con éxito.`,
+            updatedCount,
+            errors
+        });
+
+    } catch (err) {
+        console.error('Error al importar Excel:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ===================== EXPORT CONSOLIDADO GLOBAL =====================
 app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
     try {
@@ -2516,199 +2969,6 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
     }
 });
 
-// ==================== CALENDARIO PERSONAL (SUPERVISORES) ====================
-
-app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
-    try {
-        const userId = req.session.user.id;
-        const userRol = req.session.user.rol;
-        let whereClause = '';
-        let params = [];
-        
-        if (userRol !== 'admin') {
-            whereClause = 'WHERE e.supervisor_id = ?';
-            params.push(userId);
-        }
-
-        const eventos = await db.prepare(`
-            SELECT e.id, e.supervisor_id, e.titulo, e.titulo as title, e.fecha, e.fecha_fin_actividad, e.hora_inicio, e.hora_fin,
-                   e.fecha || CASE WHEN e.hora_inicio IS NOT NULL THEN 'T' || e.hora_inicio ELSE '' END as start,
-                   CASE WHEN e.hora_fin IS NOT NULL THEN e.fecha || 'T' || e.hora_fin ELSE NULL END as end,
-                   e.estado, e.descripcion, e.area, e.sub_area,
-                   u.nombre_completo as creador
-            FROM eventos_calendario e
-            JOIN usuarios u ON e.supervisor_id = u.id
-            ${whereClause}
-        `).all(...params);
-        res.json(eventos);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
-    try {
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
-        const supervisor_id = req.session.user.id;
-        const result = await db.prepare(`
-            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '');
-        res.json({ success: true, id: result.id });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
-        
-        // Verifica que el evento exista
-        const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
-        if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
-        
-        if (ev.supervisor_id !== req.session.user.id) {
-            return res.status(403).json({ error: 'No tienes permiso para modificar esta actividad' });
-        }
-
-        if (titulo) {
-            await db.prepare(`
-                UPDATE eventos_calendario 
-                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?
-                WHERE id=?
-            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', id);
-        } else if (estado) {
-            // Solo estado
-            await db.prepare('UPDATE eventos_calendario SET estado=? WHERE id=?').run(estado, id);
-        }
-        res.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-        const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
-        if (!ev) return res.status(404).json({ error: 'Evento no encontrado' });
-        if (ev.supervisor_id !== req.session.user.id) return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
-
-        await db.prepare('DELETE FROM eventos_calendario WHERE id=?').run(id);
-        res.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
-    try {
-        const eventos = await db.prepare(`
-            SELECT e.*, u.dependencia as area_usuario, u.nombre_completo as asignador_nombre, u.puesto
-            FROM eventos_calendario e
-            LEFT JOIN usuarios u ON e.supervisor_id = u.id
-            ORDER BY COALESCE(NULLIF(e.area, ''), u.dependencia), e.fecha ASC
-        `).all();
-
-        const ExcelJS = require('exceljs');
-        const workbook = new ExcelJS.Workbook();
-        workbook.creator = 'UGEL Bellavista';
-        
-        const areasMap = {};
-        eventos.forEach(e => {
-            const area = e.area || e.area_usuario || 'Sin Área';
-            if (!areasMap[area]) areasMap[area] = [];
-            areasMap[area].push(e);
-        });
-
-        for (const [area, acts] of Object.entries(areasMap)) {
-            const sheetName = area.substring(0, 31).replace(/[\[\]\*\?\:\/]/g, '');
-            const sheet = workbook.addWorksheet(sheetName);
-            
-            // 1. Título principal
-            sheet.mergeCells('A1:I1');
-            const titleCell = sheet.getCell('A1');
-            titleCell.value = 'UGEL Bellavista — ' + area;
-            titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF800000' } }; // Burgundy/Dark Red
-            titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-            sheet.getRow(1).height = 30;
-
-            // 2. Fila en blanco
-            sheet.addRow([]);
-
-            // 3. Cabeceras
-            const headers = ['Responsable', 'Puesto', 'Actividad', 'Área', 'Sub-área', 'Fecha', 'Desde', 'Hasta', 'Estado'];
-            const headerRow = sheet.addRow(headers);
-            headerRow.height = 25;
-            headerRow.eachCell((cell) => {
-                cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800000' } };
-                cell.alignment = { horizontal: 'center', vertical: 'middle' };
-                cell.border = { top: {style:'thin', color: {argb:'FFCCCCCC'}}, left: {style:'thin', color: {argb:'FFCCCCCC'}}, bottom: {style:'thin', color: {argb:'FFCCCCCC'}}, right: {style:'thin', color: {argb:'FFCCCCCC'}} };
-            });
-
-            // Configurar anchos de columna
-            sheet.columns = [
-                { key: 'responsable', width: 28 },
-                { key: 'puesto', width: 25 },
-                { key: 'actividad', width: 55 },
-                { key: 'area_col', width: 12 },
-                { key: 'sub_area', width: 22 },
-                { key: 'fecha', width: 15 },
-                { key: 'desde', width: 10 },
-                { key: 'hasta', width: 10 },
-                { key: 'estado', width: 15 }
-            ];
-
-            // 4. Filas de datos
-            acts.forEach(a => {
-                const row = sheet.addRow({
-                    responsable: a.asignador_nombre || '',
-                    puesto: a.puesto || '-',
-                    actividad: a.titulo || '',
-                    area_col: a.area || a.area_usuario || '',
-                    sub_area: a.sub_area || '',
-                    fecha: a.fecha || '',
-                    desde: a.hora_inicio || '',
-                    hasta: a.hora_fin || '',
-                    estado: a.estado || 'Pendiente'
-                });
-                
-                row.eachCell((cell, colNumber) => {
-                    cell.font = { name: 'Arial', size: 10, color: { argb: 'FF000000' } };
-                    cell.border = { top: {style:'thin', color:{argb:'FFDDDDDD'}}, bottom: {style:'thin', color:{argb:'FFDDDDDD'}}, left: {style:'thin', color:{argb:'FFDDDDDD'}}, right: {style:'thin', color:{argb:'FFDDDDDD'}} };
-                    cell.alignment = { vertical: 'middle', wrapText: true };
-                });
-
-                // Color específico para la columna Estado (columna 9)
-                const estadoCell = row.getCell(9);
-                estadoCell.font = { name: 'Arial', size: 10, bold: true };
-                if (a.estado === 'Cumplió' || a.estado === 'Cumplida') {
-                    estadoCell.font.color = { argb: 'FF059669' }; // Verde
-                } else if (a.estado === 'No Cumplió' || a.estado === 'Vencida') {
-                    estadoCell.font.color = { argb: 'FF800000' }; // Rojo oscuro
-                } else {
-                    estadoCell.font.color = { argb: 'FFD97706' }; // Ámbar/Naranja
-                }
-            });
-        }
-
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename="eventos_calendario_areas.xlsx"');
-        await workbook.xlsx.write(res);
-        res.end();
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error al generar Excel' });
-    }
-});
-
 app.get('/api/export/asignaciones', async (req, res) => {
     try {
         const { nivel, estado, buscar, asignador_id, mes, anio } = req.query;
@@ -2865,6 +3125,8 @@ app.get('/api/export/asignaciones', async (req, res) => {
         res.status(500).json({ error: 'Error al exportar' });
     }
 });
+
+
 
 // Global error handler
 app.use((err, req, res, next) => {

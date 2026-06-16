@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seguimiento de Actividades - UGEL Bellavista</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css?v=1.1.8">
+<style>
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.04); opacity: 0.85; }
+  }
+  @keyframes loadingBar {
+    0% { left: -40%; }
+    50% { left: 100%; }
+    100% { left: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== SYSTEM LOADING OVERLAY ==================== -->
+<div id="loading-overlay" style="position:fixed; top:0; left:0; right:0; bottom:0; background:#f0f1f3; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; transition: opacity 0.3s ease;">
+  <img src="logo.png" alt="UGEL" style="height:76px; width:auto; object-fit:contain; animation: pulse 1.5s infinite ease-in-out;">
+  <div style="font-weight:800; color:#1e293b; font-size:0.85rem; text-transform:uppercase; letter-spacing:1.5px; font-family:'Inter', sans-serif;">Cargando Sistema...</div>
+  <div style="width:120px; height:4px; background:#cbd5e1; border-radius:2px; overflow:hidden; position:relative;">
+    <div style="position:absolute; top:0; left:0; height:100%; width:40%; background:#1e3a8a; border-radius:2px; animation: loadingBar 1.2s infinite ease-in-out;"></div>
+  </div>
+</div>
+
+<!-- ==================== IE SELECTOR (DEPRECATED) ==================== -->
+<div id="sel-screen" style="display:none"></div>
+
+<!-- ==================== LOGIN UNIFICADO ==================== -->
+<div id="login-screen" style="display:none">
+  <div class="login-card">
+    <div class="login-logo"><img src="logo.png" alt="UGEL Bellavista"></div>
+    <h2>UGEL Bellavista</h2>
+    <p>Ingreso para Supervisores</p>
+    <div id="login-error" style="display: none;"></div>
+    <form onsubmit="event.preventDefault();login()">
+      <div style="margin-bottom:16px">
+        <input type="text" id="login-usuario" class="login-field" placeholder="Usuario / DNI" required autocomplete="off">
+      </div>
+      <div style="margin-bottom:16px">
+        <input type="password" id="login-password" class="login-field" placeholder="Contraseña" required autocomplete="off">
+      </div>
+      <button type="submit" class="btn-login">Ingresar</button>
+    </form>
+    <p style="margin-top:20px;text-align:center;font-size:.75rem;color:rgba(255,255,255,0.55)">¿Desea ver las actividades? <a href="#" onclick="event.preventDefault();showPublicDashboardFromLogin()" style="color:#fbbf24; font-weight: 700; text-decoration: none; border-bottom: 1px dashed rgba(251,191,36,0.5); padding-bottom: 2px;">Volver al panel público</a></p>
+  </div>
+</div>
+
+<!-- ==================== APP SHELL ==================== -->
+<div id="app-shell" style="display:none">
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- TOP BAR -->
+  <div class="top-bar" style="display:none">
+    <div class="top-bar-left">
+      <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+      <div class="brand"><img src="logo.png" alt=""><span>UGEL Bellavista</span></div>
+    </div>
+    <div class="top-bar-right">
+      <div style="position:relative">
+        <button class="notif-btn" onclick="toggleNotifDropdown()"><i class="fas fa-bell"></i><span class="notif-badge" id="notif-badge" style="display:none">0</span></button>
+        <div class="notif-dropdown" id="notif-dropdown" style="position:absolute;top:48px;right:0;width:340px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-lg);z-index:500;border:1px solid #f3f4f6">
+          <div style="padding:14px 18px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:600;font-size:.85rem">Notificaciones</span>
+            <button style="background:none;border:none;color:var(--granate);font-size:.75rem;cursor:pointer;font-family:inherit;font-weight:500" onclick="marcarLeidas()">Marcar leídas</button>
+          </div>
+          <div id="notif-dropdown-body" style="max-height:340px;overflow-y:auto"><p style="text-align:center;padding:24px;color:var(--text3);font-size:.82rem">No hay notificaciones</p></div>
+        </div>
+      </div>
+      <div class="user" onclick="cambiarVista('perfil')">
+        <div class="avatar" id="user-avatar">?</div>
+        <div class="info"><div class="name" id="user-name">Usuario</div><div class="role" id="user-role">Rol</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-wrap">
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar" style="display:none">
+      <div id="sidebar-nav"></div>
+      <div class="logout" id="sidebar-footer"></div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main" style="padding:0;overflow:hidden">
+
+
+      <!-- ==================== DIRECTOR: MAIN VIEW (NUEVO DISEÑO PLANO) ==================== -->
+      <div class="view-section active" id="view-director-main">
+        <div class="dir-layout">
+          <div class="dir-header" style="background:transparent;padding:20px 28px 8px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:none">
+            <div class="dh-left" style="display:flex;align-items:center;gap:12px">
+              <img src="logo.png" alt="UGEL" style="height:76px;width:auto;object-fit:contain;mix-blend-mode:multiply">
+              <div style="font-weight:800;font-size:1.1rem;color:var(--granate);line-height:1.1;letter-spacing:0.5px">UGEL<br>BELLAVISTA</div>
+            </div>
+            <div style="text-align:center;flex:1">
+              <h1 style="font-size:1.5rem;font-weight:800;color:var(--granate);letter-spacing:0.5px;margin:0">SEGUIMIENTO DE ACTIVIDADES INSTITUCIONALES</h1>
+              <div style="font-size:0.95rem;font-weight:600;color:var(--text2);margin-top:2px;">¡Bienvenido, Director(a)!</div>
+            </div>
+            <div class="dh-right" style="display:flex;align-items:center;gap:10px" id="dir-auth-buttons">
+              <button class="btn btn-outline btn-sm" onclick="goToSupervisorLogin()" style="border-color:var(--granate);color:var(--granate);font-weight:700;border-radius:20px;padding:6px 16px;display:flex;align-items:center;gap:6px;background:#fff;transition:all 0.15s">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+              </button>
+            </div>
+          </div>
+          <div class="dir-body">
+            <div class="dir-top-row" style="align-items: stretch;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+                <div class="dir-kpis">
+                  <div class="dir-kpi total">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-total">0</span>
+                      <span class="kpi-sublabel">Total</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="fas fa-list-alt kpi-icon"></i>
+                      <div class="kpi-title">Total de<br>Actividades</div>
+                    </div>
+                  </div>
+                  <div class="dir-kpi pendientes">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-pendientes">0</span>
+                      <span class="kpi-sublabel">Pend.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="far fa-clock kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Pendientes</div>
+                    </div>
+                  </div>
+                  <div class="dir-kpi cumplidas">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-cumplidas">0</span>
+                      <span class="kpi-sublabel">Cump.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="far fa-check-circle kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Cumplidas</div>
+                    </div>
+                  </div>
+                  <div class="dir-kpi vencidas">
+                    <div class="kpi-cap"></div>
+                    <div class="kpi-num-box">
+                      <span class="kpi-number" id="kpi-vencidas">0</span>
+                      <span class="kpi-sublabel">Venc.</span>
+                    </div>
+                    <div class="kpi-divider"></div>
+                    <div class="kpi-text-box">
+                      <i class="fas fa-exclamation-triangle kpi-icon"></i>
+                      <div class="kpi-title">Actividades<br>Vencidas</div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Recuadro especial de evaluación (direcciona al formulario configurado) -->
+                <div id="dir-evaluation-box" style="display: none; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); cursor: pointer; align-items: center; justify-content: space-between; transition: all 0.2s ease;" onclick="openEvaluationLink()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.35)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; background: rgba(255,255,255,0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                      <i class="fas fa-file-signature"></i>
+                    </div>
+                    <div>
+                      <h4 id="dir-eval-title" style="margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Actividad Especial</h4>
+                      <p style="margin: 3px 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.85); font-weight: 500;">Haz clic aquí para abrir y completar esta evaluación / formulario</p>
+                    </div>
+                  </div>
+                  <div style="font-size: 1.2rem; margin-right: 8px;">
+                    <i class="fas fa-arrow-right"></i>
+                  </div>
+                </div>
+              </div>
+              <div class="dir-chart-box">
+                <h3>AVANCE DE ACTIVIDADES</h3>
+                <div class="dir-chart-wrap">
+                  <canvas id="dir-pie-chart"></canvas>
+                </div>
+              </div>
+            </div>
+            <div class="dir-bottom-row">
+              <div class="dir-filter-panel" style="position:relative">
+                <h3>FILTRAR</h3>
+                <label><i class="fas fa-search"></i> Código Local</label>
+                <input type="text" id="dir-filter-codigo" placeholder="Código, N° o Nombre..." autocomplete="off" oninput="onSearchIE(this.value)">
+                <div id="dir-search-autocomplete" style="display:none;position:absolute;top:110px;left:16px;right:16px;background:#fff;border:1px solid #dde0e3;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:1000;max-height:220px;overflow-y:auto;text-align:left"></div>
+                <strong class="dir-ie-name" id="dir-filter-iename">Seleccione una IE</strong>
+              </div>
+              <div class="dir-table-section" style="display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                  <h3 id="dir-table-title" style="font-size:.75rem;font-weight:800;color:var(--granate);letter-spacing:.5px;text-transform:uppercase;margin:0;">LISTADO DE ACTIVIDADES ASIGNADAS</h3>
+                  <div id="dir-export-container" style="display:none;">
+                    <button class="btn btn-outline btn-sm" id="btn-export-director" style="border-color:#059669; color:#059669; border-radius:20px; padding:4px 12px; display:inline-flex; align-items:center; gap:6px; background:#fff; font-weight:700; transition:all 0.15s">
+                      <i class="fas fa-file-excel"></i> Exportar Reporte
+                    </button>
+                  </div>
+                </div>
+                
+                <div id="dir-table-content-area">
+                  <div class="dir-table-wrap" style="max-height: calc(100vh - 380px); overflow-y: auto;">
+                    <table>
+                      <thead><tr><th>ACTIVIDAD</th><th>FECHA LÍMITE</th><th>ESTADO</th><th>RESPONSABLE</th><th>TELÉFONO</th></tr></thead>
+                      <tbody id="director-actividades-table"></tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div id="dir-empty-state-area" style="display:none; padding:30px 10px; background:#fff; border-radius:12px;">
+                  <!-- Rendered dynamically via JS -->
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <!-- ==================== CAPACITACIONES ==================== -->
+      <div class="view-section" id="view-capacitaciones">
+        <!-- Create View -->
+        <div id="cap-create-subview">
+          <div class="page-hd">
+            <h2>Crear Capacitación</h2>
+            <span>Programar una sesión y seleccionar las instituciones educativas que deben asistir</span>
+          </div>
+          <div class="t-card">
+            <div class="t-hd"><i class="fas fa-plus-circle"></i> Programar Nueva Capacitación</div>
+            <div style="padding:22px">
+              <form id="cap-create-form" onsubmit="event.preventDefault();submitCrearCapacitacion()">
+                <div class="mb-3">
+                  <label class="form-label">Nombre de la Actividad / Tema *</label>
+                  <input type="text" class="form-control" id="cap-titulo" required oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;" placeholder="TÍTULO DE LA CAPACITACIÓN">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Descripción</label>
+                  <textarea class="form-control" id="cap-descripcion" rows="2" placeholder="Detalles de la capacitación, hora, lugar, ponente..."></textarea>
+                </div>
+                <div class="row mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Fecha del Evento *</label>
+                    <input type="date" class="form-control" id="cap-fecha" required>
+                  </div>
+                  <div class="col-md-8 style-flex-end" style="display:flex; align-items:center; gap:8px; padding-top:28px;">
+                    <input type="checkbox" id="cap-incluye-encuesta" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                    <label for="cap-incluye-encuesta" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Incluir Encuesta de Satisfacción y Sugerencias</label>
+                  </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                  <label class="form-label fw-bold">¿A quiénes convocar? *</label>
+                  <div class="d-flex flex-wrap gap-3 mb-3">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-todas" value="todas" onchange="onChangeAlcanceCap('todas')" checked>
+                      <label class="form-check-label" for="cap-alc-todas">Todas las IEs activas</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-nivel" value="nivel" onchange="onChangeAlcanceCap('nivel')">
+                      <label class="form-check-label" for="cap-alc-nivel">Por nivel</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-manual" value="manual" onchange="onChangeAlcanceCap('manual')">
+                      <label class="form-check-label" for="cap-alc-manual">Manualmente</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="cap-alcance-radio" id="cap-alc-lista" value="lista" onchange="onChangeAlcanceCap('lista')">
+                      <label class="form-check-label" for="cap-alc-lista">Lista guardada</label>
+                    </div>
+                  </div>
+
+                  <!-- Por nivel -->
+                  <div id="alcance-cap-nivel" style="display:none;" class="mb-3">
+                    <label class="form-label">Seleccionar nivel(es) *</label>
+                    <div class="d-flex flex-wrap gap-3" id="cap-alcance-niveles-container">
+                      <!-- Rendered from nivelesCache -->
+                    </div>
+                  </div>
+
+                  <!-- Manual -->
+                  <div id="alcance-cap-manual" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label mb-0">Instituciones Educativas</label>
+                      <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllCapIEs(true)">Seleccionar todas</button>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllCapIEs(false)">Deseleccionar</button>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-md-5">
+                        <input type="text" class="form-control" id="cap-ie-search" placeholder="Buscar por código o nombre..." oninput="filterCapIEList()">
+                      </div>
+                      <div class="col-md-3">
+                        <select class="form-select" id="cap-ie-filter-nivel" onchange="filterCapIEList()">
+                          <option value="">Todos los niveles</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="ie-list" id="cap-ie-checkbox-list"></div>
+                  </div>
+
+                  <!-- Lista guardada -->
+                  <div id="alcance-cap-lista" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label mb-0">Seleccionar lista guardada</label>
+                    </div>
+                    <div id="cap-listas-ie-container" style="display:flex; flex-wrap:wrap; gap:8px;">
+                      <!-- Rendered dynamically -->
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-4 text-center d-flex gap-2 justify-content-center">
+                  <button type="submit" class="btn btn-primary px-5">Crear Capacitación</button>
+                  <button type="button" class="btn btn-secondary px-4" onclick="cancelarCrearCapacitacion()">Cancelar</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== MONITOREO DE CAPACITACIONES ==================== -->
+      <div class="view-section" id="view-monitoreo-capacitaciones">
+        <!-- List View -->
+        <div id="cap-list-subview">
+          <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h2>Monitoreo de Capacitaciones</h2>
+              <span>Gestión de eventos de capacitación y reportes de asistencia en tiempo real</span>
+            </div>
+            <button class="btn btn-primary" onclick="mostrarCrearCapacitacion()" style="display:flex; align-items:center; gap:8px; font-weight:700; border-radius:20px; padding:8px 20px;">
+              <i class="fas fa-plus-circle"></i> Crear Capacitación
+            </button>
+          </div>
+          <div id="cap-cards-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+            <!-- Rendered dynamically -->
+          </div>
+          <div id="cap-empty-state" style="display:none; text-align:center; padding:60px 20px; background:rgba(255,255,255,0.4); border-radius:16px; border: 1.5px dashed var(--slate-300); backdrop-filter: blur(8px); margin-top:20px;">
+            <i class="fas fa-chalkboard-teacher" style="font-size:3.5rem; color:var(--slate-300); margin-bottom:16px; display:block;"></i>
+            <h4 style="font-weight:800; color:var(--slate-900); font-size:1.15rem; margin-bottom:6px;">No hay capacitaciones creadas</h4>
+            <p style="color:var(--slate-600); font-size:0.85rem; max-width:320px; margin:0 auto 16px;">Crea eventos de capacitación para generar enlaces únicos y registrar la asistencia de los directores.</p>
+            <button class="btn btn-primary btn-sm" onclick="mostrarCrearCapacitacion()">Crear primera capacitación</button>
+          </div>
+        </div>
+
+        <!-- Detail/Report View -->
+        <div id="cap-detail-subview" style="display:none;">
+          <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <button class="btn btn-sm btn-outline mb-2" onclick="volverACapacitaciones()"><i class="fas fa-arrow-left"></i> Volver</button>
+              <h2 id="cap-detail-title">Detalle de Capacitación</h2>
+              <span id="cap-detail-meta">Asistencia e información detallada de la sesión</span>
+            </div>
+            <button class="btn btn-outline-success" id="btn-export-excel-asistencia" style="display:flex; align-items:center; gap:8px; font-weight:700; border-radius:20px;">
+              <i class="fas fa-file-excel"></i> Exportar Reporte Excel
+            </button>
+          </div>
+          
+          <div class="filter-bar" style="margin-bottom:16px;">
+            <div class="filter-group" style="flex:1;">
+              <label>Buscar IE o Asistente</label>
+              <input type="text" class="form-control" id="cap-det-buscar" placeholder="Código, N° o Nombre..." oninput="filterCapDetTable()">
+            </div>
+            <div class="filter-group" style="width:180px;">
+              <label>Estado Asistencia</label>
+              <select class="form-select" id="cap-det-asistencia-filter" onchange="filterCapDetTable()">
+                <option value="">Todos</option>
+                <option value="si">Asistieron</option>
+                <option value="no">No Asistieron</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="t-card">
+            <div class="t-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Institución Educativa</th>
+                    <th>Nivel</th>
+                    <th style="text-align:center;">Asistencia</th>
+                    <th>Participante</th>
+                    <th>DNI</th>
+                    <th>Cargo</th>
+                    <th>Hora de Registro</th>
+                    <th>Calificación</th>
+                    <th>Sugerencias</th>
+                  </tr>
+                </thead>
+                <tbody id="cap-det-tbody">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== PUBLIC: REGISTRO CAPACITACION ==================== -->
+      <div class="view-section" id="view-public-capacitacion" style="display:none;">
+        <div class="login-card" style="width:100%; max-width:560px; margin: 40px auto; background:rgba(255,255,255,0.75); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.4); border-radius:20px; box-shadow:0 20px 40px rgba(0,0,0,0.06); padding:28px 36px; color:#1f2937;">
+          <div style="text-align:center; margin-bottom:20px;">
+            <img src="logo.png" alt="UGEL" style="height:68px; width:auto; object-fit:contain; margin-bottom:10px;">
+            <h2 style="font-size:1.25rem; font-weight:800; color:var(--granate); margin:0; letter-spacing:0.5px;">UGEL BELLAVISTA</h2>
+            <p style="font-size:0.75rem; color:#6b7280; font-weight:600; text-transform:uppercase; margin-top:2px;">Registro de Asistencia a Capacitación</p>
+          </div>
+
+          <!-- Training Info card (premium look) -->
+          <div style="background:linear-gradient(135deg, rgba(30,58,138,0.05), rgba(59,130,246,0.05)); border:1px solid rgba(59,130,246,0.1); border-radius:12px; padding:16px; margin-bottom:24px;">
+            <h3 id="pub-cap-title" style="font-size:0.95rem; font-weight:800; color:#1e3a8a; margin:0; text-transform:uppercase;">Cargando...</h3>
+            <p id="pub-cap-desc" style="font-size:0.78rem; color:#4b5563; margin:6px 0 0; line-height:1.45;"></p>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.75rem; color:#3b82f6; font-weight:700; margin-top:10px;">
+              <i class="far fa-calendar-alt"></i> <span id="pub-cap-date">-</span>
+            </div>
+          </div>
+
+          <form id="pub-cap-form" onsubmit="event.preventDefault();submitPublicAsistencia()">
+            <!-- STEP 1: SELECT IE -->
+            <div class="mb-4" style="position:relative;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:6px;">1. Seleccione su Institución Educativa *</label>
+              <div style="position:relative;">
+                <input type="text" id="pub-cap-ie-search" class="form-control" style="background:#fff; border-radius:10px; border:1px solid #d1d5db; padding:10px 14px; padding-left:36px; font-size:0.85rem;" placeholder="Escriba código local, modular o nombre..." required autocomplete="off" oninput="onSearchPublicCapIE(this.value)">
+                <i class="fas fa-search" style="position:absolute; top:13px; left:12px; color:#9ca3af; font-size:0.9rem;"></i>
+              </div>
+              <input type="hidden" id="pub-cap-ie-id" required>
+              <div id="pub-cap-autocomplete" style="display:none; position:absolute; top:72px; left:0; right:0; background:#fff; border:1px solid #d1d5db; box-shadow:0 10px 25px rgba(0,0,0,0.1); z-index:2000; max-height:200px; overflow-y:auto; border-radius:10px;"></div>
+              <div id="pub-cap-selected-ie-badge" style="display:none; margin-top:8px; background:#f0fdf4; border:1px solid #bbf7d0; color:#15803d; font-size:0.8rem; font-weight:700; padding:8px 12px; border-radius:8px; align-items:center; gap:8px;">
+                <i class="fas fa-check-circle"></i> <span id="pub-cap-selected-ie-text">IE Seleccionada</span>
+              </div>
+            </div>
+
+            <!-- STEP 2: PARTICIPANT DATA -->
+            <div id="pub-cap-step2" style="display:none; animation: fadeIn 0.3s ease;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:12px;">2. Datos del Participante</label>
+              
+              <div class="mb-3">
+                <input type="text" id="pub-cap-nombre" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem; text-transform:uppercase;" placeholder="NOMBRES Y APELLIDOS COMPLETOS *" required oninput="this.value=this.value.toUpperCase()">
+              </div>
+              
+              <div class="row mb-3">
+                <div class="col-sm-6 mb-3 mb-sm-0">
+                  <input type="text" id="pub-cap-dni" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem;" placeholder="DNI / DOCUMENTO *" required maxlength="9" pattern="\d+" title="Ingrese solo números">
+                </div>
+                <div class="col-sm-6">
+                  <input type="text" id="pub-cap-cargo" class="form-control" style="background:#fff; border-radius:10px; padding:10px 14px; font-size:0.85rem; text-transform:uppercase;" placeholder="CARGO / PUESTO (ej. DIRECTOR) *" required oninput="this.value=this.value.toUpperCase()">
+                </div>
+              </div>
+            </div>
+
+            <!-- STEP 3: SATISFACTION SURVEY -->
+            <div id="pub-cap-step3" style="display:none; animation: fadeIn 0.3s ease; border-top:1px dashed #d1d5db; padding-top:18px; margin-top:18px;">
+              <label class="form-label" style="font-weight:700; font-size:0.8rem; text-transform:uppercase; color:#4b5563; letter-spacing:0.5px; display:block; margin-bottom:10px;">3. Encuesta de Satisfacción</label>
+              
+              <div class="mb-3">
+                <span style="font-size:0.8rem; font-weight:600; color:#4b5563; display:block; margin-bottom:6px;">¿Cómo califica esta capacitación? *</span>
+                <div style="display:flex; gap:10px; font-size:1.8rem; color:#d1d5db; justify-content:center; margin-bottom:8px;">
+                  <i class="fas fa-star star-btn" data-val="1" onclick="selectSurveyRating(1)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="2" onclick="selectSurveyRating(2)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="3" onclick="selectSurveyRating(3)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="4" onclick="selectSurveyRating(4)" style="cursor:pointer; transition:all 0.15s;"></i>
+                  <i class="fas fa-star star-btn" data-val="5" onclick="selectSurveyRating(5)" style="cursor:pointer; transition:all 0.15s;"></i>
+                </div>
+                <input type="hidden" id="pub-cap-rating">
+              </div>
+
+              <div class="mb-3">
+                <textarea id="pub-cap-sugerencias" class="form-control" rows="2" style="background:#fff; border-radius:10px; font-size:0.85rem;" placeholder="Sugerencias, comentarios o aspectos a mejorar..."></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100" id="pub-cap-submit-btn" style="display:none; border-radius:10px; padding:12px; font-weight:700; font-size:0.9rem; margin-top:16px;">Registrar Asistencia</button>
+          </form>
+
+          <!-- SUCCESS SCREEN -->
+          <div id="pub-cap-success" style="display:none; text-align:center; padding:20px 0; animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div style="width:72px; height:72px; background:#ecfdf5; color:#10b981; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:2.2rem; margin:0 auto 16px; box-shadow:0 8px 16px rgba(16,185,129,0.12);">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <h3 style="font-size:1.2rem; font-weight:800; color:#065f46; margin-bottom:6px;">¡Asistencia Registrada!</h3>
+            <p style="font-size:0.85rem; color:#047857; margin-bottom:18px;">Su asistencia ha sido procesada de manera correcta en el sistema.</p>
+            <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; text-align:left; font-size:0.8rem; color:#4b5563; line-height:1.6; margin-bottom:20px;">
+              <div><strong>IE:</strong> <span id="success-ie-name">-</span></div>
+              <div><strong>Participante:</strong> <span id="success-user-name">-</span></div>
+              <div><strong>Hora de Registro:</strong> <span id="success-time">-</span></div>
+            </div>
+            <button class="btn btn-primary" onclick="window.location.reload()" style="border-radius:8px; padding:8px 24px; font-size:0.85rem; font-weight:700;">Registrar otra IE</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ==================== SUPERVISOR: ASIGNAR ==================== -->
+      <div class="view-section" id="view-asignar-actividad">
+        <div class="page-hd"><h2>Asignar Actividad</h2><span>Crear y asignar actividades a instituciones educativas</span></div>
+        <div class="t-card">
+          <div class="t-hd"><i class="fas fa-plus-circle"></i> Asignar Nueva Actividad</div>
+          <div style="padding:22px">
+            <form id="asignar-form" onsubmit="event.preventDefault();submitAsignar()">
+              <!-- Título -->
+              <div class="mb-3">
+                <label class="form-label">Título *</label>
+                <input type="text" class="form-control" id="as-titulo" required oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;" placeholder="TÍTULO DE LA ACTIVIDAD">
+              </div>
+              <!-- Descripción -->
+              <div class="mb-3">
+                <label class="form-label">Descripción <span style="font-size:0.75rem; color:#6b7280; font-weight:400;">(referencia interna)</span></label>
+                <textarea class="form-control" id="as-descripcion" rows="2" placeholder="Detalles adicionales para referencia interna..."></textarea>
+              </div>
+              <!-- Fecha Límite -->
+              <div class="row mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Fecha Límite *</label>
+                  <input type="date" class="form-control" id="as-fecha" required>
+                </div>
+              </div>
+              <!-- Enlace -->
+              <div class="mb-3">
+                <label class="form-label">¿Incluye enlace?</label>
+                <div class="d-flex gap-3 mb-2">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-link-toggle" id="as-link-no" value="no" checked onchange="document.getElementById('as-link-container').style.display='none'">
+                    <label class="form-check-label" for="as-link-no">No</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-link-toggle" id="as-link-si" value="si" onchange="document.getElementById('as-link-container').style.display='block'">
+                    <label class="form-check-label" for="as-link-si">Sí</label>
+                  </div>
+                </div>
+                <div id="as-link-container" style="display:none;">
+                  <input type="url" class="form-control" id="as-link-url" placeholder="https://...">
+                </div>
+              </div>
+              <hr>
+              <!-- Alcance de la asignación -->
+              <div class="mb-3">
+                <label class="form-label fw-bold">¿A quién asignar? *</label>
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-todas" value="todas" onchange="onChangeAlcanceNew('todas')" checked>
+                    <label class="form-check-label" for="as-alc-todas"><strong>Todas</strong> las IEs activas</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-nivel" value="nivel" onchange="onChangeAlcanceNew('nivel')">
+                    <label class="form-check-label" for="as-alc-nivel"><strong>Por nivel</strong></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-manual" value="manual" onchange="onChangeAlcanceNew('manual')">
+                    <label class="form-check-label" for="as-alc-manual"><strong>Manualmente</strong></label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="as-alcance-radio" id="as-alc-lista" value="lista" onchange="onChangeAlcanceNew('lista')">
+                    <label class="form-check-label" for="as-alc-lista"><strong>Lista guardada</strong></label>
+                  </div>
+                </div>
+
+                <!-- Por nivel -->
+                <div id="alcance-new-nivel" style="display:none;" class="mb-3">
+                  <label class="form-label">Seleccionar nivel(es) *</label>
+                  <div class="d-flex flex-wrap gap-3" id="as-alcance-niveles-container">
+                    <!-- Rendered from nivelesCache -->
+                  </div>
+                </div>
+
+                <!-- Manual -->
+                <div id="alcance-new-manual" style="display:none;">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Instituciones Educativas</label>
+                    <div class="d-flex gap-2">
+                      <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(true)">Seleccionar todas</button>
+                      <button type="button" class="btn btn-sm btn-outline" onclick="toggleAllIEs(false)">Deseleccionar</button>
+                    </div>
+                  </div>
+                  <div class="row mb-2">
+                    <div class="col-md-5">
+                      <input type="text" class="form-control" id="ie-search" placeholder="Buscar por código o nombre..." oninput="filterIEList()">
+                    </div>
+                    <div class="col-md-3">
+                      <select class="form-select" id="ie-filter-nivel" onchange="filterIEList()">
+                        <option value="">Todos los niveles</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="ie-list" id="ie-checkbox-list"></div>
+                </div>
+
+                <!-- Lista guardada -->
+                <div id="alcance-new-lista" style="display:none;">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label mb-0">Seleccionar lista guardada</label>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="mostrarCrearLista()"><i class="fas fa-plus"></i> Nueva lista</button>
+                  </div>
+                  <div id="listas-ie-container" style="display:flex; flex-wrap:wrap; gap:8px;">
+                    <!-- Rendered dynamically -->
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 text-center"><button type="submit" class="btn btn-primary px-5">Asignar Actividad</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUPERVISOR: AVANCE MENSUAL ==================== -->
+      <div class="view-section" id="view-avance-mensual">
+        <div id="dashboard-stats-cards"></div>
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+          <div>
+            <h2>Dashboard</h2>
+          </div>
+        </div>
+
+
+        <!-- Filtro de actividad -->
+        <div class="filter-bar" style="margin-bottom:20px;">
+          <div class="filter-group" style="flex:1;min-width:220px;">
+            <label>Actividad</label>
+            <select class="form-select" id="dash-filtro-actividad" onchange="loadAvanceMensual()">
+              <option value="">Todas las actividades</option>
+            </select>
+          </div>
+          <div class="filter-group" style="min-width:160px;">
+            <label>Mes</label>
+            <select class="form-select" id="dash-filtro-mes" onchange="loadAvanceMensual()">
+              <option value="">Todos los meses</option>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:24px; margin-bottom:24px;" id="avance-layout-grid">
+          <!-- Gráfico -->
+          <div class="chart-card" style="margin-bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px;">
+            <div class="ctitle" style="margin-bottom:16px; text-align:center; width:100%;"><i class="fas fa-chart-pie"></i> Estado General</div>
+            <div style="width:200px; height:200px; position:relative;">
+              <canvas id="chart-avance-mensual"></canvas>
+              <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none;">
+                <div id="avance-chart-pct" style="font-size:1.8rem; font-weight:800; color:#1f2937;">0%</div>
+                <div style="font-size:0.6rem; font-weight:700; color:#9ca3af; letter-spacing:0.5px; text-transform:uppercase;">Cumplimiento</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Tarjetas KPI -->
+          <div style="display:flex; flex-direction:column; gap:12px; justify-content:space-between;">
+            <div class="kpi-card green" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--green-bg); color:var(--green);"><i class="fas fa-check-circle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Cumplidas</div>
+                <div class="kpi-value" id="avance-kpi-cumplidas">0</div>
+                <div class="kpi-sub">Tareas completadas</div>
+              </div>
+            </div>
+            <div class="kpi-card amber" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--amber-bg); color:var(--amber);"><i class="fas fa-clock"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Pendientes</div>
+                <div class="kpi-value" id="avance-kpi-pendientes">0</div>
+                <div class="kpi-sub">En plazo de entrega</div>
+              </div>
+            </div>
+            <div class="kpi-card" style="margin-bottom:0; flex:1; border-left:4px solid #f97316;">
+              <div class="kpi-icon" style="background:#fff7ed; color:#f97316;"><i class="fas fa-minus-circle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Inconclusas</div>
+                <div class="kpi-value" id="avance-kpi-inconclusas">0</div>
+                <div class="kpi-sub">Enviadas con observación</div>
+              </div>
+            </div>
+            <div class="kpi-card red" style="margin-bottom:0; flex:1;">
+              <div class="kpi-icon" style="background:var(--red-bg); color:var(--red);"><i class="fas fa-exclamation-triangle"></i></div>
+              <div class="kpi-body">
+                <div class="kpi-label">Vencidas</div>
+                <div class="kpi-value" id="avance-kpi-vencidas">0</div>
+                <div class="kpi-sub">Fuera de plazo / no cumplidas</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+
+      <!-- ==================== CONSOLIDADO ==================== -->
+      <div class="view-section" id="view-consolidado">
+        <div class="page-hd">
+          <div>
+            <h2>Consolidado de Actividades</h2>
+            <span>Registro mensual de cumplimiento por actividad</span>
+          </div>
+          <button class="btn btn-primary" onclick="descargarConsolidadoGlobal()" style="display:flex;align-items:center;gap:8px;font-weight:700;border-radius:20px;padding:8px 20px;">
+            <i class="fas fa-download"></i> Descargar todas las actividades (Excel)
+          </button>
+        </div>
+
+        <!-- Global date range filter -->
+        <div class="filter-bar" style="margin-bottom:12px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:10px;padding:12px 16px;">
+          <div style="font-size:.72rem;font-weight:700;color:#4338ca;text-transform:uppercase;letter-spacing:.5px;width:100%;margin-bottom:6px;">Rango de fechas para descarga global</div>
+          <div class="filter-group">
+            <label>Desde</label>
+            <input type="date" class="form-control" id="consol-fecha-inicio">
+          </div>
+          <div class="filter-group">
+            <label>Hasta</label>
+            <input type="date" class="form-control" id="consol-fecha-fin">
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-bar" style="margin-bottom:20px;">
+          <div class="filter-group" style="flex:1;min-width:200px;">
+            <label>Buscar actividad</label>
+            <input type="text" class="form-control" id="consol-buscar" placeholder="Buscar actividad..." oninput="loadConsolidado()">
+          </div>
+          <div class="filter-group" style="min-width:180px;">
+            <label>Filtrar por IE</label>
+            <input type="text" class="form-control" id="consol-ie-buscar" placeholder="Nombre o código IE..." oninput="loadConsolidado()">
+          </div>
+          <div class="filter-group">
+            <label>Mes</label>
+            <select class="form-select" id="consol-mes" onchange="loadConsolidado()">
+              <option value="">Todos</option>
+              <option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option>
+              <option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option>
+              <option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option>
+              <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Año</label>
+            <select class="form-select" id="consol-anio" onchange="loadConsolidado()">
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select class="form-select" id="consol-estado-filter" onchange="loadConsolidado()">
+              <option value="">Todos</option>
+              <option value="completada">Completada</option>
+              <option value="inconclusa">Inconclusa</option>
+              <option value="no_cumplida">No Cumplida</option>
+              <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Activity list -->
+        <div id="consol-list">
+          <div style="text-align:center;padding:40px;color:var(--text3);">Cargando...</div>
+        </div>
+
+        <!-- IE Report section -->
+        <div class="t-card" style="margin-top:24px;">
+          <div class="t-hd"><i class="fas fa-school"></i> Reporte por Institución Educativa</div>
+          <div style="padding:18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+            <div class="filter-group" style="flex:1;min-width:220px;">
+              <label>Buscar IE (nombre o código)</label>
+              <input type="text" class="form-control" id="consol-ie-codigo" placeholder="Código o nombre de IE..." list="consol-ie-datalist" oninput="filtrarIEDatalist(this.value)">
+              <datalist id="consol-ie-datalist"></datalist>
+            </div>
+            <div class="filter-group">
+              <label>Desde</label>
+              <input type="date" class="form-control" id="consol-ie-desde">
+            </div>
+            <div class="filter-group">
+              <label>Hasta</label>
+              <input type="date" class="form-control" id="consol-ie-hasta">
+            </div>
+            <div class="filter-group" style="margin-bottom:0;">
+              <button class="btn btn-outline-success" onclick="descargarReporteIE()" style="display:flex;align-items:center;gap:6px;font-weight:700;border-radius:20px;padding:8px 18px;">
+                <i class="fas fa-file-excel"></i> Descargar Excel por IE
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Detalle consolidado -->
+      <div class="modal-overlay" id="modal-consolidado-detalle">
+        <div class="modal-box modal-lg">
+          <div class="modal-hd">
+            <h5 id="consol-modal-title">Detalle de Actividad</h5>
+            <button class="modal-close" onclick="document.getElementById('modal-consolidado-detalle').classList.remove('show')">&times;</button>
+          </div>
+          <div class="modal-bd" style="padding:0;">
+            <div style="padding:16px 22px;border-bottom:1px solid var(--border);background:#f8fafc;">
+              <div id="consol-modal-meta" style="font-size:.8rem;color:var(--text3);"></div>
+            </div>
+            <div style="padding:14px 22px;">
+              <!-- Sub-filters -->
+              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end;">
+                <div class="filter-group" style="flex:1;min-width:160px;">
+                  <label>Buscar IE</label>
+                  <input type="text" class="form-control" id="consol-det-buscar" placeholder="Nombre o código..." oninput="loadConsolidadoDetalle()">
+                </div>
+                <div class="filter-group">
+                  <label>Estado</label>
+                  <select class="form-select" id="consol-det-estado" onchange="loadConsolidadoDetalle()">
+                    <option value="">Todas</option>
+                    <option value="completada">Completadas</option>
+                    <option value="inconclusa">Inconclusas</option>
+                    <option value="no_cumplida">No Cumplidas</option>
+                    <option value="pendiente">Pendientes</option>
+                  </select>
+                </div>
+                <button class="btn btn-outline-success btn-sm" id="consol-det-excel-btn" onclick="descargarConsolidadoExcel()">
+                  <i class="fas fa-file-excel"></i> Descargar Excel
+                </button>
+              </div>
+              <div class="t-wrap" style="max-height:420px;overflow-y:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead>
+                    <tr style="background:#f8fafc;">
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">#</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">IE Nombre</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Código</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Nivel</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Estado</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">F. Completado</th>
+                      <th style="padding:8px 12px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);">Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody id="consol-det-tbody">
+                    <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3);">Cargando...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ==================== SUPERVISOR: MONITOREO ==================== -->
+      <div class="view-section" id="view-monitoreo">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div><h2>Monitoreo</h2><span>Supervisión detallada de asignaciones por actividad</span></div>
+          <button class="btn btn-sm btn-outline-success" onclick="descargarExcel('/api/export/asignaciones?estado='+document.getElementById('mon-estado').value+'&nivel='+document.getElementById('mon-nivel').value+'&buscar='+encodeURIComponent(document.getElementById('mon-buscar').value)+'&asignador_id='+document.getElementById('mon-asignador').value)" title="Descargar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+        </div>
+        <div class="filter-bar">
+          <div class="filter-group" style="flex:1;">
+            <label>Buscar Actividad o IE</label>
+            <input type="text" class="form-control" id="mon-buscar" placeholder="Código, N° o Nombre..." oninput="loadMonitoreo()">
+          </div>
+          <div class="filter-group">
+            <label>Nivel</label>
+            <select class="form-select" id="mon-nivel" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
+              <option value="inicial">Inicial</option>
+              <option value="primaria">Primaria</option>
+              <option value="secundaria">Secundaria</option>
+              <option value="otros">Otros</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select class="form-select" id="mon-estado" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="completada">Completada</option>
+              <option value="no_cumplida">No Cumplida</option>
+              <option value="inconclusa">Inconclusa</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Asignado por</label>
+            <select class="form-select" id="mon-asignador" onchange="loadMonitoreo()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="filter-group" style="justify-content:flex-end;">
+            <label style="opacity:0">.</label>
+            <button id="btn-bulk-delete" class="btn btn-danger btn-sm" style="display:none;" onclick="eliminarActividadesSeleccionadas()">
+              <i class="fas fa-trash-alt"></i> Eliminar (<span id="bulk-delete-count">0</span>)
+            </button>
+          </div>
+        </div>
+        <!-- Activity Cards Container -->
+        <div id="monitoreo-cards-container">
+          <div style="text-align:center;padding:40px;color:var(--text3);font-size:.88rem;">
+            <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;margin-bottom:10px;display:block;"></i>
+            Cargando asignaciones...
+          </div>
+        </div>
+        <!-- Hidden table kept for bulk-delete compatibility -->
+        <table style="display:none"><tbody id="monitoreo-table"></tbody></table>
+        <input type="checkbox" id="select-all-mon" style="display:none" onchange="toggleSelectAllMonitoreo(this)">
+      </div>
+
+      <!-- ==================== MODAL: DETALLE ACTIVIDAD MONITOREO ==================== -->
+      <div class="modal-overlay" id="mon-detail-modal" onclick="if(event.target===this)document.getElementById('mon-detail-modal').classList.remove('show')">
+        <div class="modal-box modal-lg">
+          <div class="modal-hd">
+            <h5 id="mon-modal-title">Detalle de Actividad</h5>
+            <button class="modal-close" onclick="document.getElementById('mon-detail-modal').classList.remove('show')">&times;</button>
+          </div>
+          <div class="modal-bd" style="padding:0;">
+            <!-- Activity info header -->
+            <div id="mon-modal-act-info" style="padding:18px 22px;background:#f8fafc;border-bottom:1px solid var(--border);"></div>
+            <!-- Excel actions -->
+            <div style="padding: 12px 22px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border); background: #f8fafc; flex-wrap: wrap;">
+              <button class="btn btn-success btn-sm" id="btn-export-excel" style="display: flex; align-items: center; gap: 6px;" onclick="window.location.href = '/api/actividades/' + window._monCurrentActId + '/export-excel'">
+                <i class="fas fa-file-excel"></i> Descargar Plantilla Excel
+              </button>
+              <button class="btn btn-primary btn-sm" id="btn-trigger-import" style="display: flex; align-items: center; gap: 6px;" onclick="document.getElementById('excel-import-file').click()">
+                <i class="fas fa-upload"></i> Subir Excel Control
+              </button>
+              <input type="file" id="excel-import-file" style="display: none;" accept=".xlsx, .xls" onchange="handleExcelImport(event)">
+              <span id="import-excel-status" style="font-size: 0.78rem; color: var(--text3); font-weight: 600;"></span>
+            </div>
+            <!-- Search + table -->
+            <div style="padding:16px 22px 0;">
+              <input type="text" class="form-control" id="mon-modal-search" placeholder="Buscar institución educativa..." oninput="filterMonModalTable(this.value)" style="margin-bottom:12px;">
+            </div>
+            <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;" id="mon-modal-table">
+                <thead>
+                  <tr>
+                    <th style="padding:10px 22px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:#f8fafc;border-bottom:1px solid var(--border);position:sticky;top:0;">IE / Institución</th>
+                    <th style="padding:10px 16px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:#f8fafc;border-bottom:1px solid var(--border);position:sticky;top:0;">Código</th>
+                    <th style="padding:10px 16px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:#f8fafc;border-bottom:1px solid var(--border);position:sticky;top:0;">Estado</th>
+                    <th style="padding:10px 16px;font-size:.65rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;background:#f8fafc;border-bottom:1px solid var(--border);position:sticky;top:0;text-align:center;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="mon-modal-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- ==================== ADMIN: USUARIOS ==================== -->
+      <div class="view-section" id="view-admin-usuarios">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Administración de Usuarios</h2>
+            <span>Gestión de credenciales, cambio de contraseñas e impersonación</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalNuevoUsuario()"><i class="fas fa-plus-circle"></i> Agregar Usuario</button>
+        </div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group" style="width: 100%;">
+            <label>Buscar Usuario</label>
+            <input type="text" class="form-control" id="admin-user-buscar" placeholder="Buscar por nombre, usuario, DNI o IE..." oninput="loadAdminUsuarios()">
+          </div>
+        </div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre Completo</th>
+                  <th>Rol</th>
+                  <th>Nombre de Usuario</th>
+                  <th>DNI / IE</th>
+                  <th>Email / Teléfono</th>
+                  <th style="width:240px; text-align:center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="admin-usuarios-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUPERVISOR: IEs ==================== -->
+      <div class="view-section" id="view-ies">
+        <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h2>Instituciones Educativas</h2>
+            <span>Registro de IEs de UGEL Bellavista</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm admin-only" id="btn-nueva-ie" onclick="abrirModalIE()" style="display:none;"><i class="fas fa-plus-circle"></i> Nueva IE</button>
+            <button class="btn btn-sm admin-only" onclick="exportarIEs()" style="display:none;background:#10b981;color:#fff;border:none;margin-left:8px;"><i class="fas fa-file-excel"></i> Exportar Excel</button>
+            <button class="btn btn-secondary btn-sm admin-only" onclick="abrirModalNiveles()" style="display:none;"><i class="fas fa-layer-group"></i> Niveles</button>
+          </div>
+        </div>
+        <div class="filter-bar" style="margin-bottom:16px">
+          <div class="filter-group" style="flex:1;">
+            <label>Buscar</label>
+            <input type="text" class="form-control" id="ie-search-text" placeholder="Código Local, Modular, Nombre o Director..." oninput="loadIEs()">
+          </div>
+          <div class="filter-group" style="width: 200px;">
+            <label>Nivel</label>
+            <select class="form-select" id="ie-nivel-filter" onchange="loadIEs()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div id="ie-resumen-niveles" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;"></div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;text-align:center;color:var(--text3);">#</th>
+                  <th>Institución Educativa</th>
+                  <th>Códigos (Local/Mod)</th>
+                  <th>Ubicación</th>
+                  <th>Director y Contacto</th>
+                  <th>Zona y Estado</th>
+                  <th class="admin-only" style="width:120px; text-align:center; display:none;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="ies-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== SUPERVISOR: NOTIFICACIONES ==================== -->
+      <div class="view-section" id="view-notificaciones">
+        <div class="page-hd"><h2>Notificaciones</h2><span>Envío y registro de notificaciones a directores</span></div>
+        <div class="row">
+          <div class="col-md-6 col-lg-5">
+            <div class="t-card"><div class="t-hd"><i class="fas fa-paper-plane"></i> Enviar Notificación</div>
+            <div style="padding:20px"><form onsubmit="event.preventDefault();sendNotificacion()">
+              <div class="mb-3"><label class="form-label">Director *</label><select class="form-select" id="notif-director" required><option value="">Seleccionar...</option></select></div>
+              <div class="mb-3"><label class="form-label">Título *</label><input type="text" class="form-control" id="notif-titulo" required></div>
+              <div class="mb-3"><label class="form-label">Mensaje *</label><textarea class="form-control" id="notif-mensaje" rows="4" required></textarea></div>
+              <button type="submit" class="btn btn-primary w-100">Enviar</button>
+            </form></div></div>
+          </div>
+          <div class="col-md-6 col-lg-7">
+            <div class="t-card"><div class="t-hd"><i class="fas fa-bell"></i> Enviadas</div>
+            <div class="t-wrap"><table><thead><tr><th>Director</th><th>Título</th><th>Mensaje</th><th>Fecha</th><th>Leída</th></tr></thead><tbody id="notificaciones-table"></tbody></table></div></div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- ==================== PERFIL ==================== -->
+      <div class="view-section" id="view-perfil">
+        <div class="page-hd"><h2 id="perfil-title">Mi Perfil</h2><span id="perfil-subtitle">Información personal y configuración de cuenta</span></div>
+        <div class="t-card perfil-card"><div style="padding:22px">
+          <div class="perfil-hd">
+            <div class="perfil-avatar" id="perfil-avatar-letter">?</div>
+            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-user" style="color:var(--granate);margin-right:8px" id="perfil-card-icon"></i> <span id="perfil-card-title">Mi Perfil</span></h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0" id="perfil-card-desc">Información personal y de cuenta</p></div>
+          </div>
+          <form onsubmit="event.preventDefault();savePerfil()">
+            <div class="row">
+              <div class="col-md-6"><label class="form-label">Nombre</label><input type="text" class="form-control" id="perfil-nombre"></div>
+              <div class="col-md-6"><label class="form-label">DNI</label><input type="text" class="form-control" id="perfil-dni"></div>
+              <div class="col-md-6" id="perfil-ie-container"><label class="form-label">Institución</label><input type="text" class="form-control" id="perfil-ie" readonly></div>
+              <div class="col-md-6"><label class="form-label">Rol</label><input type="text" class="form-control" id="perfil-rol" readonly></div>
+              <div class="col-md-6" id="perfil-dependencia-container"><label class="form-label">Área / Dependencia</label><input type="text" class="form-control" id="perfil-dependencia"></div>
+              <div class="col-md-6" id="perfil-puesto-container"><label class="form-label">Cargo / Puesto</label><input type="text" class="form-control" id="perfil-puesto"></div>
+              <div class="col-md-6"><label class="form-label">Email</label><input type="email" class="form-control" id="perfil-email"></div>
+              <div class="col-md-6"><label class="form-label">Teléfono</label><input type="text" class="form-control" id="perfil-telefono"></div>
+              <div class="col-md-6"><label class="form-label">Nueva Contraseña</label><input type="password" class="form-control" id="perfil-password" placeholder="Dejar en blanco para no cambiar"></div>
+            </div>
+            <div class="mt-4" style="display:flex; gap:12px; align-items:center;">
+              <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
+              <button type="button" class="btn btn-secondary px-4" id="btn-perfil-volver" onclick="volverDePerfil()" style="display:none;">Volver</button>
+            </div>
+          </form>
+        </div></div>
+
+        <!-- Tarjeta de Configuración del Sistema (solo visible para administradores) -->
+        <div class="t-card admin-only" id="system-config-card" style="margin-top:20px; display:none;"><div style="padding:22px">
+          <div class="perfil-hd" style="border-bottom: 1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-cogs" style="color:var(--primary);margin-right:8px"></i> Configuración de Evaluación (Directores)</h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0">Administra el recuadro especial que aparece a los directores debajo de las tarjetas de cumplimiento.</p></div>
+          </div>
+          <form onsubmit="event.preventDefault();saveSystemSettings()">
+            <div class="row">
+              <div class="col-12 mb-3" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Activar recuadro de evaluación en el panel de Directores</label>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
+                <input type="text" class="form-control" id="config-box-title" placeholder="Ej: Formulario de Evaluación de Desempeño">
+              </div>
+              <input type="hidden" id="config-box-type" value="external">
+              <div class="col-md-6 mb-3" id="config-box-url-group">
+                <label class="form-label">Enlace / URL de Redirección (Formulario, Evaluación, etc.)</label>
+                <input type="url" class="form-control" id="config-box-url" placeholder="https://forms.google.com/...">
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:5px; margin-bottom:15px;">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--text1);">Color del Tema:</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button type="button" class="theme-color-btn active" data-theme="indigo" onclick="selectThemeColor('indigo')" style="width:24px; height:24px; border-radius:50%; background:#6366f1; border:2px solid #fff; box-shadow:0 0 0 2px #6366f1; cursor:pointer; padding:0; outline:none;" title="Índigo"></button>
+                <button type="button" class="theme-color-btn" data-theme="blue" onclick="selectThemeColor('blue')" style="width:24px; height:24px; border-radius:50%; background:#3b82f6; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Azul"></button>
+                <button type="button" class="theme-color-btn" data-theme="sky" onclick="selectThemeColor('sky')" style="width:24px; height:24px; border-radius:50%; background:#0ea5e9; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Celeste"></button>
+                <button type="button" class="theme-color-btn" data-theme="teal" onclick="selectThemeColor('teal')" style="width:24px; height:24px; border-radius:50%; background:#0d9488; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Turquesa"></button>
+                <button type="button" class="theme-color-btn" data-theme="emerald" onclick="selectThemeColor('emerald')" style="width:24px; height:24px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Esmeralda"></button>
+                <button type="button" class="theme-color-btn" data-theme="violet" onclick="selectThemeColor('violet')" style="width:24px; height:24px; border-radius:50%; background:#8b5cf6; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Violeta"></button>
+                <button type="button" class="theme-color-btn" data-theme="rose" onclick="selectThemeColor('rose')" style="width:24px; height:24px; border-radius:50%; background:#f43f5e; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Rosa"></button>
+                <button type="button" class="theme-color-btn" data-theme="amber" onclick="selectThemeColor('amber')" style="width:24px; height:24px; border-radius:50%; background:#f59e0b; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Ámbar"></button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary px-4">Guardar Configuración</button>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- ==================== CAP ==================== -->
+      <div class="view-section" id="view-cap">
+        <div class="page-hd">
+          <div><h2>CAP - Cuadro de Asignación de Personal</h2><span>Consulta el personal asignado por institución educativa (DATA NEXUS)</span></div>
+        </div>
+
+        <!-- Upload section: admin/tony.fernandez only -->
+        <div id="cap-upload-section" style="display:none; margin-bottom:20px;">
+          <div class="t-card" style="border:2px dashed var(--primary);background:rgba(99,102,241,0.04);">
+            <div style="padding:20px;">
+              <h5 style="font-size:.9rem;font-weight:700;color:var(--primary);margin-bottom:8px;"><i class="fas fa-upload"></i> Actualizar DATA NEXUS</h5>
+              <p style="font-size:.8rem;color:var(--text3);margin-bottom:12px;">Sube el archivo Excel (.xls / .xlsx) exportado del sistema Nexus. La data quedará disponible para todos los usuarios en esta sesión.</p>
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                <input type="file" id="cap-archivo-nexus" accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" style="font-size:.82rem;">
+                <button class="btn btn-primary btn-sm" onclick="capProcesarExcel()"><i class="fas fa-sync-alt"></i> Cargar y Procesar</button>
+                <span id="cap-status-msg" style="font-size:.8rem;font-weight:600;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search bar -->
+        <div class="filter-bar" style="margin-bottom:16px;">
+          <div class="filter-group" style="flex:1;min-width:200px;">
+            <label>Nombre de IE</label>
+            <input type="text" class="form-control" id="cap-input-ie" placeholder="Ej: San Martín..." oninput="capBuscar()">
+          </div>
+          <div class="filter-group">
+            <label>Código Modular</label>
+            <input type="text" class="form-control" id="cap-input-modular" placeholder="Cód. modular" oninput="capBuscar()">
+          </div>
+          <div class="filter-group">
+            <label>Código de Plaza</label>
+            <input type="text" class="form-control" id="cap-input-plaza" placeholder="Cód. plaza" oninput="capBuscar()">
+          </div>
+        </div>
+
+        <!-- Results table (search view) -->
+        <div id="cap-search-panel">
+          <div class="t-card">
+            <div class="t-wrap">
+              <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+                <thead>
+                  <tr style="background:#f8fafc;">
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Cód. Modular</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Institución Educativa</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Nivel / Programa</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Órgano Intermedio</th>
+                    <th style="padding:10px 12px;border-bottom:2px solid var(--border);font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;">Acción</th>
+                  </tr>
+                </thead>
+                <tbody id="cap-tbody-resultados">
+                  <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- CAP Report panel -->
+        <div id="cap-report-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;" class="no-print">
+            <button class="btn btn-secondary btn-sm" onclick="capVolverBusqueda()"><i class="fas fa-arrow-left"></i> Volver a resultados</button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm" style="background:#10b981;color:#fff;" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+              <button class="btn btn-sm" style="background:#ef4444;color:#fff;" onclick="capDescargarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+            </div>
+          </div>
+          <div id="cap-contenedor-reporte" style="background:#fff;padding:28px 36px;border:1px solid #ccc;box-shadow:0 0 10px rgba(0,0,0,0.08);color:#000;font-family:Arial,sans-serif;"></div>
+        </div>
+      </div>
+
+<!-- ==================== MODAL ==================== -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <div class="modal-hd"><h5 id="modal-title">Modal</h5><button class="modal-close" onclick="closeModal()">&times;</button></div>
+    <div class="modal-bd" id="modal-body"></div>
+    <div class="modal-ft" id="modal-footer"></div>
+  </div>
+</div>
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script src="/js/app.js?v=1.1.9"></script>
+</body>
+</html>
