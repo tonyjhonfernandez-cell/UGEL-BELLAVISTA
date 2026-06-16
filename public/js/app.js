@@ -233,7 +233,7 @@ function highlightSearchInput() {
     var tooltip = document.createElement('div');
     tooltip.id = 'dir-search-tooltip';
     tooltip.className = 'dir-tooltip';
-    tooltip.innerHTML = '💡 Ingrese aquí su código local o nombre de IE';
+    tooltip.innerHTML = '💡 Ingresa aquí';
     
     panel.insertBefore(tooltip, input);
     
