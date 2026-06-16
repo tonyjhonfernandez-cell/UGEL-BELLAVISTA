@@ -5318,3 +5318,96 @@ function selectPublicCapIE(id, codigo, nombre) {
 }
 
 function selectSurveyRating(val) {
+  currentPublicRating = val;
+  document.getElementById('pub-cap-rating').value = val;
+  const stars = document.querySelectorAll('.star-btn');
+  stars.forEach((star, index) => {
+    if (index < val) {
+      star.style.color = '#eab308';
+    } else {
+      star.style.color = '#d1d5db';
+    }
+  });
+}
+
+function resetStars() {
+  currentPublicRating = 0;
+  document.getElementById('pub-cap-rating').value = '';
+  const stars = document.querySelectorAll('.star-btn');
+  stars.forEach(star => {
+    star.style.color = '#d1d5db';
+  });
+}
+
+async function submitPublicAsistencia() {
+  const capId = currentPublicCapacitacion.id;
+  const ieId = document.getElementById('pub-cap-ie-id').value;
+  const nombre = document.getElementById('pub-cap-nombre').value.trim();
+  const dni = document.getElementById('pub-cap-dni').value.trim();
+  const cargo = document.getElementById('pub-cap-cargo').value.trim();
+  const rating = document.getElementById('pub-cap-rating').value;
+  const sugerencias = document.getElementById('pub-cap-sugerencias').value.trim();
+  
+  if (!ieId) {
+    showToast('Debe seleccionar una Institución Educativa válida de la lista', 'error');
+    return;
+  }
+  
+  if (currentPublicCapacitacion.incluye_encuesta && !rating) {
+    showToast('Por favor califique la capacitación en la encuesta de satisfacción', 'error');
+    return;
+  }
+  
+  try {
+    const payload = {
+      ie_id: parseInt(ieId, 10),
+      nombre_completo: nombre,
+      dni: dni,
+      cargo: cargo
+    };
+    if (currentPublicCapacitacion.incluye_encuesta) {
+      payload.calificacion_satisfaccion = parseInt(rating, 10);
+      payload.sugerencias = sugerencias || null;
+    }
+    
+    document.getElementById('pub-cap-submit-btn').disabled = true;
+    document.getElementById('pub-cap-submit-btn').textContent = 'Registrando...';
+    
+    const res = await api('/api/public/capacitaciones/' + capId + '/registrar', {
+      method: 'POST',
+      body: payload
+    });
+    
+    document.getElementById('pub-cap-form').style.display = 'none';
+    const successScreen = document.getElementById('pub-cap-success');
+    successScreen.style.display = 'block';
+    
+    document.getElementById('success-ie-name').textContent = document.getElementById('pub-cap-selected-ie-text').textContent;
+    document.getElementById('success-user-name').textContent = nombre;
+    
+    const regDate = new Date(res.registro.fecha_registro);
+    const timeFormatted = regDate.toLocaleString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    document.getElementById('success-time').textContent = timeFormatted;
+    
+    showToast('Asistencia registrada con éxito', 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al registrar la asistencia', 'error');
+  } finally {
+    document.getElementById('pub-cap-submit-btn').disabled = false;
+    document.getElementById('pub-cap-submit-btn').textContent = 'Registrar Asistencia';
+  }
+}
+
+document.addEventListener('click', function(e) {
+  const container = document.getElementById('pub-cap-autocomplete');
+  if (container && !container.contains(e.target) && e.target.id !== 'pub-cap-ie-search') {
+    container.style.display = 'none';
+  }
+});
