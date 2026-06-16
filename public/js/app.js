@@ -532,6 +532,7 @@ function openEvaluationLink() {
 }
 
 function initDirectorApp() {
+  document.body.classList.add('director-mode');
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = 'none';
   document.getElementById('sidebar').style.display = 'none';
