@@ -1379,6 +1379,22 @@ app.put('/api/asignaciones/:id/estado', authSupervisor, async (req, res) => {
     }
 });
 
+
+app.delete('/api/asignaciones/:id', authSupervisor, async (req, res) => {
+    try {
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        const asigCheck = await db.prepare('SELECT a.asignador_id FROM asignaciones ase JOIN actividades a ON ase.actividad_id = a.id WHERE ase.id = ?').get(req.params.id);
+        if (!asigCheck) return res.status(404).json({ error: 'Asignación no encontrada' });
+        if (!isSuperAdminAct && req.session.user.id != asigCheck.asignador_id) {
+            return res.status(403).json({ error: 'No tienes permiso para eliminar esta asignación' });
+        }
+        await db.prepare('DELETE FROM asignaciones WHERE id = ?').run(req.params.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';

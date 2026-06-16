@@ -2243,8 +2243,8 @@ function monModalEliminar(asignacionId, actividadId) {
 
 async function monModalConfirmarEliminar(asignacionId, actividadId) {
   try {
-    await api('/api/asignaciones/' + asignacionId + '/estado', { method: 'PUT', body: { estado: 'no_cumplida', notas_supervisor: 'Eliminado manualmente' } });
-    showToast('Asignación marcada como no cumplida', 'success');
+    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE' });
+    showToast('Asignación eliminada con éxito', 'success');
     closeModal();
     await loadMonitoreo();
     var modal = document.getElementById('mon-detail-modal');
