@@ -2117,6 +2117,7 @@ function openMonModal(actId) {
   var grp = monitoreoData[actId];
   if (!grp) return;
   window._monCurrentActId = actId;
+  window._monCurrentGroup = grp;
 
   // Header info
   var infoHtml = '<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">' +
