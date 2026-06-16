@@ -2216,9 +2216,19 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
                 row.eachCell({ includeEmpty: true }, (cell, ci) => {
                     cell.border = cellBorder;
                     cell.alignment = { vertical: 'middle', wrapText: true };
-                    if (ci === 7 && estadoStyles[r.estado]) { // estado is col 7
-                        cell.fill = estadoStyles[r.estado].fill;
-                        cell.font = estadoStyles[r.estado].font;
+                    if (ci === 7) { // estado is col 7
+                        cell.dataValidation = {
+                            type: 'list',
+                            allowBlank: true,
+                            formulae: ['"completada,inconclusa,pendiente,no_cumplida"']
+                        };
+                        if (estadoStyles[r.estado]) {
+                            cell.fill = estadoStyles[r.estado].fill;
+                            cell.font = estadoStyles[r.estado].font;
+                        } else {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+                            cell.font = { name: 'Calibri', size: 10 };
+                        }
                     } else {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
                         cell.font = { name: 'Calibri', size: 10 };
