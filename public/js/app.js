@@ -460,6 +460,8 @@ async function loadSystemSettings() {
     document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
     document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
     
+    toggleConfigEvaluationDetails();
+    
     const boxType = settings.evaluation_box_type || 'external';
     const typeSelect = document.getElementById('config-box-type');
     if (typeSelect) {
@@ -472,6 +474,11 @@ async function loadSystemSettings() {
   } catch(e) {
     showToast('Error al cargar configuración: ' + e.message, 'error');
   }
+}
+
+function toggleConfigEvaluationDetails() {
+  const isChecked = document.getElementById('config-active-box').checked;
+  document.getElementById('config-evaluation-details').style.display = isChecked ? 'block' : 'none';
 }
 
 async function saveSystemSettings() {

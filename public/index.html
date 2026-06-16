@@ -1176,10 +1176,13 @@
           <form onsubmit="event.preventDefault();saveSystemSettings()">
             <div class="row">
               <div class="col-12 mb-3" style="display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <input type="checkbox" id="config-active-box" onchange="toggleConfigEvaluationDetails()" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
                 <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Activar recuadro de evaluación en el panel de Directores</label>
               </div>
-              <div class="col-md-6 mb-3">
+            </div>
+            <div id="config-evaluation-details" style="display:none; margin-top: 10px;">
+              <div class="row">
+                <div class="col-md-6 mb-3">
                 <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
                 <input type="text" class="form-control" id="config-box-title" placeholder="Ej: Formulario de Evaluación de Desempeño">
               </div>
@@ -1202,6 +1205,7 @@
                 <button type="button" class="theme-color-btn" data-theme="amber" onclick="selectThemeColor('amber')" style="width:24px; height:24px; border-radius:50%; background:#f59e0b; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Ámbar"></button>
               </div>
             </div>
+            </div> <!-- End of config-evaluation-details -->
             <div class="mt-3">
               <button type="submit" class="btn btn-primary px-4">Guardar Configuración</button>
             </div>
