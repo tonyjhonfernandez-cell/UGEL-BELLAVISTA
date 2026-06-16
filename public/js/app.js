@@ -194,6 +194,7 @@ async function initPublicDashboard() {
     
     // Inicializar el dashboard en blanco (con KPIs en 0 y mensaje explicativo)
     loadDirectorMain('');
+    loadDirectorEvaluationSettings();
     
     // Resaltar el buscador y agregar el tooltip flotante
     highlightSearchInput();
@@ -313,6 +314,7 @@ async function checkSession() {
     return;
   }
   
+  initThemeColor();
   try {
     const data = await api('/api/check-session');
     if (data.usuario || data.user) {
@@ -336,6 +338,199 @@ async function checkSession() {
 }
 
 // ===================== INIT =====================
+const THEME_MAP = {
+  indigo: {
+    primary: '#6366f1',
+    primaryDark: '#4f46e5',
+    primaryLight: 'rgba(99, 102, 241, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+    sidebarActive: '#818cf8',
+    sidebarActiveBg: 'rgba(99, 102, 241, 0.12)'
+  },
+  blue: {
+    primary: '#3b82f6',
+    primaryDark: '#1d4ed8',
+    primaryLight: 'rgba(59, 130, 246, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    sidebarActive: '#60a5fa',
+    sidebarActiveBg: 'rgba(59, 130, 246, 0.12)'
+  },
+  sky: {
+    primary: '#0ea5e9',
+    primaryDark: '#0284c7',
+    primaryLight: 'rgba(14, 165, 233, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    sidebarActive: '#38bdf8',
+    sidebarActiveBg: 'rgba(14, 165, 233, 0.12)'
+  },
+  teal: {
+    primary: '#0d9488',
+    primaryDark: '#0f766e',
+    primaryLight: 'rgba(13, 148, 136, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)',
+    sidebarActive: '#2dd4bf',
+    sidebarActiveBg: 'rgba(13, 148, 136, 0.12)'
+  },
+  emerald: {
+    primary: '#10b981',
+    primaryDark: '#059669',
+    primaryLight: 'rgba(16, 185, 129, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    sidebarActive: '#34d399',
+    sidebarActiveBg: 'rgba(16, 185, 129, 0.12)'
+  },
+  violet: {
+    primary: '#8b5cf6',
+    primaryDark: '#6d28d9',
+    primaryLight: 'rgba(139, 92, 246, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+    sidebarActive: '#a78bfa',
+    sidebarActiveBg: 'rgba(139, 92, 246, 0.12)'
+  },
+  rose: {
+    primary: '#f43f5e',
+    primaryDark: '#be123c',
+    primaryLight: 'rgba(244, 63, 94, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+    sidebarActive: '#fb7185',
+    sidebarActiveBg: 'rgba(244, 63, 94, 0.12)'
+  },
+  amber: {
+    primary: '#f59e0b',
+    primaryDark: '#d97706',
+    primaryLight: 'rgba(245, 158, 11, 0.08)',
+    primaryGrad: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    sidebarActive: '#fbbf24',
+    sidebarActiveBg: 'rgba(245, 158, 11, 0.12)'
+  }
+};
+
+window._currentThemeColor = 'indigo';
+
+function selectThemeColor(theme) {
+  if (!THEME_MAP[theme]) theme = 'indigo';
+  window._currentThemeColor = theme;
+  
+  const colors = THEME_MAP[theme];
+  const root = document.documentElement;
+  root.style.setProperty('--primary', colors.primary);
+  root.style.setProperty('--primary-dark', colors.primaryDark);
+  root.style.setProperty('--primary-light', colors.primaryLight);
+  root.style.setProperty('--primary-grad', colors.primaryGrad);
+  root.style.setProperty('--sidebar-active', colors.sidebarActive);
+  root.style.setProperty('--sidebar-active-bg', colors.sidebarActiveBg);
+  
+  document.querySelectorAll('.theme-color-btn').forEach(btn => {
+    const btnTheme = btn.getAttribute('data-theme');
+    if (btnTheme === theme) {
+      btn.classList.add('active');
+      btn.style.boxShadow = `0 0 0 2px ${colors.primary}`;
+    } else {
+      btn.classList.remove('active');
+      btn.style.boxShadow = '0 0 0 1px #cbd5e1';
+    }
+  });
+}
+
+async function initThemeColor() {
+  try {
+    const settings = await api('/api/system-settings');
+    if (settings && settings.theme_color) {
+      selectThemeColor(settings.theme_color);
+    } else {
+      selectThemeColor('indigo');
+    }
+  } catch(e) {
+    console.error('Error al inicializar color de tema:', e);
+    selectThemeColor('indigo');
+  }
+}
+
+function onBoxTypeChange(val) {
+  const urlGroup = document.getElementById('config-box-url-group');
+  if (urlGroup) {
+    urlGroup.style.display = 'block';
+  }
+}
+
+async function loadSystemSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
+    document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
+    document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
+    
+    const boxType = settings.evaluation_box_type || 'external';
+    const typeSelect = document.getElementById('config-box-type');
+    if (typeSelect) {
+      typeSelect.value = boxType;
+    }
+    onBoxTypeChange(boxType);
+    
+    const theme = settings.theme_color || 'indigo';
+    selectThemeColor(theme);
+  } catch(e) {
+    showToast('Error al cargar configuración: ' + e.message, 'error');
+  }
+}
+
+async function saveSystemSettings() {
+  try {
+    const active = document.getElementById('config-active-box').checked;
+    const title = document.getElementById('config-box-title').value.trim();
+    const url = document.getElementById('config-box-url').value.trim();
+    const type = document.getElementById('config-box-type').value;
+    const themeColor = window._currentThemeColor || 'indigo';
+    
+    if (active && !title) {
+      showToast('Si activa el recuadro, debe ingresar el título', 'error');
+      return;
+    }
+    if (active && type === 'external' && !url) {
+      showToast('Si activa el recuadro con enlace externo, debe ingresar el enlace/URL', 'error');
+      return;
+    }
+    
+    await api('/api/system-settings', {
+      method: 'PUT',
+      body: {
+        active_evaluation_box: active,
+        evaluation_box_title: title,
+        evaluation_box_url: url,
+        evaluation_box_type: type,
+        theme_color: themeColor
+      }
+    });
+    
+    showToast('Configuración del sistema guardada con éxito', 'success');
+  } catch(e) {
+    showToast('Error al guardar configuración: ' + e.message, 'error');
+  }
+}
+
+async function loadDirectorEvaluationSettings() {
+  try {
+    const settings = await api('/api/system-settings');
+    const evalBox = document.getElementById('dir-evaluation-box');
+    window._evaluationBoxType = settings.evaluation_box_type || 'external';
+    window._evaluationBoxUrl = settings.evaluation_box_url || '';
+    if (settings && settings.active_evaluation_box) {
+      document.getElementById('dir-eval-title').textContent = settings.evaluation_box_title || 'Evaluación de Actividad';
+      evalBox.style.display = 'flex';
+    } else {
+      evalBox.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Error al cargar configuración de evaluación:', e);
+  }
+}
+
+function openEvaluationLink() {
+  if (window._evaluationBoxUrl) {
+    window.open(window._evaluationBoxUrl, '_blank');
+  }
+}
+
 function initDirectorApp() {
   var gfb = document.getElementById('global-filter-bar');
   if(gfb) gfb.style.display = 'none';
@@ -372,6 +567,7 @@ function initDirectorApp() {
   }
 
   loadDirectorMain();
+  loadDirectorEvaluationSettings();
 }
 function initSupervisorApp() {
   var gfb = document.getElementById('global-filter-bar');

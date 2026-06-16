@@ -92,8 +92,9 @@
             </div>
           </div>
           <div class="dir-body">
-            <div class="dir-top-row">
-              <div class="dir-kpis">
+            <div class="dir-top-row" style="align-items: stretch;">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+                <div class="dir-kpis">
                 <div class="dir-kpi total">
                   <div class="kpi-cap"></div>
                   <div class="kpi-num-box">
@@ -140,6 +141,22 @@
                   <div class="kpi-text-box">
                     <i class="fas fa-exclamation-triangle kpi-icon"></i>
                     <div class="kpi-title">Actividades<br>Vencidas</div>
+                  </div>
+                </div>
+              </div>
+                <!-- Recuadro especial de evaluación (direcciona al formulario configurado) -->
+                <div id="dir-evaluation-box" style="display: none; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; border-radius: 12px; padding: 16px 20px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2); cursor: pointer; align-items: center; justify-content: space-between; transition: all 0.2s ease;" onclick="openEvaluationLink()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(59, 130, 246, 0.35)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(59, 130, 246, 0.2)'">
+                  <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 44px; height: 44px; background: rgba(255,255,255,0.18); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                      <i class="fas fa-file-signature"></i>
+                    </div>
+                    <div>
+                      <h4 id="dir-eval-title" style="margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;">Actividad Especial</h4>
+                      <p style="margin: 3px 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.85); font-weight: 500;">Haz clic aquí para abrir y completar esta evaluación / formulario</p>
+                    </div>
+                  </div>
+                  <div style="font-size: 1.2rem; margin-right: 8px;">
+                    <i class="fas fa-arrow-right"></i>
                   </div>
                 </div>
               </div>
@@ -1143,6 +1160,46 @@
             <div class="mt-4" style="display:flex; gap:12px; align-items:center;">
               <button type="submit" class="btn btn-primary px-4">Guardar Cambios</button>
               <button type="button" class="btn btn-secondary px-4" id="btn-perfil-volver" onclick="volverDePerfil()" style="display:none;">Volver</button>
+            </div>
+          </form>
+        </div></div>
+
+        <!-- Tarjeta de Configuración del Sistema (solo visible para administradores) -->
+        <div class="t-card admin-only" id="system-config-card" style="margin-top:20px; display:none;"><div style="padding:22px">
+          <div class="perfil-hd" style="border-bottom: 1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+            <div><h5 style="font-size:.95rem;font-weight:700;margin:0"><i class="fas fa-cogs" style="color:var(--primary);margin-right:8px"></i> Configuración de Evaluación (Directores)</h5><p style="font-size:.78rem;color:var(--text3);margin:2px 0 0">Administra el recuadro especial que aparece a los directores debajo de las tarjetas de cumplimiento.</p></div>
+          </div>
+          <form onsubmit="event.preventDefault();saveSystemSettings()">
+            <div class="row">
+              <div class="col-12 mb-3" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Activar recuadro de evaluación en el panel de Directores</label>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
+                <input type="text" class="form-control" id="config-box-title" placeholder="Ej: Formulario de Evaluación de Desempeño">
+              </div>
+              <input type="hidden" id="config-box-type" value="external">
+              <div class="col-md-6 mb-3" id="config-box-url-group">
+                <label class="form-label">Enlace / URL de Redirección (Formulario, Evaluación, etc.)</label>
+                <input type="url" class="form-control" id="config-box-url" placeholder="https://forms.google.com/...">
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:5px; margin-bottom:15px;">
+              <span style="font-weight:600; font-size:0.85rem; color:var(--text1);">Color del Tema:</span>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button type="button" class="theme-color-btn active" data-theme="indigo" onclick="selectThemeColor('indigo')" style="width:24px; height:24px; border-radius:50%; background:#6366f1; border:2px solid #fff; box-shadow:0 0 0 2px #6366f1; cursor:pointer; padding:0; outline:none;" title="Índigo"></button>
+                <button type="button" class="theme-color-btn" data-theme="blue" onclick="selectThemeColor('blue')" style="width:24px; height:24px; border-radius:50%; background:#3b82f6; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Azul"></button>
+                <button type="button" class="theme-color-btn" data-theme="sky" onclick="selectThemeColor('sky')" style="width:24px; height:24px; border-radius:50%; background:#0ea5e9; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Celeste"></button>
+                <button type="button" class="theme-color-btn" data-theme="teal" onclick="selectThemeColor('teal')" style="width:24px; height:24px; border-radius:50%; background:#0d9488; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Turquesa"></button>
+                <button type="button" class="theme-color-btn" data-theme="emerald" onclick="selectThemeColor('emerald')" style="width:24px; height:24px; border-radius:50%; background:#10b981; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Esmeralda"></button>
+                <button type="button" class="theme-color-btn" data-theme="violet" onclick="selectThemeColor('violet')" style="width:24px; height:24px; border-radius:50%; background:#8b5cf6; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Violeta"></button>
+                <button type="button" class="theme-color-btn" data-theme="rose" onclick="selectThemeColor('rose')" style="width:24px; height:24px; border-radius:50%; background:#f43f5e; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Rosa"></button>
+                <button type="button" class="theme-color-btn" data-theme="amber" onclick="selectThemeColor('amber')" style="width:24px; height:24px; border-radius:50%; background:#f59e0b; border:2px solid #fff; box-shadow:0 0 0 1px #cbd5e1; cursor:pointer; padding:0; outline:none;" title="Ámbar"></button>
+              </div>
+            </div>
+            <div class="mt-3">
+              <button type="submit" class="btn btn-primary px-4">Guardar Configuración</button>
             </div>
           </form>
         </div></div>
