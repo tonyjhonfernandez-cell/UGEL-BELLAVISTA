@@ -2276,6 +2276,16 @@ app.post('/api/actividades/:id/import-excel', authSupervisor, async (req, res) =
             return res.status(400).json({ error: 'No se recibió ningún archivo' });
         }
 
+        const actividadRes = await pool.query('SELECT asignador_id FROM actividades WHERE id = $1', [parseInt(actividadId)]);
+        const actividad = actividadRes.rows[0];
+        if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
+        
+        const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
+        if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
+            return res.status(403).json({ error: 'No tienes permiso para actualizar esta actividad mediante Excel' });
+        }
+
+
         const buffer = Buffer.from(file, 'base64');
         const xlsx = require('xlsx');
         const wb = xlsx.read(buffer, { type: 'buffer' });
