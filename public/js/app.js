@@ -2162,8 +2162,7 @@ function renderMonModalRows(ies, filter) {
         if (ie.estado !== 'completada') {
           btns += '<button class="btn btn-xs btn-success me-1" onclick="monModalCambiarEstado(' + ie.id + ',\'completada\')" title="Marcar Completada" style="padding:5px 8px;"><i class="fas fa-check-circle"></i></button>';
         }
-        btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-minus-circle"></i></button>';
-        btns += '<button class="btn btn-xs me-1" style="background:#ef4444;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'no_cumplida\')" title="Marcar No Cumplida"><i class="fas fa-times-circle"></i></button>';
+        btns += '<button class="btn btn-xs me-1" style="background:#f97316;color:#fff;padding:5px 8px;" onclick="monModalCambiarEstado(' + ie.id + ',\'inconclusa\')" title="Marcar Inconclusa"><i class="fas fa-times"></i></button>';
         btns += '<button class="btn btn-xs btn-danger" style="padding:5px 8px;" onclick="monModalEliminar(' + ie.id + ',' + ie.actividad_id + ')" title="Eliminar asignación"><i class="fas fa-trash-alt"></i></button>';
       } else {
         btns = '<span style="font-size:0.75rem; color:var(--text3);"><i class="fas fa-lock" title="No puedes editar actividades de otros"></i></span>';
