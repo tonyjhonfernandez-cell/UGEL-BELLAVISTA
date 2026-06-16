@@ -615,10 +615,9 @@ function buildSidebar() {
   }
 
   if (currentUser.rol === 'supervisor' || currentUser.rol === 'admin') {
-    // 1. Gestión (Dashboard y Calendario)
+    // 1. Gestión (Dashboard)
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Calendario</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
     html += '<div class="label">Principal</div>';
@@ -635,9 +634,13 @@ function buildSidebar() {
       if (currentUser.rol === 'admin') {
         html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
       }
+    }
+    
+    html += '<div class="label">Cuenta</div>';
+    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
+    if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-cog"></i> Configuraciones</a>';
     } else {
-      html += '<div class="label">Cuenta</div>';
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
     }
   }
