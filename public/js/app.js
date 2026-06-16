@@ -523,7 +523,13 @@ function loadViewData(vista) {
     case 'perfil': loadPerfil(); break;
     case 'admin-usuarios': loadAdminUsuarios(); break;
     case 'cap': capInitView(); break;
-    case 'capacitaciones': loadCapacitaciones(); break;
+    case 'capacitaciones':
+      if (document.getElementById('cap-titulo')) document.getElementById('cap-titulo').value = '';
+      if (document.getElementById('cap-descripcion')) document.getElementById('cap-descripcion').value = '';
+      if (document.getElementById('cap-fecha')) document.getElementById('cap-fecha').value = '';
+      if (document.getElementById('cap-incluye-encuesta')) document.getElementById('cap-incluye-encuesta').checked = false;
+      if (document.getElementById('cap-alc-todas')) { document.getElementById('cap-alc-todas').checked = true; onChangeAlcanceCap('todas'); }
+      break;
     case 'monitoreo-capacitaciones': loadCapacitaciones(); break;
   }
 }
