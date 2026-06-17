@@ -1748,8 +1748,10 @@ async function eliminarLista(id) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+var selectedNLIEs = new Set();
+
 function mostrarCrearLista() {
-  // Show selected manual IEs or let user pick
+  selectedNLIEs.clear();
   showModal('Nueva Lista de IEs',
     '<div class="mb-3"><label class="form-label">Nombre de la lista *</label><input class="form-control" id="nl-nombre" placeholder="Ej: Escuelas rurales zona norte"></div>' +
     '<div class="mb-2"><label class="form-label">Buscar IEs <span style="font-size:0.75rem; color:#6b7280;">(escribe para filtrar)</span></label>' +
@@ -1772,17 +1774,25 @@ function renderNLList(ies) {
   if (!cont) return;
   var html = '';
   ies.forEach(function(ie) {
-    html += '<label style="display:flex; align-items:center; gap:8px; padding:4px 6px; cursor:pointer; border-radius:4px; font-size:0.8rem;" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="nl-ie-cb" value="' + ie.id + '"> <span style="font-weight:700; color:var(--granate); min-width:60px;">' + ie.codigo + '</span> ' + ie.nombre + '</label>';
+    var isChecked = selectedNLIEs.has(ie.id) ? 'checked' : '';
+    html += '<label style="display:flex; align-items:center; gap:8px; padding:4px 6px; cursor:pointer; border-radius:4px; font-size:0.8rem;" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="nl-ie-cb" value="' + ie.id + '" onchange="syncNLSelection(this)" ' + isChecked + '> <span style="font-weight:700; color:var(--granate); min-width:60px;">' + ie.codigo + '</span> ' + ie.nombre + '</label>';
   });
   cont.innerHTML = html || '<div style="color:#9ca3af; font-size:0.8rem; padding:8px;">No se encontraron IEs</div>';
+}
+
+function syncNLSelection(cb) {
+  var id = parseInt(cb.value);
+  if (cb.checked) {
+    selectedNLIEs.add(id);
+  } else {
+    selectedNLIEs.delete(id);
+  }
 }
 
 async function guardarNuevaLista() {
   var nombre = document.getElementById('nl-nombre') ? document.getElementById('nl-nombre').value.trim() : '';
   if (!nombre) { showToast('Ingrese un nombre para la lista', 'error'); return; }
-  var cbs = document.querySelectorAll('.nl-ie-cb:checked');
-  var ids = [];
-  cbs.forEach(function(cb) { ids.push(parseInt(cb.value)); });
+  var ids = Array.from(selectedNLIEs);
   if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
   try {
     await api('/api/listas-ie', { method: 'POST', body: { nombre: nombre, ie_ids: ids } });
