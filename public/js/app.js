@@ -1659,7 +1659,7 @@ function renderChartCumplimiento(c, p, v) {
 }
 
 // ===================== ASIGNAR =====================
-let selectedIEIds = new Set();
+let selectedIEIds = {};
 
 function syncSelectedIEs() {
   var cbs = document.querySelectorAll('.ie-checkbox');
@@ -1677,7 +1677,7 @@ async function loadIEsForAsignar() {
   try {
     var d = await api('/api/ies');
     allIEs = d.ies || d || [];
-    selectedIEIds.clear();
+    selectedIEIds = {};
     renderIECheckboxes(allIEs);
     // Populate nivel filter dropdown
     var nf = document.getElementById('ie-filter-nivel');
@@ -1748,10 +1748,10 @@ async function eliminarLista(id) {
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-var selectedNLIEs = new Set();
+var selectedNLIEs = {};
 
 function mostrarCrearLista() {
-  selectedNLIEs.clear();
+  selectedNLIEs = {};
   showModal('Nueva Lista de IEs',
     '<div class="mb-3"><label class="form-label">Nombre de la lista *</label><input class="form-control" id="nl-nombre" placeholder="Ej: Escuelas rurales zona norte"></div>' +
     '<div class="mb-2"><label class="form-label">Buscar IEs <span style="font-size:0.75rem; color:#6b7280;">(escribe para filtrar)</span></label>' +
@@ -1796,7 +1796,11 @@ function syncNLSelection(cb) {
 async function guardarNuevaLista() {
   var nombre = document.getElementById('nl-nombre') ? document.getElementById('nl-nombre').value.trim() : '';
   if (!nombre) { showToast('Ingrese un nombre para la lista', 'error'); return; }
-  var ids = Array.from(selectedNLIEs);
+  var ids = [];
+  for (var k in selectedNLIEs) {
+    if (selectedNLIEs[k] === 'ALL') ids.push({ id: parseInt(k), niveles: null });
+    else ids.push({ id: parseInt(k), niveles: selectedNLIEs[k] });
+  }
   if (ids.length === 0) { showToast('Seleccione al menos una IE', 'error'); return; }
   try {
     await api('/api/listas-ie', { method: 'POST', body: { nombre: nombre, ie_ids: ids } });
@@ -1999,14 +2003,20 @@ async function submitAsignar() {
     if (targetIes.length === 0) { showToast('No se encontraron IEs para los niveles seleccionados', 'error'); return; }
   } else if (alcance === 'manual') {
     syncSelectedIEs();
-    if (selectedIEIds.size === 0) { showToast('Seleccione al menos una institución', 'error'); return; }
-    targetIes = Array.from(selectedIEIds).map(function(id) { return { id: parseInt(id), niveles: actNiveles.length > 0 ? actNiveles : null }; });
+    if (Object.keys(selectedIEIds).length === 0) { showToast('Seleccione al menos una institución', 'error'); return; }
+    targetIes = [];
+    for (var k in selectedIEIds) {
+      targetIes.push({ id: parseInt(k), niveles: selectedIEIds[k] === 'ALL' ? null : selectedIEIds[k] });
+    }
   } else if (alcance === 'lista') {
     var listaRadio = document.querySelector('input[name="as-lista-sel"]:checked');
     if (!listaRadio) { showToast('Seleccione una lista guardada', 'error'); return; }
     var listaIds = JSON.parse(listaRadio.dataset.ieIds || '[]');
     if (listaIds.length === 0) { showToast('La lista seleccionada está vacía', 'error'); return; }
-    targetIes = listaIds.map(function(id) { return { id: parseInt(id), niveles: actNiveles.length > 0 ? actNiveles : null }; });
+    targetIes = listaIds.map(function(item) {
+      if (typeof item === 'object') return item;
+      return { id: parseInt(item), niveles: actNiveles.length > 0 ? actNiveles : null };
+    });
   }
 
   var btnSubmit = document.querySelector('#asignar-form button[type="submit"]');
@@ -2023,7 +2033,7 @@ async function submitAsignar() {
     document.getElementById('asignar-form').reset();
     document.getElementById('as-link-no').checked = true;
     document.getElementById('as-link-container').style.display = 'none';
-    selectedIEIds.clear();
+    selectedIEIds = {};
     renderIECheckboxes(allIEs);
     onChangeAlcanceNew('todas');
     document.getElementById('as-alc-todas').checked = true;
