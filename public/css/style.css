@@ -2513,3 +2513,74 @@ body.director-mode #app-shell {
 /* FullCalendar Overrides */
 .fc .fc-button-primary { background-color: var(--primary); border-color: var(--primary); }
 .fc .fc-button-primary:not(:disabled):active, .fc .fc-button-primary:not(:disabled).fc-button-active { background-color: var(--primary-hover); border-color: var(--primary-hover); }
+
+/* Level selection UI */
+.ie-item-card {
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+.ie-item-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.ie-item-card.active {
+  border-left: 4px solid var(--granate);
+  background-color: #fdfafb;
+}
+.ie-item-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.ie-item-header input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--granate);
+  cursor: pointer;
+}
+.ie-item-title {
+  font-size: 0.85rem;
+  color: #1f2937;
+  flex: 1;
+}
+.ie-item-title span {
+  font-weight: 700;
+  color: var(--granate);
+  display: inline-block;
+  min-width: 50px;
+}
+.level-pill-container {
+  margin-left: 26px;
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.level-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.level-pill:hover {
+  background-color: #e5e7eb;
+}
+.level-pill.active {
+  background-color: #059669;
+  color: #fff;
+}
+.level-pill input[type="checkbox"] {
+  display: none;
+}
