@@ -2840,6 +2840,7 @@ async function loadPerfil() {
       document.getElementById('perfil-ie-container').style.display = 'none';
       document.getElementById('perfil-dependencia-container').style.display = 'block';
       document.getElementById('perfil-puesto-container').style.display = 'block';
+      if (p.rol === 'admin') { loadSystemSettings(); }
     } else {
       document.getElementById('perfil-ie-container').style.display = 'block';
       document.getElementById('perfil-dependencia-container').style.display = 'none';
