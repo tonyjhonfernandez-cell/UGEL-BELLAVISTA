@@ -1761,12 +1761,16 @@ function mostrarCrearLista() {
   renderNLList(allIEs);
 }
 
+var _nlSearchTimeout = null;
 function filterNLList() {
-  var q = document.getElementById('nl-search') ? document.getElementById('nl-search').value.toLowerCase() : '';
-  var filtered = allIEs.filter(function(ie) {
-    return ie.nombre.toLowerCase().indexOf(q) !== -1 || ie.codigo.toLowerCase().indexOf(q) !== -1;
-  });
-  renderNLList(filtered);
+  clearTimeout(_nlSearchTimeout);
+  _nlSearchTimeout = setTimeout(function() {
+    var q = document.getElementById('nl-search') ? document.getElementById('nl-search').value.toLowerCase() : '';
+    var filtered = allIEs.filter(function(ie) {
+      return ie.nombre.toLowerCase().indexOf(q) !== -1 || ie.codigo.toLowerCase().indexOf(q) !== -1;
+    });
+    renderNLList(filtered);
+  }, 300);
 }
 
 function renderNLList(ies) {
@@ -2048,12 +2052,14 @@ async function loadMonitoreo() {
     var d = await api(u);
     var rows = d.asignaciones || d || [];
 
-    // Group by actividad_id
+    // Group by actividad_id while preserving order
     var actMap = {};
+    var actIds = [];
     for (var i = 0; i < rows.length; i++) {
       var a = rows[i];
       var actId = a.actividad_id;
       if (!actMap[actId]) {
+        actIds.push(actId);
         actMap[actId] = {
           id: actId,
           titulo: a.actividad_titulo || '-',
@@ -2070,7 +2076,6 @@ async function loadMonitoreo() {
     }
     monitoreoData = actMap;
 
-    var actIds = Object.keys(actMap);
     var container = document.getElementById('monitoreo-cards-container');
 
     if (actIds.length === 0) {
