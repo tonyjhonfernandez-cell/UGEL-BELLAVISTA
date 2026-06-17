@@ -1288,6 +1288,58 @@ app.get('/api/actividades/:id', authDirector, async (req, res) => {
     }
 });
 
+
+app.post('/api/actividades/:id/agregar-ies', authSupervisor, async (req, res) => {
+    try {
+        const actividadId = req.params.id;
+        const { ies, ie_ids } = req.body;
+        
+        const act = await db.prepare('SELECT asignador_id, titulo, fecha_limite FROM actividades WHERE id = ?').get(actividadId);
+        if (!act) return res.status(404).json({ error: 'Actividad no encontrada' });
+        
+        const canEdit = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez' || act.asignador_id === req.session.user.id;
+        if (!canEdit) return res.status(403).json({ error: 'No tienes permiso' });
+
+        const targetIes = ies || (ie_ids || []).map(id => ({ id, niveles: null }));
+        if (!targetIes || targetIes.length === 0) return res.status(400).json({ error: 'No se enviaron IEs' });
+
+        let agregadas = 0;
+        for (const ieData of targetIes) {
+            const ieId = ieData.id;
+            const nivelesAplicados = ieData.niveles ? (Array.isArray(ieData.niveles) ? ieData.niveles.join(',') : ieData.niveles) : null;
+            
+            const existing = await db.prepare('SELECT id FROM asignaciones WHERE actividad_id = ? AND ie_id = ?').get(actividadId, ieId);
+            if (existing) continue;
+
+            const ie = await db.prepare('SELECT * FROM instituciones_educativas WHERE id = ?').get(ieId);
+            if (ie) {
+                let director = await db.prepare(
+                    "SELECT id FROM usuarios WHERE ie_codigo = ? AND rol = 'director' AND activo = true LIMIT 1"
+                ).get(ie.codigo);
+
+                if (!director) {
+                    const dirResult = await db.prepare(
+                        "INSERT INTO usuarios (nombre_completo, ie_codigo, rol, usuario, password) VALUES (?, ?, 'director', ?, ?) RETURNING id"
+                    ).run(ie.nombre, ie.codigo, 'director.' + ie.codigo, ie.codigo);
+                    director = { id: dirResult.lastInsertRowid };
+                }
+
+                await db.prepare(
+                    'INSERT INTO asignaciones (actividad_id, ie_id, director_id, niveles_aplicados) VALUES (?, ?, ?, ?)'
+                ).run(actividadId, ieId, director.id, nivelesAplicados);
+
+                await db.prepare(
+                    'INSERT INTO notificaciones (usuario_id, titulo, mensaje, tipo) VALUES (?, ?, ?, ?)'
+                ).run(director.id, 'Nueva actividad asignada', `Se te asignó: ${act.titulo} - Fecha límite: ${act.fecha_limite}`, 'asignacion');
+                agregadas++;
+            }
+        }
+        res.json({ ok: true, agregadas });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
     try {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio, link_url, niveles_aplicados } = req.body;

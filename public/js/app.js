@@ -2001,9 +2001,27 @@ function toggleAllIEs(s) {
     cbs[i].checked = s; 
     var val = parseInt(cbs[i].value);
     if (s) {
-      selectedIEIds.add(val);
+      selectedIEIds[val] = 'ALL';
+      var card = document.getElementById('ie-card-' + val);
+      if(card) card.classList.add('active');
+      var container = document.getElementById('ie-pill-container-' + val);
+      if(container) container.style.display = 'flex';
+      document.querySelectorAll('.ie-subcb-' + val).forEach(function(el) {
+        el.checked = true;
+        var pill = document.getElementById('ie-pill-' + val + '-' + el.value);
+        if(pill) pill.classList.add('active');
+      });
     } else {
-      selectedIEIds.delete(val);
+      delete selectedIEIds[val];
+      var card = document.getElementById('ie-card-' + val);
+      if(card) card.classList.remove('active');
+      var container = document.getElementById('ie-pill-container-' + val);
+      if(container) container.style.display = 'none';
+      document.querySelectorAll('.ie-subcb-' + val).forEach(function(el) {
+        el.checked = false;
+        var pill = document.getElementById('ie-pill-' + val + '-' + el.value);
+        if(pill) pill.classList.remove('active');
+      });
     }
   }
 }
@@ -5881,7 +5899,16 @@ let currentActIdForAdd = null;
 let currentActIesList = [];
 let selectedIEIdsAdd = {};
 
-function abrirAgregarIEsModal(actId, iesAsignadas) {
+async function abrirAgregarIEsModal(actId, iesAsignadas) {
+  if (!allIEs || allIEs.length === 0) {
+    try {
+      var d = await api('/api/ies');
+      allIEs = d.ies || d || [];
+    } catch (e) {
+      showToast('Error al cargar IEs: ' + e.message, 'error');
+    }
+  }
+
   currentActIdForAdd = actId;
   currentActIesList = iesAsignadas.map(a => a.ie_id);
   selectedIEIdsAdd = {};
