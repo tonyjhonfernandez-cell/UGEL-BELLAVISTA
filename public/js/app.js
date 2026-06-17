@@ -2326,7 +2326,18 @@ function openMonModal(actId) {
   document.getElementById('mon-modal-title').textContent = 'Monitoreo: ' + grp.titulo;
   document.getElementById('mon-modal-search').value = '';
 
+  
   var btnImport = document.getElementById('btn-import-excel');
+  var btnAddIes = document.getElementById('btn-add-ies-act');
+  if (btnAddIes) {
+    if (canEditAct) {
+      btnAddIes.style.display = 'inline-block';
+      btnAddIes.onclick = function() { abrirAgregarIEsModal(grp.id, grp.ies); };
+    } else {
+      btnAddIes.style.display = 'none';
+    }
+  }
+
   if (btnImport) {
     var canEditAct = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == grp.asignador_id));
     if (canEditAct) {
@@ -5861,4 +5872,110 @@ async function handleExcelImport(event) {
   };
   reader.readAsDataURL(file);
   event.target.value = '';
+}
+
+
+// ==================== AGREGAR IEs A ACTIVIDAD ====================
+let currentActIdForAdd = null;
+let currentActIesList = [];
+
+function abrirAgregarIEsModal(actId, iesAsignadas) {
+  currentActIdForAdd = actId;
+  currentActIesList = iesAsignadas.map(a => a.ie_id);
+  selectedIEIds = {}; // reuse the object from "Asignar" since we only do one at a time
+
+  // Build modal
+  var html = `
+    <div style="margin-bottom:16px;">
+      <input type="text" id="add-ie-search" class="form-control" placeholder="Buscar por nombre o código..." oninput="filterAddIesList()">
+    </div>
+    <div id="add-ie-checkbox-list" class="row" style="max-height: 400px; overflow-y: auto;"></div>
+  `;
+  
+  showModal('Agregar Instituciones', html, 
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
+    '<button class="btn btn-primary" onclick="guardarAgregarIEs()">Agregar Seleccionadas</button>'
+  );
+
+  filterAddIesList();
+}
+
+function filterAddIesList() {
+  var q = document.getElementById('add-ie-search') ? document.getElementById('add-ie-search').value.toLowerCase() : '';
+  
+  var filtered = allIEs.filter(function(ie) {
+    if (currentActIesList.includes(ie.id)) return false; // Hide already assigned
+    return ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
+  });
+  
+  renderIECheckboxesAdd(filtered);
+}
+
+function renderIECheckboxesAdd(ies) {
+  var html = '';
+  for (var i = 0; i < ies.length; i++) {
+    var ie = ies[i];
+    var hasLevels = ie.niveles && ie.niveles.length > 0;
+    var isSelected = !!selectedIEIds[ie.id];
+    var activeClass = isSelected ? 'active' : '';
+    
+    html += '<div class="col-md-6 mb-2">';
+    html += '<div class="ie-item-card ' + activeClass + '" id="ie-card-' + ie.id + '">';
+    html += '  <label class="ie-item-header">';
+    html += '    <input type="checkbox" class="ie-checkbox" onchange="syncIEMaster(this, ' + ie.id + ')" value="' + ie.id + '" ' + (isSelected ? 'checked' : '') + '>';
+    html += '    <div class="ie-item-title"><span>' + ie.codigo + '</span> ' + ie.nombre + '</div>';
+    html += '  </label>';
+    
+    if (hasLevels) {
+      html += '  <div class="level-pill-container" ' + (isSelected ? '' : 'style="display:none;"') + ' id="ie-pill-container-' + ie.id + '">';
+      ie.niveles.forEach(function(nv) {
+        var isNvChecked = false;
+        if (selectedIEIds[ie.id]) {
+          if (Array.isArray(selectedIEIds[ie.id])) {
+            isNvChecked = selectedIEIds[ie.id].includes(nv.clave);
+          } else {
+            isNvChecked = true;
+          }
+        }
+        var pillClass = isNvChecked ? 'active' : '';
+        html += '    <label class="level-pill ' + pillClass + '" id="ie-pill-' + ie.id + '-' + nv.clave + '">';
+        html += '      <input type="checkbox" class="ie-subcb-' + ie.id + '" value="' + nv.clave + '" onchange="syncIESub(' + ie.id + ', this, \'' + nv.clave + '\')" ' + (isNvChecked ? 'checked' : '') + '>';
+        html += '      ' + nv.nombre;
+        html += '    </label>';
+      });
+      html += '  </div>';
+    }
+    html += '</div></div>';
+  }
+  
+  var container = document.getElementById('add-ie-checkbox-list');
+  if(container) {
+    container.innerHTML = html || '<div class="col-12 text-muted">No se encontraron instituciones disponibles o todas ya fueron asignadas.</div>';
+  }
+}
+
+async function guardarAgregarIEs() {
+  var targetIes = [];
+  for (var k in selectedIEIds) {
+    targetIes.push({ id: parseInt(k), niveles: selectedIEIds[k] === 'ALL' ? null : selectedIEIds[k] });
+  }
+
+  if (targetIes.length === 0) {
+    showToast('Seleccione al menos una IE', 'error');
+    return;
+  }
+
+  try {
+    var res = await api('/api/actividades/' + currentActIdForAdd + '/agregar-ies', {
+      method: 'POST',
+      body: { ies: targetIes }
+    });
+    showToast('Se agregaron ' + res.agregadas + ' IEs a la actividad', 'success');
+    closeModal();
+    // close the detail modal too and reload
+    document.getElementById('mon-detail-modal').classList.remove('show');
+    loadMonitoreo();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
 }
