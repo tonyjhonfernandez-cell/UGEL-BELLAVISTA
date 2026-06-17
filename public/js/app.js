@@ -169,7 +169,7 @@ function onSearchIE(q) {
     var limit = Math.min(matches.length, 15);
     for (var i = 0; i < limit; i++) {
       var ie = matches[i];
-      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
+      var escapedNombre = ie.nombre.replace(/'/g, "\'");
       html += '<div class="dir-ac-item" onclick="selectSchoolForDashboard(\'' + ie.codigo + '\', \'' + escapedNombre + '\')">';
       html += '<span class="ac-code">' + ie.codigo + '</span>';
       html += '<span class="ac-name">' + ie.nombre + '</span>';
@@ -1422,7 +1422,7 @@ function renderDirectorActividadesTable() {
       `;
     } else if (resp_nombre) {
       waLink = `
-        <a href="#" style="color: var(--granate); text-decoration: none; font-size: 12px; font-weight: 700; display: inline-flex; align-items:center; gap: 4px;" onclick="event.stopPropagation(); event.preventDefault(); contactarSupervisor(${a.id}, '${resp_nombre.replace(/'/g, "\\'")}')">
+        <a href="#" style="color: var(--granate); text-decoration: none; font-size: 12px; font-weight: 700; display: inline-flex; align-items:center; gap: 4px;" onclick="event.stopPropagation(); event.preventDefault(); contactarSupervisor(${a.id}, '${resp_nombre.replace(/'/g, "\'")}')">
           <i class="far fa-paper-plane" style="font-size: 11px;"></i> Enviar Mensaje
         </a>
       `;
@@ -1495,7 +1495,7 @@ function mostrarDetalleActividad(id) {
   }
 
   var contactBtn = resp ? `
-    <button class="btn btn-primary" onclick="event.stopPropagation(); closeModal(); contactarSupervisor(${row.id}, '${resp.replace(/'/g, "\\'")}')">
+    <button class="btn btn-primary" onclick="event.stopPropagation(); closeModal(); contactarSupervisor(${row.id}, '${resp.replace(/'/g, "\'")}')">
       <i class="far fa-paper-plane"></i> Contactar
     </button>
   ` : '';
@@ -1662,14 +1662,61 @@ function renderChartCumplimiento(c, p, v) {
 let selectedIEIds = {};
 
 function syncSelectedIEs() {
-  var cbs = document.querySelectorAll('.ie-checkbox');
-  for (var i = 0; i < cbs.length; i++) {
-    var val = parseInt(cbs[i].value);
-    if (cbs[i].checked) {
-      selectedIEIds.add(val);
-    } else {
-      selectedIEIds.delete(val);
-    }
+  // Empty as we use syncIEMaster and syncIESub now
+}
+
+function syncIEMaster(cb, id) {
+  var card = document.getElementById('ie-card-' + id);
+  var container = document.getElementById('ie-pill-container-' + id);
+  if (cb.checked) {
+    selectedIEIds[id] = 'ALL';
+    if (card) card.classList.add('active');
+    if (container) container.style.display = 'flex';
+    document.querySelectorAll('.ie-subcb-' + id).forEach(el => {
+      el.checked = true;
+      var pill = document.getElementById('ie-pill-' + id + '-' + el.value);
+      if (pill) pill.classList.add('active');
+    });
+  } else {
+    delete selectedIEIds[id];
+    if (card) card.classList.remove('active');
+    if (container) container.style.display = 'none';
+    document.querySelectorAll('.ie-subcb-' + id).forEach(el => {
+      el.checked = false;
+      var pill = document.getElementById('ie-pill-' + id + '-' + el.value);
+      if (pill) pill.classList.remove('active');
+    });
+  }
+}
+
+function syncIESub(id, cb, clave) {
+  var pill = document.getElementById('ie-pill-' + id + '-' + clave);
+  if (pill) {
+    if (cb.checked) pill.classList.add('active');
+    else pill.classList.remove('active');
+  }
+
+  var subs = document.querySelectorAll('.ie-subcb-' + id);
+  var checkedClaves = [];
+  var allChecked = true;
+  subs.forEach(el => {
+    if (el.checked) checkedClaves.push(el.value);
+    else allChecked = false;
+  });
+  var masterCb = document.querySelector('.ie-checkbox[value="' + id + '"]');
+  var card = document.getElementById('ie-card-' + id);
+  if (checkedClaves.length === 0) {
+    delete selectedIEIds[id];
+    if (masterCb) masterCb.checked = false;
+    if (card) card.classList.remove('active');
+  } else if (allChecked) {
+    selectedIEIds[id] = 'ALL';
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
+  } else {
+    selectedIEIds[id] = checkedClaves;
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
   }
 }
 
@@ -1778,18 +1825,91 @@ function renderNLList(ies) {
   if (!cont) return;
   var html = '';
   ies.forEach(function(ie) {
-    var isChecked = selectedNLIEs.has(ie.id) ? 'checked' : '';
-    html += '<label style="display:flex; align-items:center; gap:8px; padding:4px 6px; cursor:pointer; border-radius:4px; font-size:0.8rem;" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'\'"><input type="checkbox" class="nl-ie-cb" value="' + ie.id + '" onchange="syncNLSelection(this)" ' + isChecked + '> <span style="font-weight:700; color:var(--granate); min-width:60px;">' + ie.codigo + '</span> ' + ie.nombre + '</label>';
+    var hasLevels = ie.niveles && ie.niveles.length > 0;
+    var isSelected = !!selectedNLIEs[ie.id];
+    var activeClass = isSelected ? 'active' : '';
+    html += '<div class="ie-item-card ' + activeClass + '" id="nl-card-' + ie.id + '">';
+    html += '  <label class="ie-item-header">';
+    html += '    <input type="checkbox" class="nl-ie-cb" value="' + ie.id + '" onchange="syncNLMaster(this, ' + ie.id + ')" ' + (isSelected ? 'checked' : '') + '>';
+    html += '    <div class="ie-item-title"><span>' + ie.codigo + '</span> ' + ie.nombre + '</div>';
+    html += '  </label>';
+    
+    if (hasLevels) {
+      html += '  <div class="level-pill-container" ' + (isSelected ? '' : 'style="display:none;"') + ' id="nl-pill-container-' + ie.id + '">';
+      ie.niveles.forEach(function(nv) {
+        var isNvChecked = false;
+        if (selectedNLIEs[ie.id]) {
+          if (Array.isArray(selectedNLIEs[ie.id])) {
+            isNvChecked = selectedNLIEs[ie.id].includes(nv.clave);
+          } else {
+            isNvChecked = true;
+          }
+        }
+        var pillClass = isNvChecked ? 'active' : '';
+        html += '    <label class="level-pill ' + pillClass + '" id="nl-pill-' + ie.id + '-' + nv.clave + '">';
+        html += '      <input type="checkbox" class="nl-ie-subcb-' + ie.id + '" value="' + nv.clave + '" onchange="syncNLSub(' + ie.id + ', this, \'' + nv.clave + '\')" ' + (isNvChecked ? 'checked' : '') + '>';
+        html += '      ' + nv.nombre;
+        html += '    </label>';
+      });
+      html += '  </div>';
+    }
+    html += '</div>';
   });
-  cont.innerHTML = html || '<div style="color:#9ca3af; font-size:0.8rem; padding:8px;">No se encontraron IEs</div>';
+  cont.innerHTML = html || '<div style="color:#9ca3af; font-size:0.8rem; padding:8px; text-align:center;">No se encontraron IEs en la búsqueda</div>';
 }
 
-function syncNLSelection(cb) {
-  var id = parseInt(cb.value);
+function syncNLMaster(cb, id) {
+  var card = document.getElementById('nl-card-' + id);
+  var container = document.getElementById('nl-pill-container-' + id);
   if (cb.checked) {
-    selectedNLIEs.add(id);
+    selectedNLIEs[id] = 'ALL';
+    if (card) card.classList.add('active');
+    if (container) container.style.display = 'flex';
+    document.querySelectorAll('.nl-ie-subcb-' + id).forEach(el => {
+      el.checked = true;
+      var pill = document.getElementById('nl-pill-' + id + '-' + el.value);
+      if(pill) pill.classList.add('active');
+    });
   } else {
-    selectedNLIEs.delete(id);
+    delete selectedNLIEs[id];
+    if (card) card.classList.remove('active');
+    if (container) container.style.display = 'none';
+    document.querySelectorAll('.nl-ie-subcb-' + id).forEach(el => {
+      el.checked = false;
+      var pill = document.getElementById('nl-pill-' + id + '-' + el.value);
+      if(pill) pill.classList.remove('active');
+    });
+  }
+}
+
+function syncNLSub(id, cb, clave) {
+  var pill = document.getElementById('nl-pill-' + id + '-' + clave);
+  if (pill) {
+    if (cb.checked) pill.classList.add('active');
+    else pill.classList.remove('active');
+  }
+
+  var subs = document.querySelectorAll('.nl-ie-subcb-' + id);
+  var checkedClaves = [];
+  var allChecked = true;
+  subs.forEach(el => {
+    if (el.checked) checkedClaves.push(el.value);
+    else allChecked = false;
+  });
+  var masterCb = document.querySelector('input.nl-ie-cb[value="' + id + '"]');
+  var card = document.getElementById('nl-card-' + id);
+  if (checkedClaves.length === 0) {
+    delete selectedNLIEs[id];
+    if (masterCb) masterCb.checked = false;
+    if (card) card.classList.remove('active');
+  } else if (allChecked) {
+    selectedNLIEs[id] = 'ALL';
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
+  } else {
+    selectedNLIEs[id] = checkedClaves;
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
   }
 }
 
@@ -1814,10 +1934,44 @@ function renderIECheckboxes(ies) {
   var html = '';
   for (var i = 0; i < ies.length; i++) {
     var ie = ies[i];
-    var isChecked = selectedIEIds.has(ie.id) ? 'checked' : '';
-    html += '<label class="ie-item"><input type="checkbox" class="ie-checkbox" onchange="syncSelectedIEs()" value="' + ie.id + '" ' + isChecked + '><span class="ie-codigo" style="min-width:65px; display:inline-block;">' + ie.codigo + '</span><span class="ie-nombre">' + ie.nombre + '</span></label>';
+    var hasLevels = ie.niveles && ie.niveles.length > 0;
+    var isSelected = !!selectedIEIds[ie.id];
+    var activeClass = isSelected ? 'active' : '';
+    
+    html += '<div class="col-md-6 mb-2">';
+    html += '<div class="ie-item-card ' + activeClass + '" id="ie-card-' + ie.id + '">';
+    html += '  <label class="ie-item-header">';
+    html += '    <input type="checkbox" class="ie-checkbox" onchange="syncIEMaster(this, ' + ie.id + ')" value="' + ie.id + '" ' + (isSelected ? 'checked' : '') + '>';
+    html += '    <div class="ie-item-title"><span>' + ie.codigo + '</span> ' + ie.nombre + '</div>';
+    html += '  </label>';
+    
+    if (hasLevels) {
+      html += '  <div class="level-pill-container" ' + (isSelected ? '' : 'style="display:none;"') + ' id="ie-pill-container-' + ie.id + '">';
+      ie.niveles.forEach(function(nv) {
+        var isNvChecked = false;
+        if (selectedIEIds[ie.id]) {
+          if (Array.isArray(selectedIEIds[ie.id])) {
+            isNvChecked = selectedIEIds[ie.id].includes(nv.clave);
+          } else {
+            isNvChecked = true;
+          }
+        }
+        var pillClass = isNvChecked ? 'active' : '';
+        html += '    <label class="level-pill ' + pillClass + '" id="ie-pill-' + ie.id + '-' + nv.clave + '">';
+        html += '      <input type="checkbox" class="ie-subcb-' + ie.id + '" value="' + nv.clave + '" onchange="syncIESub(' + ie.id + ', this, \'' + nv.clave + '\')" ' + (isNvChecked ? 'checked' : '') + '>';
+        html += '      ' + nv.nombre;
+        html += '    </label>';
+      });
+      html += '  </div>';
+    }
+    html += '</div></div>';
   }
-  document.getElementById('ie-checkbox-list').innerHTML = html;
+  
+  var container = document.getElementById('ie-checkbox-list');
+  if(container) {
+    container.className = 'row';
+    container.innerHTML = html || '<div class="col-12 text-muted">No se encontraron instituciones</div>';
+  }
 }
 
 function filterIEList() {
@@ -1912,7 +2066,7 @@ function onSearchIEAsignar(q) {
       var item = matches[i];
       if (selectedSpecificIEIds.has(item.val)) continue;
       
-      var escapedNombre = item.nombre.replace(/'/g, "\\'");
+      var escapedNombre = item.nombre.replace(/'/g, "\'");
       var param2 = item.nivel ? ("'" + item.nivel + "'") : 'null';
       html += '<div class="as-autocomplete-item" onclick="addSpecificIE(' + item.id + ', ' + param2 + ', \'' + item.displayId + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
       html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + item.displayId + '</span>';
@@ -2672,7 +2826,7 @@ async function loadIEs() {
         if (currentUser && currentUser.rol === 'admin') {
           actionCell = `<td style="text-align:center;vertical-align:top;padding-top:14px;">
             <button class="btn btn-xs btn-outline me-1" onclick="abrirModalIE(${ie.id})"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-xs btn-outline text-danger" onclick="eliminarIE(${ie.id}, '${ie.nombre.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-xs btn-outline text-danger" onclick="eliminarIE(${ie.id}, '${ie.nombre.replace(/'/g, "\'")}')"><i class="fas fa-trash"></i></button>
           </td>`;
         }
 
@@ -3026,7 +3180,7 @@ async function filterAvanceIESearch(q) {
     var limit = Math.min(matches.length, 10);
     for (var i = 0; i < limit; i++) {
       var ie = matches[i];
-      var escapedNombre = ie.nombre.replace(/'/g, "\\'");
+      var escapedNombre = ie.nombre.replace(/'/g, "\'");
       html += '<div class="autocomplete-item" onclick="selectAvanceIE(' + ie.id + ', \'' + ie.codigo + '\', \'' + escapedNombre + '\')" style="padding:10px 14px;border-bottom:1px solid #f0f1f3;cursor:pointer;font-size:0.8rem;transition:background 0.15s" onmouseover="this.style.background=\'#f3f4f6\'" onmouseout="this.style.background=\'#fff\'">';
       html += '<span style="font-weight:700;color:var(--granate);margin-right:8px">' + ie.codigo + '</span>';
       html += '<span style="color:#333">' + ie.nombre + '</span>';
@@ -3579,7 +3733,7 @@ async function loadAdminUsuarios() {
         const dniOrIe = u.rol === 'director' ? `IE: ${u.ie_codigo || '-'}` : `DNI: ${u.dni || '-'}`;
         const emailOrTel = `${u.email || '-'}<br><small class="text-muted">${u.telefono || '-'}</small>`;
         const impersonateBtn = u.id !== currentUser.id ? `<button class="btn btn-xs btn-outline" onclick="impersonarUsuario(${u.id})" title="Entrar como"><i class="fas fa-user-secret"></i> Entrar como</button>` : '';
-        const passwordBtn = `<button class="btn btn-xs btn-outline" onclick="abrirModalCambiarPassword(${u.id}, '${u.nombre_completo.replace(/'/g, "\\'")}')" title="Cambiar Contraseña"><i class="fas fa-key"></i> Pass</button>`;
+        const passwordBtn = `<button class="btn btn-xs btn-outline" onclick="abrirModalCambiarPassword(${u.id}, '${u.nombre_completo.replace(/'/g, "\'")}')" title="Cambiar Contraseña"><i class="fas fa-key"></i> Pass</button>`;
         const editBtn = `<button class="btn btn-xs btn-outline" onclick="abrirModalEditarUsuario(${u.id})" title="Editar Usuario"><i class="fas fa-edit"></i></button>`;
         const activeToggle = u.activo ? `<span class="badge bg-success" style="cursor:pointer" onclick="toggleActivoUsuario(${u.id}, ${u.activo})" title="Click para desactivar">Activo</span>` : `<span class="badge bg-secondary" style="cursor:pointer" onclick="toggleActivoUsuario(${u.id}, ${u.activo})" title="Click para activar">Inactivo</span>`;
         
@@ -4027,8 +4181,8 @@ async function abrirModalNiveles() {
       <td><span class="badge ${n.color || 'bg-info-light'}">${n.nombre}</span></td>
       <td style="font-size:0.8rem; color:#64748b;">${n.clave}</td>
       <td style="text-align:center;">
-        <button class="btn btn-xs btn-outline me-1" onclick="editarNivel(${n.id}, '${n.nombre.replace(/'/g,"\\'")}', '${n.color || 'bg-info-light'}', ${n.orden})"><i class="fas fa-edit"></i></button>
-        <button class="btn btn-xs btn-outline text-danger" onclick="eliminarNivel(${n.id}, '${n.nombre.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+        <button class="btn btn-xs btn-outline me-1" onclick="editarNivel(${n.id}, '${n.nombre.replace(/'/g,"\'")}', '${n.color || 'bg-info-light'}', ${n.orden})"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-xs btn-outline text-danger" onclick="eliminarNivel(${n.id}, '${n.nombre.replace(/'/g,"\'")}')"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`;
   });
@@ -4249,7 +4403,7 @@ async function loadConsolidado() {
       }
 
       html +=
-        '<div class="consol-row" onclick="abrirDetalleConsolidado(' + r.id + ',\'' + (r.titulo||'').replace(/'/g,"\\'") + '\',\'' + fecha + '\',\'' + (r.descripcion||'').replace(/'/g,"\\'").replace(/\n/g,' ') + '\')">' +
+        '<div class="consol-row" onclick="abrirDetalleConsolidado(' + r.id + ',\'' + (r.titulo||'').replace(/'/g,"\'") + '\',\'' + fecha + '\',\'' + (r.descripcion||'').replace(/'/g,"\'").replace(/\n/g,' ') + '\')">' +
           (mesLabel ? '<span style="background:#f1f5f9;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:.7rem;font-weight:700;color:var(--text2);flex-shrink:0;">' + mesLabel + '</span>' : '') +
           '<div style="flex:1;min-width:180px;">' +
             '<div class="cr-title">' + (r.titulo || '') + '</div>' +
@@ -5548,7 +5702,7 @@ function onSearchPublicCapIE(query) {
     container.innerHTML = '<div style="padding:10px; font-size:0.8rem; color:#6b7280; text-align:center;">No se encontraron instituciones invitadas</div>';
   } else {
     container.innerHTML = matches.map(ie => `
-      <div class="sel-item" onclick="selectPublicCapIE(${ie.id}, '${ie.codigo}', '${ie.nombre.replace(/'/g, "\\'")}')" style="padding:10px 14px; cursor:pointer; font-size:0.85rem; border-bottom:1px solid #f3f4f6; text-align:left;">
+      <div class="sel-item" onclick="selectPublicCapIE(${ie.id}, '${ie.codigo}', '${ie.nombre.replace(/'/g, "\'")}')" style="padding:10px 14px; cursor:pointer; font-size:0.85rem; border-bottom:1px solid #f3f4f6; text-align:left;">
         <span style="font-weight:700; color:var(--primary); margin-right:8px;">${ie.codigo}</span>
         <span style="color:#374151;">${ie.nombre}</span>
       </div>
