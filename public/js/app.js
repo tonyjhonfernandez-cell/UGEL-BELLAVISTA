@@ -5879,24 +5879,28 @@ async function handleExcelImport(event) {
 // ==================== AGREGAR IEs A ACTIVIDAD ====================
 let currentActIdForAdd = null;
 let currentActIesList = [];
+let selectedIEIdsAdd = {};
 
 function abrirAgregarIEsModal(actId, iesAsignadas) {
   currentActIdForAdd = actId;
   currentActIesList = iesAsignadas.map(a => a.ie_id);
-  selectedIEIds = {}; // reuse the object from "Asignar" since we only do one at a time
+  selectedIEIdsAdd = {};
 
-  // Build modal
-  var html = `
-    <div style="margin-bottom:16px;">
-      <input type="text" id="add-ie-search" class="form-control" placeholder="Buscar por nombre o código..." oninput="filterAddIesList()">
-    </div>
-    <div id="add-ie-checkbox-list" class="row" style="max-height: 400px; overflow-y: auto;"></div>
-  `;
+  var html = '<div style="margin-bottom:16px;">' +
+      '<input type="text" id="add-ie-search" class="form-control" placeholder="Buscar por nombre o código..." oninput="filterAddIesList()">' +
+    '</div>' +
+    '<div id="add-ie-checkbox-list" class="row" style="max-height: 400px; overflow-y: auto;"></div>';
   
   showModal('Agregar Instituciones', html, 
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>' +
     '<button class="btn btn-primary" onclick="guardarAgregarIEs()">Agregar Seleccionadas</button>'
   );
+
+  // Bring main-modal to front to ensure it covers mon-detail-modal
+  var mainModal = document.getElementById('main-modal');
+  if (mainModal) {
+      mainModal.style.zIndex = "2100";
+  }
 
   filterAddIesList();
 }
@@ -5905,11 +5909,66 @@ function filterAddIesList() {
   var q = document.getElementById('add-ie-search') ? document.getElementById('add-ie-search').value.toLowerCase() : '';
   
   var filtered = allIEs.filter(function(ie) {
-    if (currentActIesList.includes(ie.id)) return false; // Hide already assigned
+    if (currentActIesList.includes(ie.id)) return false;
     return ie.codigo.toLowerCase().indexOf(q) !== -1 || ie.nombre.toLowerCase().indexOf(q) !== -1;
   });
   
   renderIECheckboxesAdd(filtered);
+}
+
+function syncIEMasterAdd(cb, id) {
+  var card = document.getElementById('add-ie-card-' + id);
+  var container = document.getElementById('add-ie-pill-container-' + id);
+  if (cb.checked) {
+    selectedIEIdsAdd[id] = 'ALL';
+    if (card) card.classList.add('active');
+    if (container) container.style.display = 'flex';
+    document.querySelectorAll('.add-ie-subcb-' + id).forEach(el => {
+      el.checked = true;
+      var pill = document.getElementById('add-ie-pill-' + id + '-' + el.value);
+      if (pill) pill.classList.add('active');
+    });
+  } else {
+    delete selectedIEIdsAdd[id];
+    if (card) card.classList.remove('active');
+    if (container) container.style.display = 'none';
+    document.querySelectorAll('.add-ie-subcb-' + id).forEach(el => {
+      el.checked = false;
+      var pill = document.getElementById('add-ie-pill-' + id + '-' + el.value);
+      if (pill) pill.classList.remove('active');
+    });
+  }
+}
+
+function syncIESubAdd(id, cb, clave) {
+  var pill = document.getElementById('add-ie-pill-' + id + '-' + clave);
+  if (pill) {
+    if (cb.checked) pill.classList.add('active');
+    else pill.classList.remove('active');
+  }
+
+  var subs = document.querySelectorAll('.add-ie-subcb-' + id);
+  var checkedClaves = [];
+  var allChecked = true;
+  subs.forEach(el => {
+    if (el.checked) checkedClaves.push(el.value);
+    else allChecked = false;
+  });
+  var masterCb = document.querySelector('.add-ie-checkbox[value="' + id + '"]');
+  var card = document.getElementById('add-ie-card-' + id);
+  if (checkedClaves.length === 0) {
+    delete selectedIEIdsAdd[id];
+    if (masterCb) masterCb.checked = false;
+    if (card) card.classList.remove('active');
+  } else if (allChecked) {
+    selectedIEIdsAdd[id] = 'ALL';
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
+  } else {
+    selectedIEIdsAdd[id] = checkedClaves;
+    if (masterCb) masterCb.checked = true;
+    if (card) card.classList.add('active');
+  }
 }
 
 function renderIECheckboxesAdd(ies) {
@@ -5917,30 +5976,30 @@ function renderIECheckboxesAdd(ies) {
   for (var i = 0; i < ies.length; i++) {
     var ie = ies[i];
     var hasLevels = ie.niveles && ie.niveles.length > 0;
-    var isSelected = !!selectedIEIds[ie.id];
+    var isSelected = !!selectedIEIdsAdd[ie.id];
     var activeClass = isSelected ? 'active' : '';
     
     html += '<div class="col-md-6 mb-2">';
-    html += '<div class="ie-item-card ' + activeClass + '" id="ie-card-' + ie.id + '">';
+    html += '<div class="ie-item-card ' + activeClass + '" id="add-ie-card-' + ie.id + '">';
     html += '  <label class="ie-item-header">';
-    html += '    <input type="checkbox" class="ie-checkbox" onchange="syncIEMaster(this, ' + ie.id + ')" value="' + ie.id + '" ' + (isSelected ? 'checked' : '') + '>';
+    html += '    <input type="checkbox" class="add-ie-checkbox" onchange="syncIEMasterAdd(this, ' + ie.id + ')" value="' + ie.id + '" ' + (isSelected ? 'checked' : '') + '>';
     html += '    <div class="ie-item-title"><span>' + ie.codigo + '</span> ' + ie.nombre + '</div>';
     html += '  </label>';
     
     if (hasLevels) {
-      html += '  <div class="level-pill-container" ' + (isSelected ? '' : 'style="display:none;"') + ' id="ie-pill-container-' + ie.id + '">';
+      html += '  <div class="level-pill-container" ' + (isSelected ? '' : 'style="display:none;"') + ' id="add-ie-pill-container-' + ie.id + '">';
       ie.niveles.forEach(function(nv) {
         var isNvChecked = false;
-        if (selectedIEIds[ie.id]) {
-          if (Array.isArray(selectedIEIds[ie.id])) {
-            isNvChecked = selectedIEIds[ie.id].includes(nv.clave);
+        if (selectedIEIdsAdd[ie.id]) {
+          if (Array.isArray(selectedIEIdsAdd[ie.id])) {
+            isNvChecked = selectedIEIdsAdd[ie.id].includes(nv.clave);
           } else {
             isNvChecked = true;
           }
         }
         var pillClass = isNvChecked ? 'active' : '';
-        html += '    <label class="level-pill ' + pillClass + '" id="ie-pill-' + ie.id + '-' + nv.clave + '">';
-        html += '      <input type="checkbox" class="ie-subcb-' + ie.id + '" value="' + nv.clave + '" onchange="syncIESub(' + ie.id + ', this, \'' + nv.clave + '\')" ' + (isNvChecked ? 'checked' : '') + '>';
+        html += '    <label class="level-pill ' + pillClass + '" id="add-ie-pill-' + ie.id + '-' + nv.clave + '">';
+        html += '      <input type="checkbox" class="add-ie-subcb-' + ie.id + '" value="' + nv.clave + '" onchange="syncIESubAdd(' + ie.id + ', this, \'' + nv.clave + '\')" ' + (isNvChecked ? 'checked' : '') + '>';
         html += '      ' + nv.nombre;
         html += '    </label>';
       });
@@ -5957,8 +6016,8 @@ function renderIECheckboxesAdd(ies) {
 
 async function guardarAgregarIEs() {
   var targetIes = [];
-  for (var k in selectedIEIds) {
-    targetIes.push({ id: parseInt(k), niveles: selectedIEIds[k] === 'ALL' ? null : selectedIEIds[k] });
+  for (var k in selectedIEIdsAdd) {
+    targetIes.push({ id: parseInt(k), niveles: selectedIEIdsAdd[k] === 'ALL' ? null : selectedIEIdsAdd[k] });
   }
 
   if (targetIes.length === 0) {
