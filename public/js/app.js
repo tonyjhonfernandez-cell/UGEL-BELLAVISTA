@@ -627,12 +627,12 @@ function buildSidebar() {
     // 1. Gestión (Dashboard)
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
+    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="asignar-actividad" onclick="cambiarVista(\'asignar-actividad\',this)"><i class="fas fa-plus-circle"></i> Asignar Actividades</a>';
     html += '<a href="#" data-view="monitoreo" onclick="cambiarVista(\'monitoreo\',this)"><i class="fas fa-tasks"></i> Monitoreo de Actividades</a>';
-    html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
     html += '<a href="#" data-view="capacitaciones" onclick="cambiarVista(\'capacitaciones\',this)"><i class="fas fa-plus-square"></i> Capacitaciones</a>';
     html += '<a href="#" data-view="monitoreo-capacitaciones" onclick="cambiarVista(\'monitoreo-capacitaciones\',this)"><i class="fas fa-chalkboard-teacher"></i> Monitoreo de Capacitaciones</a>';
 
