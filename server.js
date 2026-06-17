@@ -1962,7 +1962,7 @@ app.get('/api/force-seed', async (req, res) => {
 // ===================== LISTAS IE =====================
 app.get('/api/listas-ie', authSupervisor, async (req, res) => {
     try {
-        const rows = await db.prepare('SELECT * FROM listas_ie ORDER BY nombre').all();
+        const rows = await db.prepare('SELECT * FROM listas_ie WHERE creador_id = ? ORDER BY nombre').all(req.session.user.id);
         res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -1982,7 +1982,7 @@ app.post('/api/listas-ie', authSupervisor, async (req, res) => {
 
 app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
     try {
-        await db.prepare('DELETE FROM listas_ie WHERE id = ?').run(req.params.id);
+        await db.prepare('DELETE FROM listas_ie WHERE id = ? AND creador_id = ?').run(req.params.id, req.session.user.id);
         res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
