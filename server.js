@@ -2204,6 +2204,7 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
         const rows = await pool.query(`
             SELECT ase.estado, ase.fecha_completado, ase.notas_supervisor,
                    ie.nombre as ie_nombre, ie.codigo as ie_codigo,
+                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
                    u.nombre_completo as director_nombre, u.dependencia, u.puesto,
                    STRING_AGG(DISTINCT ne.nombre, ', ' ORDER BY ne.nombre) as nivel_nombre
             FROM asignaciones ase
@@ -2213,7 +2214,8 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
             LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             WHERE ase.actividad_id = $1
             GROUP BY ase.estado, ase.fecha_completado, ase.notas_supervisor,
-                     ie.nombre, ie.codigo, u.nombre_completo, u.dependencia, u.puesto
+                     ie.nombre, ie.codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria, ie.cm_ebe, ie.cm_cetpro, ie.cm_pronoei, ie.cm_eba, ie.cm_cuna_jardin,
+                     u.nombre_completo, u.dependencia, u.puesto
             ORDER BY u.dependencia, ie.nombre
         `, [parseInt(actividadId)]);
 
@@ -2255,6 +2257,7 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
             ws.columns = [
                 { header: '#', key: 'num', width: 5 },
                 { header: 'CÓDIGO LOCAL', key: 'codigo', width: 14 },
+                { header: 'CÓDIGO MODULAR', key: 'codigo_modular', width: 18 },
                 { header: 'INSTITUCIÓN EDUCATIVA', key: 'nombre', width: 44 },
                 { header: 'DIRECTOR', key: 'director', width: 28 },
                 { header: 'PUESTO', key: 'puesto', width: 22 },
@@ -2280,7 +2283,7 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
                 const row = ws.getRow(rowNum);
                 const bg = rowNum % 2 === 0 ? 'FFF8F9FF' : 'FFFFFFFF';
                 row.values = [
-                    i + 1, r.ie_codigo, r.ie_nombre, r.director_nombre || '',
+                    i + 1, r.ie_codigo, r.codigo_modular || '', r.ie_nombre, r.director_nombre || '',
                     r.puesto || '',
                     r.nivel_nombre || '', r.estado,
                     r.fecha_completado ? new Date(r.fecha_completado).toLocaleDateString('es-PE') : '',
@@ -2290,7 +2293,7 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
                 row.eachCell({ includeEmpty: true }, (cell, ci) => {
                     cell.border = cellBorder;
                     cell.alignment = { vertical: 'middle', wrapText: true };
-                    if (ci === 7) { // estado is col 7
+                    if (ci === 8) { // estado is col 8
                         cell.dataValidation = {
                             type: 'list',
                             allowBlank: true,
@@ -2466,6 +2469,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
         const rows = await pool.query(`
             SELECT a.titulo, a.fecha_limite, a.descripcion,
                    ie.codigo as ie_codigo, ie.nombre as ie_nombre,
+                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
                    u.nombre_completo as director,
                    ase.estado, ase.fecha_completado, ase.notas_supervisor
             FROM actividades a
@@ -2483,7 +2487,8 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
             { header: '#', key: 'num', width: 5 },
             { header: 'ACTIVIDAD', key: 'actividad', width: 40 },
             { header: 'FECHA LÍMITE', key: 'fecha', width: 14 },
-            { header: 'IE CÓDIGO', key: 'codigo', width: 12 },
+            { header: 'CÓDIGO LOCAL', key: 'codigo', width: 15 },
+            { header: 'CÓDIGO MODULAR', key: 'codigo_modular', width: 18 },
             { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie', width: 42 },
             { header: 'DIRECTOR', key: 'director', width: 30 },
             { header: 'ESTADO', key: 'estado', width: 14 },
@@ -2505,7 +2510,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
             const r = ws.addRow([
                 i+1, row.titulo,
                 row.fecha_limite ? new Date(row.fecha_limite).toLocaleDateString('es-PE') : '',
-                row.ie_codigo, row.ie_nombre, row.director || '',
+                row.ie_codigo, row.codigo_modular || '', row.ie_nombre, row.director || '',
                 (row.estado || 'pendiente').replace('_',' ').toUpperCase(),
                 row.fecha_completado ? new Date(row.fecha_completado).toLocaleDateString('es-PE') : '',
                 row.notas_supervisor || ''
@@ -2517,7 +2522,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
                 cell.alignment = { vertical: 'middle', wrapText: true };
                 cell.font = { name: 'Calibri', size: 10 };
             });
-            const estadoCell = r.getCell(7);
+            const estadoCell = r.getCell(8);
             const color = estadoColors[row.estado] || 'FF64748b';
             estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
         });
@@ -2541,6 +2546,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
         const rows = await pool.query(`
             SELECT a.titulo, a.fecha_limite, a.descripcion, a.link_url,
                    ie.codigo as ie_codigo, ie.nombre as ie_nombre,
+                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
                    u.nombre_completo as director,
                    ase.estado, ase.fecha_completado, ase.notas_supervisor
             FROM actividades a
@@ -2568,7 +2574,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
         const hFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
         const border = { style: 'thin', color: { argb: 'FFDDDDDD' } };
         const cellBorder = { top: border, left: border, bottom: border, right: border };
-        ws.mergeCells('A1:G1');
+        ws.mergeCells('A1:H1');
         const titleCell = ws.getCell('A1');
         titleCell.value = 'REPORTE DE ACTIVIDADES - ' + ieName.toUpperCase();
         titleCell.font = { bold: true, size: 13, name: 'Calibri', color: { argb: 'FF1e293b' } };
@@ -2597,7 +2603,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
                 cell.alignment = { vertical: 'middle', wrapText: true };
                 cell.font = { name: 'Calibri', size: 10 };
             });
-            const estadoCell = r.getCell(5);
+            const estadoCell = r.getCell(6);
             const color = estadoColors[row.estado] || 'FF64748b';
             estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
         });
