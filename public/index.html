@@ -1175,12 +1175,11 @@
           </div>
           <form onsubmit="event.preventDefault();saveSystemSettings()">
             <div class="row">
-              <div class="col-12 mb-3" style="display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="config-active-box" onchange="toggleConfigEvaluationDetails()" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
-                <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Activar recuadro de evaluación en el panel de Directores</label>
+              <div class="col-12 mb-2">
+                <p style="font-size: 0.85rem; color: var(--text2);">Para mostrar el recuadro a los directores, ingresa un Título y un Enlace. Para ocultarlo, simplemente borra el Enlace y guarda.</p>
               </div>
             </div>
-            <div id="config-evaluation-details" style="display:none; margin-top: 10px;">
+            <div id="config-evaluation-details" style="margin-top: 5px;">
               <div class="row">
                 <div class="col-md-6 mb-3">
                 <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
