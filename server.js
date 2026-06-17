@@ -2223,6 +2223,7 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
             LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
             LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             WHERE ase.actividad_id = $1
+            AND (ase.niveles_aplicados IS NULL OR ase.niveles_aplicados = '' OR ne.clave IS NULL OR ne.clave = ANY(string_to_array(ase.niveles_aplicados, ',')))
             ORDER BY u.dependencia, ie.nombre, ne.orden
         `, [parseInt(actividadId)]);
 
@@ -2497,6 +2498,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
             LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
             LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             ${where}
+            AND (ase.niveles_aplicados IS NULL OR ase.niveles_aplicados = '' OR ne.clave IS NULL OR ne.clave = ANY(string_to_array(ase.niveles_aplicados, ',')))
             ORDER BY a.fecha_limite DESC, ie.nombre, ne.orden
         `, params);
         const ExcelJS = require('exceljs');
@@ -2588,6 +2590,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
             LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
             LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             ${where}
+            AND (ase.niveles_aplicados IS NULL OR ase.niveles_aplicados = '' OR ne.clave IS NULL OR ne.clave = ANY(string_to_array(ase.niveles_aplicados, ',')))
             ORDER BY a.fecha_limite DESC, ne.orden
         `, params);
         const ExcelJS = require('exceljs');
