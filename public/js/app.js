@@ -453,12 +453,21 @@ function onBoxTypeChange(val) {
   }
 }
 
+function toggleConfigEvaluationDetails() {
+  const active = document.getElementById('config-active-box').checked;
+  const details = document.getElementById('config-evaluation-details');
+  if (details) {
+    details.style.display = active ? 'block' : 'none';
+  }
+}
+
 async function loadSystemSettings() {
   try {
     const settings = await api('/api/system-settings');
     document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
     document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
     document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
+    toggleConfigEvaluationDetails();
     
     const boxType = settings.evaluation_box_type || 'external';
     const typeSelect = document.getElementById('config-box-type');

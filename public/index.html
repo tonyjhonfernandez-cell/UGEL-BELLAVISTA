@@ -1176,14 +1176,14 @@
           <form onsubmit="event.preventDefault();saveSystemSettings()">
             <div class="row">
               <div class="col-12 mb-2" style="display:flex; align-items:center; gap:8px;">
-                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <input type="checkbox" id="config-active-box" onchange="toggleConfigEvaluationDetails()" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
                 <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Mostrar recuadro de evaluación a los directores</label>
               </div>
               <div class="col-12 mb-3">
-                <p style="font-size: 0.85rem; color: var(--text2); margin: 0;">Activa o desactiva el recuadro sin borrar tus datos. El enlace se guardará para cuando decidas volver a mostrarlo.</p>
+                <p style="font-size: 0.85rem; color: var(--text2); margin: 0;">Al activarlo, podrás escribir y guardar el enlace. Si lo desactivas, se dejará de mostrar a los directores.</p>
               </div>
             </div>
-            <div id="config-evaluation-details" style="margin-top: 5px;">
+            <div id="config-evaluation-details" style="margin-top: 5px; display: none;">
               <div class="row">
                 <div class="col-md-6 mb-3">
                 <label class="form-label">Nombre de la Actividad / Título del Recuadro</label>
