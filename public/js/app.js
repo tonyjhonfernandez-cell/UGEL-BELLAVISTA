@@ -456,6 +456,7 @@ function onBoxTypeChange(val) {
 async function loadSystemSettings() {
   try {
     const settings = await api('/api/system-settings');
+    document.getElementById('config-active-box').checked = settings.active_evaluation_box || false;
     document.getElementById('config-box-title').value = settings.evaluation_box_title || '';
     document.getElementById('config-box-url').value = settings.evaluation_box_url || '';
     
@@ -475,15 +476,18 @@ async function loadSystemSettings() {
 
 async function saveSystemSettings() {
   try {
+    const active = document.getElementById('config-active-box').checked;
     const title = document.getElementById('config-box-title').value.trim();
     const url = document.getElementById('config-box-url').value.trim();
     const type = document.getElementById('config-box-type').value;
     const themeColor = window._currentThemeColor || 'indigo';
     
-    const active = url.length > 0;
-    
     if (active && !title) {
       showToast('Debe ingresar un título para el recuadro especial', 'error');
+      return;
+    }
+    if (active && type === 'external' && !url) {
+      showToast('Debe ingresar el enlace/URL', 'error');
       return;
     }
     

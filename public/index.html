@@ -1175,8 +1175,12 @@
           </div>
           <form onsubmit="event.preventDefault();saveSystemSettings()">
             <div class="row">
-              <div class="col-12 mb-2">
-                <p style="font-size: 0.85rem; color: var(--text2);">Para mostrar el recuadro a los directores, ingresa un Título y un Enlace. Para ocultarlo, simplemente borra el Enlace y guarda.</p>
+              <div class="col-12 mb-2" style="display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="config-active-box" style="width:18px; height:18px; accent-color:var(--primary); cursor:pointer;">
+                <label for="config-active-box" class="form-label" style="margin-bottom:0; cursor:pointer; font-weight:600; color:var(--text1);">Mostrar recuadro de evaluación a los directores</label>
+              </div>
+              <div class="col-12 mb-3">
+                <p style="font-size: 0.85rem; color: var(--text2); margin: 0;">Activa o desactiva el recuadro sin borrar tus datos. El enlace se guardará para cuando decidas volver a mostrarlo.</p>
               </div>
             </div>
             <div id="config-evaluation-details" style="margin-top: 5px;">
