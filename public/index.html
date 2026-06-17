@@ -547,7 +547,7 @@
                     <option value="pendiente">Pendientes</option>
                   </select>
                 </div>
-                <button class="btn btn-primary btn-sm" id="btn-add-ies-act" style="display:none; background-color: var(--secondary); border-color: var(--secondary);"><i class="fas fa-plus"></i> Agregar IEs</button>
+                
               <button class="btn btn-outline-success btn-sm" id="consol-det-excel-btn" onclick="descargarConsolidadoExcel()">
                   <i class="fas fa-file-excel"></i> Descargar Excel
                 </button>
@@ -647,7 +647,7 @@
             <!-- Search + table -->
             <div style="padding:16px 22px 0; display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
               <input type="text" class="form-control" id="mon-modal-search" placeholder="Buscar institución educativa..." oninput="filterMonModalTable(this.value)" style="flex:1; min-width: 200px;">
-              <button class="btn btn-outline-success btn-sm" onclick="descargarConsolidadoExcel()"><i class="fas fa-file-excel"></i> Descargar Excel</button>
+              <button class="btn btn-primary btn-sm" id="btn-add-ies-act" style="display:none; background-color: var(--secondary); border-color: var(--secondary);"><i class="fas fa-plus"></i> Agregar IEs</button>\n              <button class="btn btn-outline-success btn-sm" onclick="descargarConsolidadoExcel()"><i class="fas fa-file-excel"></i> Descargar Excel</button>
               <button class="btn btn-primary btn-sm" id="btn-import-excel" onclick="document.getElementById('excel-import-file').click()"><i class="fas fa-upload"></i> Subir Excel Control</button>
               <input type="file" id="excel-import-file" style="display: none;" accept=".xlsx, .xls" onchange="handleExcelImport(event)">
               <span id="import-excel-status" style="font-size: 0.78rem; font-weight: 600; margin-left: auto;"></span>
@@ -1309,7 +1309,7 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="/js/app.js?v=2.9"></script>
+  <script src="/js/app.js?v=2.91"></script>
 <script src="/js/cal_premium.js?v=2.0"></script>
 </body>
 </html>
