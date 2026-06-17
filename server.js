@@ -2204,19 +2204,26 @@ app.get('/api/export/consolidado/:actividadId', authDirector, async (req, res) =
         const rows = await pool.query(`
             SELECT ase.estado, ase.fecha_completado, ase.notas_supervisor,
                    ie.nombre as ie_nombre, ie.codigo as ie_codigo,
-                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
+                   CASE 
+                     WHEN ne.clave = 'inicial' THEN ie.cm_inicial
+                     WHEN ne.clave = 'cuna_jardin' THEN ie.cm_cuna_jardin
+                     WHEN ne.clave = 'primaria' THEN ie.cm_primaria
+                     WHEN ne.clave = 'secundaria' THEN ie.cm_secundaria
+                     WHEN ne.clave = 'cetpro' THEN ie.cm_cetpro
+                     WHEN ne.clave = 'pronoei' THEN ie.cm_pronoei
+                     WHEN ne.clave LIKE 'eba_%' THEN ie.cm_eba
+                     WHEN ne.clave = 'ebe' THEN ie.cm_ebe
+                     ELSE NULL 
+                   END as codigo_modular,
                    u.nombre_completo as director_nombre, u.dependencia, u.puesto,
-                   STRING_AGG(DISTINCT ne.nombre, ', ' ORDER BY ne.nombre) as nivel_nombre
+                   ne.nombre as nivel_nombre
             FROM asignaciones ase
             JOIN instituciones_educativas ie ON ase.ie_id = ie.id
             LEFT JOIN usuarios u ON ase.director_id = u.id
             LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
             LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             WHERE ase.actividad_id = $1
-            GROUP BY ase.estado, ase.fecha_completado, ase.notas_supervisor,
-                     ie.nombre, ie.codigo, ie.cm_inicial, ie.cm_primaria, ie.cm_secundaria, ie.cm_ebe, ie.cm_cetpro, ie.cm_pronoei, ie.cm_eba, ie.cm_cuna_jardin,
-                     u.nombre_completo, u.dependencia, u.puesto
-            ORDER BY u.dependencia, ie.nombre
+            ORDER BY u.dependencia, ie.nombre, ne.orden
         `, [parseInt(actividadId)]);
 
         const ExcelJS = require('exceljs');
@@ -2469,15 +2476,28 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
         const rows = await pool.query(`
             SELECT a.titulo, a.fecha_limite, a.descripcion,
                    ie.codigo as ie_codigo, ie.nombre as ie_nombre,
-                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
+                   CASE 
+                     WHEN ne.clave = 'inicial' THEN ie.cm_inicial
+                     WHEN ne.clave = 'cuna_jardin' THEN ie.cm_cuna_jardin
+                     WHEN ne.clave = 'primaria' THEN ie.cm_primaria
+                     WHEN ne.clave = 'secundaria' THEN ie.cm_secundaria
+                     WHEN ne.clave = 'cetpro' THEN ie.cm_cetpro
+                     WHEN ne.clave = 'pronoei' THEN ie.cm_pronoei
+                     WHEN ne.clave LIKE 'eba_%' THEN ie.cm_eba
+                     WHEN ne.clave = 'ebe' THEN ie.cm_ebe
+                     ELSE NULL 
+                   END as codigo_modular,
+                   ne.nombre as nivel_nombre,
                    u.nombre_completo as director,
                    ase.estado, ase.fecha_completado, ase.notas_supervisor
             FROM actividades a
             JOIN asignaciones ase ON ase.actividad_id = a.id
             JOIN instituciones_educativas ie ON ase.ie_id = ie.id
             LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
+            LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             ${where}
-            ORDER BY a.fecha_limite DESC, ie.nombre
+            ORDER BY a.fecha_limite DESC, ie.nombre, ne.orden
         `, params);
         const ExcelJS = require('exceljs');
         const wb = new ExcelJS.Workbook();
@@ -2490,6 +2510,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
             { header: 'CÓDIGO LOCAL', key: 'codigo', width: 15 },
             { header: 'CÓDIGO MODULAR', key: 'codigo_modular', width: 18 },
             { header: 'INSTITUCIÓN EDUCATIVA', key: 'ie', width: 42 },
+            { header: 'NIVEL', key: 'nivel', width: 24 },
             { header: 'DIRECTOR', key: 'director', width: 30 },
             { header: 'ESTADO', key: 'estado', width: 14 },
             { header: 'FECHA COMPLETADO', key: 'fecha_comp', width: 18 },
@@ -2510,7 +2531,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
             const r = ws.addRow([
                 i+1, row.titulo,
                 row.fecha_limite ? new Date(row.fecha_limite).toLocaleDateString('es-PE') : '',
-                row.ie_codigo, row.codigo_modular || '', row.ie_nombre, row.director || '',
+                row.ie_codigo, row.codigo_modular || '', row.ie_nombre, row.nivel_nombre || '', row.director || '',
                 (row.estado || 'pendiente').replace('_',' ').toUpperCase(),
                 row.fecha_completado ? new Date(row.fecha_completado).toLocaleDateString('es-PE') : '',
                 row.notas_supervisor || ''
@@ -2522,7 +2543,7 @@ app.get('/api/export/consolidado-global', authDirector, async (req, res) => {
                 cell.alignment = { vertical: 'middle', wrapText: true };
                 cell.font = { name: 'Calibri', size: 10 };
             });
-            const estadoCell = r.getCell(8);
+            const estadoCell = r.getCell(9);
             const color = estadoColors[row.estado] || 'FF64748b';
             estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
         });
@@ -2546,15 +2567,28 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
         const rows = await pool.query(`
             SELECT a.titulo, a.fecha_limite, a.descripcion, a.link_url,
                    ie.codigo as ie_codigo, ie.nombre as ie_nombre,
-                   CONCAT_WS(' / ', NULLIF(ie.cm_inicial, ''), NULLIF(ie.cm_primaria, ''), NULLIF(ie.cm_secundaria, ''), NULLIF(ie.cm_ebe, ''), NULLIF(ie.cm_cetpro, ''), NULLIF(ie.cm_pronoei, ''), NULLIF(ie.cm_eba, ''), NULLIF(ie.cm_cuna_jardin, '')) as codigo_modular,
+                   CASE 
+                     WHEN ne.clave = 'inicial' THEN ie.cm_inicial
+                     WHEN ne.clave = 'cuna_jardin' THEN ie.cm_cuna_jardin
+                     WHEN ne.clave = 'primaria' THEN ie.cm_primaria
+                     WHEN ne.clave = 'secundaria' THEN ie.cm_secundaria
+                     WHEN ne.clave = 'cetpro' THEN ie.cm_cetpro
+                     WHEN ne.clave = 'pronoei' THEN ie.cm_pronoei
+                     WHEN ne.clave LIKE 'eba_%' THEN ie.cm_eba
+                     WHEN ne.clave = 'ebe' THEN ie.cm_ebe
+                     ELSE NULL 
+                   END as codigo_modular,
+                   ne.nombre as nivel_nombre,
                    u.nombre_completo as director,
                    ase.estado, ase.fecha_completado, ase.notas_supervisor
             FROM actividades a
             JOIN asignaciones ase ON ase.actividad_id = a.id
             JOIN instituciones_educativas ie ON ase.ie_id = ie.id
             LEFT JOIN usuarios u ON ase.director_id = u.id
+            LEFT JOIN ie_niveles iln ON iln.ie_id = ie.id
+            LEFT JOIN niveles_educativos ne ON iln.nivel_id = ne.id
             ${where}
-            ORDER BY a.fecha_limite DESC
+            ORDER BY a.fecha_limite DESC, ne.orden
         `, params);
         const ExcelJS = require('exceljs');
         const wb = new ExcelJS.Workbook();
@@ -2574,7 +2608,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
         const hFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
         const border = { style: 'thin', color: { argb: 'FFDDDDDD' } };
         const cellBorder = { top: border, left: border, bottom: border, right: border };
-        ws.mergeCells('A1:H1');
+        ws.mergeCells('A1:I1');
         const titleCell = ws.getCell('A1');
         titleCell.value = 'REPORTE DE ACTIVIDADES - ' + ieName.toUpperCase();
         titleCell.font = { bold: true, size: 13, name: 'Calibri', color: { argb: 'FF1e293b' } };
@@ -2592,6 +2626,8 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
             const r = ws.addRow([
                 i+1, row.titulo, row.descripcion || '',
                 row.fecha_limite ? new Date(row.fecha_limite).toLocaleDateString('es-PE') : '',
+                row.codigo_modular || '',
+                row.nivel_nombre || '',
                 (row.estado || 'pendiente').replace('_',' ').toUpperCase(),
                 row.fecha_completado ? new Date(row.fecha_completado).toLocaleDateString('es-PE') : '',
                 row.notas_supervisor || ''
@@ -2603,7 +2639,7 @@ app.get('/api/export/consolidado-ie', authDirector, async (req, res) => {
                 cell.alignment = { vertical: 'middle', wrapText: true };
                 cell.font = { name: 'Calibri', size: 10 };
             });
-            const estadoCell = r.getCell(6);
+            const estadoCell = r.getCell(7);
             const color = estadoColors[row.estado] || 'FF64748b';
             estadoCell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: color } };
         });
