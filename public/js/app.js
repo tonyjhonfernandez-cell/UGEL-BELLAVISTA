@@ -2327,6 +2327,7 @@ function openMonModal(actId) {
   document.getElementById('mon-modal-search').value = '';
 
   
+  var canEditAct = (currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez' || currentUser.id == grp.asignador_id));
   var btnImport = document.getElementById('btn-import-excel');
   var btnAddIes = document.getElementById('btn-add-ies-act');
   if (btnAddIes) {
