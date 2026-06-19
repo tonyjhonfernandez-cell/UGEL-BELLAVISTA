@@ -614,6 +614,7 @@ function initSupervisorApp() {
   cargarTiposActividad();
   cargarSupervisores();
   loadNotifBadge();
+  loadNotificaciones();
   loadNiveles();
   
   if (currentUser.rol === 'admin') {
