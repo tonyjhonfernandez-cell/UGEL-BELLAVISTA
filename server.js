@@ -384,6 +384,8 @@ async function initDatabase() {
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_eba VARCHAR(20)");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_cuna_jardin BOOLEAN DEFAULT false");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cuna_jardin VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS es_modalidad_alternativa BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS codigo_base VARCHAR(20)");
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
     } catch (e) {}
 
@@ -911,6 +913,65 @@ app.get('/api/ies/:id', async (req, res) => {
     }
 });
 
+async function syncIeNivelColumns(ieId, niveles) {
+    try {
+        const { rows: dbNiveles } = await pool.query("SELECT id, clave FROM niveles_educativos WHERE activo = true");
+        const idToClave = {};
+        for (const row of dbNiveles) {
+            idToClave[row.id] = row.clave;
+        }
+
+        const updates = {
+            tiene_inicial: false, cm_inicial: null,
+            tiene_cuna_jardin: false, cm_cuna_jardin: null,
+            tiene_primaria: false, cm_primaria: null,
+            tiene_secundaria: false, cm_secundaria: null,
+            tiene_ebe: false, cm_ebe: null,
+            tiene_cetpro: false, cm_cetpro: null,
+            tiene_pronoei: false, cm_pronoei: null,
+            tiene_eba: false, cm_eba: null,
+        };
+
+        for (const nv of niveles) {
+            const clave = idToClave[nv.nivel_id];
+            if (clave) {
+                if (clave === 'eba_avanzado' || clave === 'eba_intermedio') {
+                    updates.tiene_eba = true;
+                    updates.cm_eba = nv.codigo_modular || null;
+                } else if (updates.hasOwnProperty(`tiene_${clave}`)) {
+                    updates[`tiene_${clave}`] = true;
+                    updates[`cm_${clave}`] = nv.codigo_modular || null;
+                }
+            }
+        }
+
+        await pool.query(`
+            UPDATE instituciones_educativas
+            SET tiene_inicial = $1, cm_inicial = $2,
+                tiene_cuna_jardin = $3, cm_cuna_jardin = $4,
+                tiene_primaria = $5, cm_primaria = $6,
+                tiene_secundaria = $7, cm_secundaria = $8,
+                tiene_ebe = $9, cm_ebe = $10,
+                tiene_cetpro = $11, cm_cetpro = $12,
+                tiene_pronoei = $13, cm_pronoei = $14,
+                tiene_eba = $15, cm_eba = $16
+            WHERE id = $17
+        `, [
+            updates.tiene_inicial, updates.cm_inicial,
+            updates.tiene_cuna_jardin, updates.cm_cuna_jardin,
+            updates.tiene_primaria, updates.cm_primaria,
+            updates.tiene_secundaria, updates.cm_secundaria,
+            updates.tiene_ebe, updates.cm_ebe,
+            updates.tiene_cetpro, updates.cm_cetpro,
+            updates.tiene_pronoei, updates.cm_pronoei,
+            updates.tiene_eba, updates.cm_eba,
+            ieId
+        ]);
+    } catch (err) {
+        console.error('Error in syncIeNivelColumns:', err);
+    }
+}
+
 app.post('/api/ies', authAdmin, async (req, res) => {
     try {
         const {
@@ -919,7 +980,8 @@ app.post('/api/ies', authAdmin, async (req, res) => {
             cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
             cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
             tipo, provincia, distrito, lugar,
-            director_nombre, director_email, director_telefono
+            director_nombre, director_email, director_telefono,
+            es_modalidad_alternativa, codigo_base
         } = req.body;
 
         if (!codigo || !nombre) {
@@ -928,16 +990,25 @@ app.post('/api/ies', authAdmin, async (req, res) => {
 
         // Detect EBA-only: all selected niveles are EBA type
         let codigoFinal = codigo;
+        let isAltModality = es_modalidad_alternativa || false;
+        let baseCode = codigo_base || null;
         const niveles = req.body.niveles || [];
         if (niveles.length > 0) {
             const ebaRows = await pool.query("SELECT id FROM niveles_educativos WHERE clave ILIKE '%eba%'");
             const ebaIds = new Set(ebaRows.rows.map(r => r.id));
+            const cetRows = await pool.query("SELECT id FROM niveles_educativos WHERE clave ILIKE '%cetpro%' OR clave ILIKE '%tecnico%'");
+            const cetIds = new Set(cetRows.rows.map(r => r.id));
             const isEbaOnly = niveles.every(nv => ebaIds.has(Number(nv.nivel_id)));
-            if (isEbaOnly) {
-                // Use modular code as identifier so same local code can coexist
-                const ebaMod = niveles[0]?.codigo_modular?.trim();
-                if (!ebaMod) return res.status(400).json({ error: 'Para EBA independiente debe ingresar el código modular EBA' });
-                codigoFinal = ebaMod;
+            const isCetOnly = niveles.every(nv => cetIds.has(Number(nv.nivel_id)));
+            if (isEbaOnly || isCetOnly) {
+                // Check if código local already exists as regular IE
+                const existingBase = await pool.query('SELECT id FROM instituciones_educativas WHERE codigo = $1', [codigo]);
+                if (existingBase.rows.length > 0) {
+                    const suffix = isEbaOnly ? '-EBA' : '-CET';
+                    codigoFinal = codigo + suffix;
+                    isAltModality = true;
+                    baseCode = codigo;
+                }
             }
         }
 
@@ -952,15 +1023,18 @@ app.post('/api/ies', authAdmin, async (req, res) => {
                 tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
                 cm_inicial, cm_cuna_jardin, cm_primaria, cm_secundaria,
                 cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
-                tipo, provincia, distrito, lugar, activa
-            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,true)
+                tipo, provincia, distrito, lugar,
+                es_modalidad_alternativa, codigo_base,
+                activa
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,true)
             RETURNING id
         `, [
             codigoFinal, nombre, tiene_inicial||false, tiene_cuna_jardin||false, tiene_primaria||false, tiene_secundaria||false, tiene_otros||false, tipo_otros||null,
             tiene_ebe||false, tiene_cetpro||false, tiene_pronoei||false, tiene_eba||false,
             cm_inicial||null, cm_cuna_jardin||null, cm_primaria||null, cm_secundaria||null,
             cm_ebe||null, cm_cetpro||null, cm_pronoei||null, cm_eba||null,
-            tipo||null, provincia||null, distrito||null, lugar||null
+            tipo||null, provincia||null, distrito||null, lugar||null,
+            isAltModality, baseCode
         ]);
         
         const newIeId = result.rows[0].id;
@@ -975,6 +1049,7 @@ app.post('/api/ies', authAdmin, async (req, res) => {
                     [newIeId, nv.nivel_id, nv.codigo_modular || null]
                 );
             }
+            await syncIeNivelColumns(newIeId, req.body.niveles);
         }
 
         if (director_nombre) {
@@ -1018,13 +1093,26 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
 
         const oldIe = await db.prepare('SELECT codigo FROM instituciones_educativas WHERE id = ?').get(req.params.id);
 
+        let isAltModality = false;
+        let baseCode = null;
+        if (oldIe) {
+            if (oldIe.codigo.endsWith('-EBA')) {
+                isAltModality = true;
+                baseCode = oldIe.codigo.replace('-EBA', '');
+            } else if (oldIe.codigo.endsWith('-CET')) {
+                isAltModality = true;
+                baseCode = oldIe.codigo.replace('-CET', '');
+            }
+        }
+
         await db.prepare(`
             UPDATE instituciones_educativas
             SET codigo=?, nombre=?, tiene_inicial=?, tiene_cuna_jardin=?, tiene_primaria=?, tiene_secundaria=?, tiene_otros=?, tipo_otros=?,
                 tiene_ebe=?, tiene_cetpro=?, tiene_pronoei=?, tiene_eba=?,
                 cm_inicial=?, cm_cuna_jardin=?, cm_primaria=?, cm_secundaria=?,
                 cm_ebe=?, cm_cetpro=?, cm_pronoei=?, cm_eba=?,
-                tipo=?, provincia=?, distrito=?, lugar=?
+                tipo=?, provincia=?, distrito=?, lugar=?,
+                es_modalidad_alternativa=?, codigo_base=?
             WHERE id=?
         `).run(
             codigo, nombre, tiene_inicial || false, tiene_cuna_jardin || false, tiene_primaria || false, tiene_secundaria || false, tiene_otros || false, tipo_otros || null,
@@ -1032,6 +1120,7 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
             cm_inicial || null, cm_cuna_jardin || null, cm_primaria || null, cm_secundaria || null,
             cm_ebe || null, cm_cetpro || null, cm_pronoei || null, cm_eba || null,
             tipo || null, provincia || null, distrito || null, lugar || null,
+            isAltModality, baseCode,
             req.params.id
         );
         
@@ -1047,6 +1136,7 @@ app.put('/api/ies/:id', authAdmin, async (req, res) => {
                         [ieRow.id, nv.nivel_id, nv.codigo_modular || null]
                     );
                 }
+                await syncIeNivelColumns(ieRow.id, req.body.niveles);
             }
         }
 
@@ -1663,7 +1753,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             `).all(...buildParams());
 
             const nivelIeWhere = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = instituciones_educativas.id AND ne_f.clave = '${nivel}')` : '';
-            const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
+            const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true AND (es_modalidad_alternativa = false OR es_modalidad_alternativa IS NULL) ${nivelIeWhere}`).get();
             const total_directores = await db.prepare("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'director' AND activo = true").get();
 
             const directores_por_area = await db.prepare(`
@@ -2060,7 +2150,7 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
 
         // Locales: IEs sin contar PRONOEI (cada código local = 1 IE)
         const total_inst = await pool.query(`
-            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true${extraWhere}
+            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true AND (ie.es_modalidad_alternativa = false OR ie.es_modalidad_alternativa IS NULL)${extraWhere}
             AND NOT EXISTS (
                 SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id
                 WHERE iln2.ie_id = ie.id AND ne2.clave = 'pronoei'

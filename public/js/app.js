@@ -80,7 +80,14 @@ function renderList(list) {
   var h = '';
   if (list.length > 0) {
     for (var i = 0; i < list.length; i++) {
-      h += '<div class="sel-item" onclick="loginComoDirector(' + list[i].id + ')"><span class="sel-cod">' + list[i].codigo + '</span><span class="sel-nom">' + list[i].nombre + '</span></div>';
+      var item = list[i];
+      var nombreMostrar = item.nombre;
+      if (item.codigo && item.codigo.endsWith('-EBA')) {
+        nombreMostrar += ' (EBA)';
+      } else if (item.codigo && item.codigo.endsWith('-CET')) {
+        nombreMostrar += ' (CETPRO)';
+      }
+      h += '<div class="sel-item" onclick="loginComoDirector(' + item.id + ')"><span class="sel-cod">' + item.codigo + '</span><span class="sel-nom">' + nombreMostrar + '</span></div>';
     }
   } else {
     h = '<div class="sel-empty">No se encontraron instituciones</div>';

@@ -38,8 +38,17 @@ async function runImport() {
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_eba VARCHAR(20)");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS tiene_cuna_jardin BOOLEAN DEFAULT false");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cuna_jardin VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS es_modalidad_alternativa BOOLEAN DEFAULT false");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS codigo_base VARCHAR(20)");
         console.log('Columnas verificadas OK.');
         
+        // Obtener IDs de niveles educativos
+        const { rows: dbNiveles } = await pool.query('SELECT id, clave FROM niveles_educativos WHERE activo = true');
+        const claveToId = {};
+        for (const row of dbNiveles) {
+            claveToId[row.clave] = row.id;
+        }
+
         const excelPath = path.join(__dirname, 'datos.xlsx.xlsx');
         const workbook = xlsx.readFile(excelPath);
         const sheetName = workbook.SheetNames[0];
@@ -66,15 +75,32 @@ async function runImport() {
             
             const isPRONOEI = String(rawLocal).trim() === '999999' || String(rawNivel).trim().toUpperCase() === 'PRONOEI';
             const modularCode = padModular(rawModular);
+            const levelStr = String(rawNivel || '').trim().toLowerCase();
+            
+            // Detectar modalidades alternativas que necesitan entrada separada
+            const isEBA = levelStr.includes('básica alternativa') || levelStr.includes('basica alternativa') || levelStr.includes('eba');
+            const isCETPRO = levelStr.includes('cetpro') || levelStr.includes('técnico productiv') || levelStr.includes('tecnico productiv');
             
             // Si es PRONOEI, usamos el código modular de 7 dígitos como su código único local
-            const localCode = isPRONOEI ? modularCode : padLocal(rawLocal);
+            // Si es EBA o CETPRO, usamos código local + sufijo para crear entrada independiente
+            let localCode;
+            if (isPRONOEI) {
+                localCode = modularCode;
+            } else if (isEBA) {
+                localCode = padLocal(rawLocal) + '-EBA';
+            } else if (isCETPRO) {
+                localCode = padLocal(rawLocal) + '-CET';
+            } else {
+                localCode = padLocal(rawLocal);
+            }
             
             if (!localCode) continue;
             
             if (!schoolsMap[localCode]) {
                 schoolsMap[localCode] = {
                     codigo: localCode,
+                    codigo_base: (isEBA || isCETPRO) ? padLocal(rawLocal) : null,
+                    es_modalidad_alternativa: (isEBA || isCETPRO),
                     nombre: String(row[4] || '').trim().replace(/\s+/g, ' '),
                     ruralidad: '',
                     tiene_inicial: false,
@@ -99,7 +125,8 @@ async function runImport() {
                     provincia: '',
                     distrito: '',
                     lugar: '',
-                    directores: []
+                    directores: [],
+                    niveles: []
                 };
             }
             
@@ -122,33 +149,53 @@ async function runImport() {
             const level = String(rawNivel || '').trim().toLowerCase();
             // Normalizar tildes para comparación
             const levelNorm = level.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            if (levelNorm.includes('cuna')) {
+            let mappedClave = null;
+            if (levelNorm.includes('basica alternativa') || levelNorm.includes('eba') || levelNorm.includes('adulto')) {
+                school.tiene_eba = true;
+                school.cm_eba = modularCode;
+                if (levelNorm.includes('avanzado')) {
+                    mappedClave = 'eba_avanzado';
+                } else {
+                    mappedClave = 'eba_intermedio';
+                }
+            } else if (levelNorm.includes('cetpro') || levelNorm.includes('tecnico productiv')) {
+                school.tiene_cetpro = true;
+                school.cm_cetpro = modularCode;
+                mappedClave = 'cetpro';
+            } else if (levelNorm.includes('pronoei') || levelNorm.includes('pronoi')) {
+                school.tiene_pronoei = true;
+                school.cm_pronoei = modularCode;
+                mappedClave = 'pronoei';
+            } else if (levelNorm.includes('ebe') || levelNorm.includes('basica especial')) {
+                school.tiene_ebe = true;
+                school.cm_ebe = modularCode;
+                mappedClave = 'ebe';
+            } else if (levelNorm.includes('cuna')) {
                 school.tiene_cuna_jardin = true;
                 school.cm_cuna_jardin = modularCode;
+                mappedClave = 'cuna_jardin';
             } else if (levelNorm.includes('inicial') || levelNorm.includes('jardin')) {
                 school.tiene_inicial = true;
                 school.cm_inicial = modularCode;
-            } else if (level.includes('primaria')) {
+                mappedClave = 'inicial';
+            } else if (levelNorm.includes('primaria')) {
                 school.tiene_primaria = true;
                 school.cm_primaria = modularCode;
-            } else if (level.includes('secundaria')) {
+                mappedClave = 'primaria';
+            } else if (levelNorm.includes('secundaria')) {
                 school.tiene_secundaria = true;
                 school.cm_secundaria = modularCode;
-            } else if (level.includes('ebe') || level === 'educacion basica especial') {
-                school.tiene_ebe = true;
-                school.cm_ebe = modularCode;
-            } else if (level.includes('cetpro') || level.includes('tecnico productiv')) {
-                school.tiene_cetpro = true;
-                school.cm_cetpro = modularCode;
-            } else if (level.includes('pronoei') || level.includes('pronoi')) {
-                school.tiene_pronoei = true;
-                school.cm_pronoei = modularCode;
-            } else if (level.includes('eba') || level.includes('educacion basica alternativa') || level.includes('adulto')) {
-                school.tiene_eba = true;
-                school.cm_eba = modularCode;
+                mappedClave = 'secundaria';
             } else {
                 school.tiene_otros = true;
                 school.tipo_otros = String(rawNivel || '').trim();
+            }
+
+            if (mappedClave) {
+                const already = school.niveles.some(n => n.clave === mappedClave);
+                if (!already) {
+                    school.niveles.push({ clave: mappedClave, codigo_modular: modularCode });
+                }
             }
             
             // Director
@@ -193,8 +240,9 @@ async function runImport() {
                         tipo = $13, provincia = $14, distrito = $15, lugar = $16,
                         tiene_ebe = $17, tiene_cetpro = $18, tiene_pronoei = $19, tiene_eba = $20,
                         cm_ebe = $21, cm_cetpro = $22, cm_pronoei = $23, cm_eba = $24,
+                        es_modalidad_alternativa = $25, codigo_base = $26,
                         activa = true
-                    WHERE codigo = $25
+                    WHERE codigo = $27
                 `, [
                     school.nombre, school.ruralidad,
                     school.tiene_inicial, school.tiene_cuna_jardin, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
@@ -202,6 +250,7 @@ async function runImport() {
                     school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
                     school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
                     school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba,
+                    school.es_modalidad_alternativa, school.codigo_base || null,
                     school.codigo
                 ]);
                 ieUpdated++;
@@ -214,17 +263,34 @@ async function runImport() {
                         tipo, provincia, distrito, lugar,
                         tiene_ebe, tiene_cetpro, tiene_pronoei, tiene_eba,
                         cm_ebe, cm_cetpro, cm_pronoei, cm_eba,
+                        es_modalidad_alternativa, codigo_base,
                         activa
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, true)
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, true)
                 `, [
                     school.codigo, school.nombre, school.ruralidad,
                     school.tiene_inicial, school.tiene_cuna_jardin, school.tiene_primaria, school.tiene_secundaria, school.tiene_otros,
                     school.tipo_otros, school.cm_inicial, school.cm_cuna_jardin, school.cm_primaria, school.cm_secundaria,
                     school.tipo || null, school.provincia || null, school.distrito || null, school.lugar || null,
                     school.tiene_ebe, school.tiene_cetpro, school.tiene_pronoei, school.tiene_eba,
-                    school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba
+                    school.cm_ebe, school.cm_cetpro, school.cm_pronoei, school.cm_eba,
+                    school.es_modalidad_alternativa, school.codigo_base || null
                 ]);
                 ieInserted++;
+            }
+            
+            // Obtener el ID de la IE insertada/actualizada
+            const ieId = (await pool.query('SELECT id FROM instituciones_educativas WHERE codigo = $1', [school.codigo])).rows[0].id;
+            
+            // Sincronizar ie_niveles
+            await pool.query('DELETE FROM ie_niveles WHERE ie_id = $1', [ieId]);
+            for (const nv of school.niveles) {
+                const nivelId = claveToId[nv.clave];
+                if (nivelId) {
+                    await pool.query(
+                        'INSERT INTO ie_niveles (ie_id, nivel_id, codigo_modular) VALUES ($1, $2, $3) ON CONFLICT (ie_id, nivel_id) DO UPDATE SET codigo_modular = EXCLUDED.codigo_modular',
+                        [ieId, nivelId, nv.codigo_modular || null]
+                    );
+                }
             }
             
             // 2. Insertar / Actualizar Director de la IE
