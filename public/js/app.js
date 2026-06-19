@@ -4742,6 +4742,10 @@ function capGenerarReporte(codMod, nivel) {
     return;
   }
 
+  window.currentCapReporteData = plazas;
+  window.currentCapReporteIE = plazas[0] ? plazas[0]['NOMBRE DE LA INSTITUCION EDUCATIVA'] : 'IE';
+  window.currentCapReporteNivel = nivel;
+
   var ordenSubtipos = ['DIRECTIVO','JERARQUICO','DOCENTE','AUXILIAR DE EDUCACION',
     'ESPECIALISTAS ADMINISTRATIVOS E INSTITUCIONALES DE LAS UGEL','AUXILIAR','TECNICO'];
 
@@ -4863,6 +4867,67 @@ function capDescargarPDF() {
   } else {
     alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
   }
+}
+
+function capDescargarExcel() {
+  if (!window.currentCapReporteData || !window.currentCapReporteData.length) {
+    alert('No hay datos para exportar.');
+    return;
+  }
+  
+  var ordenSubtipos = ['DIRECTIVO','JERARQUICO','DOCENTE','AUXILIAR DE EDUCACION',
+    'ESPECIALISTAS ADMINISTRATIVOS E INSTITUCIONALES DE LAS UGEL','AUXILIAR','TECNICO'];
+  
+  var sortedData = window.currentCapReporteData.slice().sort(function(a, b) {
+    var sta = (a['SUB-TIPO DE TRABAJADOR'] || 'OTROS').toString().trim().toUpperCase();
+    var stb = (b['SUB-TIPO DE TRABAJADOR'] || 'OTROS').toString().trim().toUpperCase();
+    var ia = ordenSubtipos.indexOf(sta); var ib = ordenSubtipos.indexOf(stb);
+    if (ia === -1) ia = 999; if (ib === -1) ib = 999;
+    if (ia !== ib) return ia - ib;
+    var cpa = (a['CODIGO DE PLAZA'] || '').toString().trim();
+    var cpb = (b['CODIGO DE PLAZA'] || '').toString().trim();
+    return cpa.localeCompare(cpb);
+  });
+
+  var data = sortedData.map(function(fila, idx) {
+    var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
+    var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
+    var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['NRO DOCUMENTO'] || '';
+    var correo = fila['CORREO'] || fila['EMAIL'] || fila['CORREO ELECTRONICO'] || '';
+    var celular = fila['CELULAR'] || fila['TELEFONO'] || '';
+    var sit = fila['SITUACION LABORAL'] || '';
+    var cargo = fila['CARGO'] || fila['TIPO DE TRABAJADOR'] || '';
+    var tipo = fila['TIPO DE REGISTRO'] || '';
+    var jl = fila['JORNADA LABORAL'] || '';
+    var motivo = fila['MOTIVO DE VACANTE'] || '';
+    var cr = fila['CATEGORIA REMUNERATIVA'] || fila['ESCALA HISTORIAL'] || fila['DESCRIPCION ESCALA'] || '';
+    var codP = (fila['CODIGO DE PLAZA'] || '').toString().trim();
+    var st = fila['SUB-TIPO DE TRABAJADOR'] || 'OTROS';
+
+    return {
+      "N°": idx + 1,
+      "Sub-Tipo": st,
+      "Apellidos y Nombres": nombre,
+      "DNI": doc,
+      "Correo": correo,
+      "Celular": celular,
+      "Código Plaza": codP,
+      "Cód. Mod.": fila['CODMOD I.E.'] || '',
+      "Situación": sit,
+      "Cargo": cargo,
+      "Tipo": tipo,
+      "C.R.": cr,
+      "J.L.": jl,
+      "Motivo Vacante": motivo
+    };
+  });
+
+  var ws = XLSX.utils.json_to_sheet(data);
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "CAP");
+  var ieNombre = window.currentCapReporteIE || 'IE';
+  var fileName = "CAP_" + ieNombre.replace(/[^a-zA-Z0-9_\-\ ]/g, '') + ".xlsx";
+  XLSX.writeFile(wb, fileName);
 }
 // ===================== CALENDARIO =====================
 window.calendar = null;
