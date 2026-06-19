@@ -262,12 +262,21 @@ async function applyMigrations() {
             await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
             await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
             await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
-            await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
-            await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
         } catch(e) {
             console.error('Error en migración 11:', e.message);
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (11) ON CONFLICT DO NOTHING');
+    }
+
+    // Migración 13: Papelera para asignaciones
+    if (!applied.has(13)) {
+        try {
+            await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
+            await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
+        } catch(e) {
+            console.error('Error en migración 13:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (13) ON CONFLICT DO NOTHING');
     }
 
     // Migración 12: Modelo (EIB y JEC)
