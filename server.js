@@ -315,6 +315,7 @@ async function cleanupPapelera() {
         await db.prepare("DELETE FROM actividades WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'").run();
         await pool.query("DELETE FROM capacitaciones WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
         await pool.query("DELETE FROM asignaciones WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+        await pool.query("DELETE FROM notificaciones WHERE created_at < NOW() - INTERVAL '3 days'");
     } catch (e) {
         console.error('Error limpiando papelera:', e.message);
     }
