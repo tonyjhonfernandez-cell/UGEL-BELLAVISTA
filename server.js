@@ -459,6 +459,9 @@ async function initDatabase() {
         await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
+        await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
+        await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
     } catch (e) {}
 
     // New dynamic niveles tables
