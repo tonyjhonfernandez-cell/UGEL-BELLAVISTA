@@ -3559,7 +3559,7 @@ app.post('/api/public/capacitaciones/:id/registrar', async (req, res) => {
             ]);
         }
         
-        res.json({ ok: true, mensaje: 'Asistencia registrada correctamente' });
+        res.json({ ok: true, mensaje: 'Asistencia registrada correctamente', registro: { fecha_registro: new Date().toISOString() } });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
