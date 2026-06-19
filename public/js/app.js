@@ -2518,17 +2518,20 @@ function toggleMonGroup(actId) {
 
 async function eliminarAsignacion(asignacionId, actividadId) {
   showModal('Eliminar Asignación',
-    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs.</p>',
+    '<p>¿Eliminar la asignación de esta IE? Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-asignacion-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarAsignacion(' + asignacionId + ',' + actividadId + ')">Eliminar</button>');
 }
 
 async function confirmarEliminarAsignacion(asignacionId, actividadId) {
+  var razon = document.getElementById('eliminar-asignacion-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    // Delete just this assignment via the actividad delete? We need a dedicated endpoint.
-    // Use bulk-delete on the actividad if it's the only one, otherwise we need to mark or use a workaround.
-    // For now, call DELETE /api/actividades/:id only if single; otherwise show message.
-    await api('/api/asignaciones/' + asignacionId + '/estado', { method: 'PUT', body: { estado: 'no_cumplida', notas_supervisor: 'Eliminado manualmente' } });
-    showToast('Asignación marcada como no cumplida', 'success');
+    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE', body: { razon: razon } });
+    showToast('Asignación eliminada', 'success');
     closeModal();
     loadMonitoreo();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
@@ -6283,7 +6286,9 @@ function renderPapelera(data) {
     
     var tipoBadge = item.tipo === 'actividad' 
       ? '<span class="badge" style="background:#3b82f6;color:white">Actividad</span>'
-      : '<span class="badge" style="background:#8b5cf6;color:white">Capacitación</span>';
+      : item.tipo === 'capacitacion' 
+        ? '<span class="badge" style="background:#8b5cf6;color:white">Capacitación</span>'
+        : '<span class="badge" style="background:#f59e0b;color:white">Asignación IE</span>';
 
     html += '<tr>';
     html += '  <td>' + tipoBadge + '</td>';
