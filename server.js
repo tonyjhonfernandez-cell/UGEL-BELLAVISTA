@@ -3493,12 +3493,10 @@ app.get('/api/public/capacitaciones/:id', async (req, res) => {
         }
         
         const eligibleIes = await pool.query(`
-            SELECT ie.id, ie.nombre, ie.codigo
-            FROM capacitaciones_asistencia ca
-            JOIN instituciones_educativas ie ON ca.ie_id = ie.id
-            WHERE ca.capacitacion_id = $1
-            ORDER BY ie.nombre ASC
-        `, [req.params.id]);
+            SELECT id, nombre, codigo
+            FROM instituciones_educativas
+            ORDER BY nombre ASC
+        `);
         
         res.json({
             capacitacion: result.rows[0],
@@ -3520,35 +3518,48 @@ app.post('/api/public/capacitaciones/:id/registrar', async (req, res) => {
         }
         
         const check = await pool.query('SELECT id, asistio FROM capacitaciones_asistencia WHERE capacitacion_id = $1 AND ie_id = $2', [capId, ie_id]);
+        
         if (check.rows.length === 0) {
-            return res.status(400).json({ error: 'Esta institución educativa no está invitada a esta capacitación' });
+            await pool.query(`
+                INSERT INTO capacitaciones_asistencia
+                (capacitacion_id, ie_id, nombre_completo, dni, cargo, asistio, fecha_registro, calificacion_satisfaccion, sugerencias)
+                VALUES ($1, $2, $3, $4, $5, true, NOW(), $6, $7)
+            `, [
+                capId, 
+                ie_id, 
+                nombre_completo.toUpperCase(), 
+                finalDni, 
+                cargo.toUpperCase(), 
+                calificacion_satisfaccion ? parseInt(calificacion_satisfaccion) : null, 
+                sugerencias || null
+            ]);
+        } else {
+            if (check.rows[0].asistio) {
+                return res.status(400).json({ error: 'La asistencia de esta institución educativa ya ha sido registrada previamente' });
+            }
+            
+            await pool.query(`
+                UPDATE capacitaciones_asistencia
+                SET nombre_completo = $1,
+                    dni = $2,
+                    cargo = $3,
+                    asistio = true,
+                    fecha_registro = NOW(),
+                    calificacion_satisfaccion = $4,
+                    sugerencias = $5
+                WHERE capacitacion_id = $6 AND ie_id = $7
+            `, [
+                nombre_completo.toUpperCase(),
+                finalDni,
+                cargo.toUpperCase(),
+                calificacion_satisfaccion ? parseInt(calificacion_satisfaccion) : null,
+                sugerencias || null,
+                capId,
+                ie_id
+            ]);
         }
         
-        if (check.rows[0].asistio) {
-            return res.status(400).json({ error: 'La asistencia de esta institución educativa ya ha sido registrada previamente' });
-        }
-        
-        await pool.query(`
-            UPDATE capacitaciones_asistencia
-            SET nombre_completo = $1,
-                dni = $2,
-                cargo = $3,
-                asistio = true,
-                fecha_registro = NOW(),
-                calificacion_satisfaccion = $4,
-                sugerencias = $5
-            WHERE capacitacion_id = $6 AND ie_id = $7
-        `, [
-            nombre_completo.toUpperCase(),
-            finalDni,
-            cargo.toUpperCase(),
-            calificacion_satisfaccion ? parseInt(calificacion_satisfaccion) : null,
-            sugerencias || null,
-            capId,
-            ie_id
-        ]);
-        
-        res.json({ ok: true });
+        res.json({ ok: true, mensaje: 'Asistencia registrada correctamente' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
