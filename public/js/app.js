@@ -4782,6 +4782,9 @@ function capGenerarReporte(codMod, nivel) {
       '<thead><tr style="background:#f0f0f0;">' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;width:20px;">N°</th>' +
         '<th style="border:1px solid #000;padding:4px;">Apellidos y Nombres</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">DNI</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Correo</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Celular</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Código Plaza</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Cód. Mod.</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Situación</th>' +
@@ -4803,7 +4806,9 @@ function capGenerarReporte(codMod, nivel) {
 
       var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
       var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
-      var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['CODIGO MODULAR'] || '';
+      var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['NRO DOCUMENTO'] || '';
+      var correo = fila['CORREO'] || fila['EMAIL'] || fila['CORREO ELECTRONICO'] || '';
+      var celular = fila['CELULAR'] || fila['TELEFONO'] || '';
       var sit = fila['SITUACION LABORAL'] || '';
       var cargo = fila['CARGO'] || fila['TIPO DE TRABAJADOR'] || '';
       var tipo = fila['TIPO DE REGISTRO'] || '';
@@ -4823,8 +4828,11 @@ function capGenerarReporte(codMod, nivel) {
       html += '<tr style="' + bgStyle + '">' +
         '<td style="' + rowStyle + 'text-align:center;font-weight:bold;">' + num + '</td>' +
         '<td style="' + rowStyle + 'font-weight:bold;">' + nombre + '</td>' +
-        '<td style="' + rowStyle + 'text-align:center;">' + codP + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + doc + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + correo + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + celular + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + codP + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + (fila['CODMOD I.E.'] || '') + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + sit + '</td>' +
         '<td style="' + rowStyle + '">' + cargo + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + tipo + '</td>' +
