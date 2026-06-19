@@ -4904,28 +4904,48 @@ function capDescargarExcel() {
     var codP = (fila['CODIGO DE PLAZA'] || '').toString().trim();
     var st = fila['SUB-TIPO DE TRABAJADOR'] || 'OTROS';
 
-    return {
-      "N°": idx + 1,
-      "Sub-Tipo": st,
-      "Apellidos y Nombres": nombre,
-      "DNI": doc,
-      "Correo": correo,
-      "Celular": celular,
-      "Código Plaza": codP,
-      "Cód. Mod.": fila['CODMOD I.E.'] || '',
-      "Situación": sit,
-      "Cargo": cargo,
-      "Tipo": tipo,
-      "C.R.": cr,
-      "J.L.": jl,
-      "Motivo Vacante": motivo
-    };
+    return [
+      idx + 1, st, nombre, doc, correo, celular, codP, fila['CODMOD I.E.'] || '', sit, cargo, tipo, cr, jl, motivo
+    ];
   });
 
-  var ws = XLSX.utils.json_to_sheet(data);
+  var ieNombre = window.currentCapReporteIE || 'IE';
+  var nivelStr = window.currentCapReporteNivel || '';
+
+  var aoa = [];
+  aoa.push(['UGEL BELLAVISTA - REPORTE DE PLAZAS CAP']);
+  aoa.push(['Institución Educativa:', ieNombre, '', 'Nivel:', nivelStr]);
+  aoa.push([]); // blank row
+  aoa.push(["N°", "Sub-Tipo", "Apellidos y Nombres", "DNI", "Correo", "Celular", "Código Plaza", "Cód. Mod.", "Situación", "Cargo", "Tipo", "C.R.", "J.L.", "Motivo Vacante"]);
+
+  aoa = aoa.concat(data);
+
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Ancho de columnas para que se vea profesional
+  ws['!cols'] = [
+    {wch: 5},   // N°
+    {wch: 25},  // Sub-Tipo
+    {wch: 45},  // Apellidos y Nombres
+    {wch: 12},  // DNI
+    {wch: 30},  // Correo
+    {wch: 12},  // Celular
+    {wch: 15},  // Cod Plaza
+    {wch: 10},  // Cod Mod
+    {wch: 18},  // Situacion
+    {wch: 35},  // Cargo
+    {wch: 15},  // Tipo
+    {wch: 15},  // CR
+    {wch: 10},  // JL
+    {wch: 35}   // Motivo Vacante
+  ];
+
+  // Combinar celdas para el título (fila 0, col 0 a 13)
+  if (!ws['!merges']) ws['!merges'] = [];
+  ws['!merges'].push({ s: {r:0, c:0}, e: {r:0, c:13} });
+
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "CAP");
-  var ieNombre = window.currentCapReporteIE || 'IE';
   var fileName = "CAP_" + ieNombre.replace(/[^a-zA-Z0-9_\-\ ]/g, '') + ".xlsx";
   XLSX.writeFile(wb, fileName);
 }
