@@ -2492,13 +2492,19 @@ async function monModalConfirmarEstado(id, est) {
 
 function monModalEliminar(asignacionId, actividadId) {
   showModal('Eliminar Asignación',
-    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs.</p>',
+    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs. Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="mon-modal-eliminar-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="monModalConfirmarEliminar(' + asignacionId + ',' + actividadId + ')">Eliminar</button>');
 }
 
 async function monModalConfirmarEliminar(asignacionId, actividadId) {
+  var razon = document.getElementById('mon-modal-eliminar-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE' });
+    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE', body: { razon: razon } });
     showToast('Asignación eliminada con éxito', 'success');
     closeModal();
     await loadMonitoreo();
