@@ -2584,6 +2584,8 @@ async function confirmarEliminarActividad(id) {
     showToast('Actividad eliminada', 'success');
     closeModal();
     loadMonitoreo();
+    if (typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadCalendario === 'function') loadCalendario();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
@@ -2687,6 +2689,8 @@ async function guardarEdicionActividad(id) {
     showToast('Actividad actualizada', 'success');
     closeModal();
     loadMonitoreo();
+    if (typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadCalendario === 'function') loadCalendario();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
