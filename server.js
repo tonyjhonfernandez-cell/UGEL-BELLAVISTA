@@ -1435,7 +1435,7 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
         const { titulo, descripcion, tipo_id, fecha_limite, hora_limite, fecha_inicio, link_url, niveles_aplicados } = req.body;
         
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
-        const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(req.params.id);
+        const actividad = await db.prepare('SELECT asignador_id, tipo_id, niveles_aplicados FROM actividades WHERE id = ?').get(req.params.id);
         if (!actividad) return res.status(404).json({ error: 'Actividad no encontrada' });
         if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para editar esta actividad' });
@@ -1444,9 +1444,12 @@ app.put('/api/actividades/:id', authSupervisor, async (req, res) => {
         const hora = hora_limite || '23:59';
         const inicio = fecha_inicio || fecha_limite;
         const tituloUp = titulo ? titulo.toUpperCase() : titulo;
+        const finalTipoId = tipo_id !== undefined ? tipo_id : actividad.tipo_id;
+        const finalNiveles = niveles_aplicados !== undefined ? niveles_aplicados : actividad.niveles_aplicados;
+
         await db.prepare(
             'UPDATE actividades SET titulo=?, descripcion=?, tipo_id=?, fecha_limite=?, hora_limite=?, fecha_inicio=?, link_url=?, niveles_aplicados=? WHERE id=?'
-        ).run(tituloUp, descripcion, tipo_id || null, fecha_limite, hora, inicio, link_url || null, niveles_aplicados || null, req.params.id);
+        ).run(tituloUp, descripcion, finalTipoId, fecha_limite, hora, inicio, link_url || null, finalNiveles, req.params.id);
 
         const localStr = new Date().toLocaleString('sv', { timeZone: 'America/Lima' });
         const [localDate, localTime] = localStr.split(' ');

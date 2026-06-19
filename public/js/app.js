@@ -2661,11 +2661,12 @@ async function editarActividadModal(actividadId) {
     var act = d.actividad || d;
     var linkChecked = act.link_url ? 'checked' : '';
     var linkDisplay = act.link_url ? 'block' : 'none';
+    var fechaFormatted = act.fecha_limite ? act.fecha_limite.split('T')[0] : '';
     showModal('Editar Actividad',
       '<form id="editar-act-form">' +
       '<div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ea-titulo" value="' + (act.titulo || '').replace(/"/g,'&quot;') + '" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;"></div>' +
       '<div class="mb-3"><label class="form-label">Descripción <span style="font-size:0.75rem;color:#6b7280;font-weight:400;">(referencia interna)</span></label><textarea class="form-control" id="ea-descripcion" rows="2">' + (act.descripcion || '') + '</textarea></div>' +
-      '<div class="mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + (act.fecha_limite || '') + '"></div>' +
+      '<div class="mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + fechaFormatted + '"></div>' +
       '<div class="mb-3"><label class="form-label">¿Incluye enlace?</label>' +
       '<div class="d-flex gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-no" value="no" ' + (act.link_url ? '' : 'checked') + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'none\'"><label class="form-check-label" for="ea-link-no">No</label></div>' +
       '<div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-si" value="si" ' + linkChecked + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'block\'"><label class="form-check-label" for="ea-link-si">Sí</label></div></div>' +
