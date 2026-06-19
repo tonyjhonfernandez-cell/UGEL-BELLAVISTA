@@ -4572,6 +4572,14 @@ async function capInitView() {
   var isAdmin = currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez');
   var uploadSec = document.getElementById('cap-upload-section');
   if (uploadSec) uploadSec.style.display = isAdmin ? 'block' : 'none';
+  
+  if (!allDirectores || allDirectores.length === 0) {
+    try {
+      var d = await api('/api/directores');
+      allDirectores = d.directores || d || [];
+    } catch(e) {}
+  }
+
   // Load data from server if not yet loaded
   if (!capDataGlobal.length) {
     await capCargarDelServidor();
@@ -4669,7 +4677,7 @@ function capBuscar() {
   var tbody = document.getElementById('cap-tbody-resultados');
   if (!tbody) return;
   if (!capDataGlobal.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>';
     return;
   }
   var valIE = (document.getElementById('cap-input-ie').value || '').toUpperCase().trim();
@@ -4695,17 +4703,24 @@ function capBuscar() {
       seen.add(key);
       var cm = (f['CODMOD I.E.'] || '').toString().replace(/'/g, '');
       var nv = (f['NIVEL EDUCATIVO'] || '').toString().replace(/'/g, '');
+      var directorMatch = allDirectores.find(function(d) { return d.ie_cod == cm; });
+      var dDni = directorMatch ? (directorMatch.dni || '-') : '-';
+      var dEmail = directorMatch ? (directorMatch.email || '-') : '-';
+      var dCel = directorMatch ? (directorMatch.telefono || '-') : '-';
       html += '<tr>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + f['CODMOD I.E.'] + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;">' + (f['NOMBRE DE LA INSTITUCION EDUCATIVA'] || '') + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + (f['NIVEL EDUCATIVO'] || '') + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dDni + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dEmail + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dCel + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.78rem;color:var(--text3);">' + (f['NOMBRE DEL ORGANO INTERMEDIO'] || '') + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' +
           '<button class="btn btn-primary btn-sm" onclick="capGenerarReporte(\'' + cm + '\',\'' + nv + '\')"><i class="fas fa-eye"></i> Ver CAP</button>' +
         '</td></tr>';
     }
   });
-  if (!html) html = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron resultados.</td></tr>';
+  if (!html) html = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron resultados.</td></tr>';
   tbody.innerHTML = html;
 }
 
