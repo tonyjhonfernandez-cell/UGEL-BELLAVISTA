@@ -1784,10 +1784,13 @@ async function cargarListasIE() {
     var html = '';
     listas.forEach(function(lista) {
       var ids = JSON.parse(lista.ie_ids || '[]');
-      html += '<div class="form-check" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">' +
-        '<input class="form-check-input as-lista-radio" type="radio" name="as-lista-sel" value="' + lista.id + '" id="lista-' + lista.id + '" data-ie-ids=\'' + lista.ie_ids + '\'>' +
-        '<label class="form-check-label" for="lista-' + lista.id + '" style="font-weight:600;">' + lista.nombre + ' <span style="color:#6b7280; font-weight:400; font-size:0.78rem;">(' + ids.length + ' IEs)</span></label>' +
-        '<button type="button" class="btn btn-xs btn-danger ms-2" onclick="eliminarLista(' + lista.id + ')"><i class="fas fa-trash"></i></button>' +
+      var deleteBtn = lista.id < 0 ? '' : '<button type="button" class="btn btn-xs btn-danger ms-2" onclick="eliminarLista(' + lista.id + ')"><i class="fas fa-trash"></i></button>';
+      html += '<div class="form-check" style="padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+          '<input class="form-check-input as-lista-radio" type="radio" name="as-lista-sel" value="' + lista.id + '" id="lista-' + lista.id + '" data-ie-ids=\'' + lista.ie_ids + '\'>' +
+          '<label class="form-check-label" for="lista-' + lista.id + '" style="font-weight:600; cursor:pointer;">' + lista.nombre + ' <span style="color:#6b7280; font-weight:400; font-size:0.78rem;">(' + ids.length + ' IEs)</span></label>' +
+        '</div>' +
+        deleteBtn +
         '</div>';
     });
     cont.innerHTML = html;
@@ -2815,9 +2818,11 @@ async function loadIEs() {
   try {
     var n = document.getElementById('ie-nivel-filter').value;
     var b = document.getElementById('ie-search-text').value;
+    var m = (document.getElementById('ie-modelo-filter') || {}).value || '';
     var u = '/api/ies?';
     if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
     if (b) u += 'buscar=' + encodeURIComponent(b) + '&';
+    if (m) u += 'modelo=' + encodeURIComponent(m) + '&';
     var d = await api(u);
     var ies = d.ies || d || [];
     var html = '';
@@ -4166,7 +4171,14 @@ async function guardarIE(ieId = null) {
 }
 
 function exportarIEs() {
-  window.location.href = '/api/export/instituciones';
+  var n = document.getElementById('ie-nivel-filter').value;
+  var b = document.getElementById('ie-search-text').value;
+  var m = (document.getElementById('ie-modelo-filter') || {}).value || '';
+  var u = '/api/export/instituciones?';
+  if (n) u += 'nivel=' + encodeURIComponent(n) + '&';
+  if (b) u += 'buscar=' + encodeURIComponent(b) + '&';
+  if (m) u += 'modelo=' + encodeURIComponent(m) + '&';
+  window.location.href = u;
 }
 
 function eliminarIE(id, nombre) {
@@ -4279,7 +4291,7 @@ async function eliminarNivel(id, nombre) {
 }
 
 // ===================== DASHBOARD IE STATS =====================
-var dashIEFilters = { nivel: '', zona: '', tipo: '' };
+var dashIEFilters = { nivel: '', zona: '', tipo: '', modelo: '' };
 
 async function loadDashboardIEStats() {
   var sc = document.getElementById('dashboard-stats-cards');
@@ -4288,6 +4300,7 @@ async function loadDashboardIEStats() {
   if (dashIEFilters.nivel) qs.set('nivel', dashIEFilters.nivel);
   if (dashIEFilters.zona) qs.set('zona', dashIEFilters.zona);
   if (dashIEFilters.tipo) qs.set('tipo', dashIEFilters.tipo);
+  if (dashIEFilters.modelo) qs.set('modelo', dashIEFilters.modelo);
   var stats = await api('/api/dashboard/stats?' + qs.toString());
 
   // Build KPI row 1
@@ -4327,12 +4340,16 @@ async function loadDashboardIEStats() {
   var tipoOpts = ['','POLIDOCENTE COMPLETO','MULTIGRADO','UNIDOCENTE'].map(function(t){
     return '<option value="' + t + '"' + (dashIEFilters.tipo === t ? ' selected' : '') + '>' + (t || 'Todos los tipos') + '</option>';
   }).join('');
+  var modeloOpts = ['','EIB','JEC','REGULAR'].map(function(m){
+    return '<option value="' + m + '"' + (dashIEFilters.modelo === m ? ' selected' : '') + '>' + (m === 'REGULAR' ? 'Regular' : m || 'Todos los modelos') + '</option>';
+  }).join('');
 
   var filterHtml =
     '<div class="filter-bar" style="margin-bottom:20px;">' +
       '<div class="filter-group"><label>Nivel</label><select class="form-select" onchange="dashIEFilters.nivel=this.value;loadDashboardIEStats()">' + nivelesOpts + '</select></div>' +
       '<div class="filter-group"><label>Zona</label><select class="form-select" onchange="dashIEFilters.zona=this.value;loadDashboardIEStats()">' + zonaOpts + '</select></div>' +
       '<div class="filter-group"><label>Tipo</label><select class="form-select" onchange="dashIEFilters.tipo=this.value;loadDashboardIEStats()">' + tipoOpts + '</select></div>' +
+      '<div class="filter-group"><label>Modelo</label><select class="form-select" onchange="dashIEFilters.modelo=this.value;loadDashboardIEStats()">' + modeloOpts + '</select></div>' +
       '<div class="filter-group" style="justify-content:flex-end;margin-top:auto;">' +
         '<button class="btn btn-outline-success btn-sm" onclick="descargarExcelIEs()"><i class="fas fa-file-excel"></i> Descargar Lista de IEs</button>' +
       '</div>' +
@@ -4387,6 +4404,7 @@ function descargarExcelIEs() {
   if (dashIEFilters.nivel) qs.set('nivel', dashIEFilters.nivel);
   if (dashIEFilters.zona) qs.set('zona', dashIEFilters.zona);
   if (dashIEFilters.tipo) qs.set('tipo', dashIEFilters.tipo);
+  if (dashIEFilters.modelo) qs.set('modelo', dashIEFilters.modelo);
   descargarExcel('/api/export/instituciones?' + qs.toString());
 }
 

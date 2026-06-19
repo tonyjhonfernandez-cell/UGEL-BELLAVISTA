@@ -254,6 +254,20 @@ async function applyMigrations() {
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (10) ON CONFLICT DO NOTHING');
     }
+
+    if (!applied.has(11)) {
+        try {
+            await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS modelo VARCHAR(20)");
+            const eibCodes = ['562175', '668394', '768652', '768671', '806282', '806362', '471340', '471415', '471514', '471632', '471707', '471731', '472354', '472392', '472453'];
+            const jecCodes = ['0537183', '0537282', '0537381', '0548818', '0548917', '0726323'];
+            await pool.query("UPDATE instituciones_educativas SET modelo = NULL");
+            await pool.query("UPDATE instituciones_educativas SET modelo = 'EIB' WHERE codigo = ANY($1)", [eibCodes]);
+            await pool.query("UPDATE instituciones_educativas SET modelo = 'JEC' WHERE cm_secundaria = ANY($1)", [jecCodes]);
+        } catch(e) {
+            console.error('Error en migración 11:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (11) ON CONFLICT DO NOTHING');
+    }
 }
 
 async function initDatabase() {
@@ -291,6 +305,7 @@ async function initDatabase() {
             provincia VARCHAR(100),
             distrito VARCHAR(100),
             lugar VARCHAR(150),
+            modelo VARCHAR(20),
             activa BOOLEAN DEFAULT true,
             created_at TIMESTAMP DEFAULT NOW()
         );
@@ -845,7 +860,7 @@ app.delete('/api/niveles/:id', authAdmin, async (req, res) => {
 
 app.get('/api/ies', async (req, res) => {
     try {
-        const { nivel, buscar } = req.query;
+        const { nivel, buscar, modelo } = req.query;
         let whereExtra = '';
         const params = [];
 
@@ -853,6 +868,14 @@ app.get('/api/ies', async (req, res) => {
             const nivelClean = validarNivel(nivel);
             if (nivelClean) {
                 whereExtra += ` AND EXISTS (SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id WHERE iln2.ie_id = ie.id AND ne2.clave = '${nivelClean}')`;
+            }
+        }
+        if (modelo) {
+            if (modelo === 'REGULAR') {
+                whereExtra += " AND (ie.modelo IS NULL OR ie.modelo = '')";
+            } else {
+                whereExtra += ' AND ie.modelo = ?';
+                params.push(modelo);
             }
         }
         if (buscar) {
@@ -2105,7 +2128,25 @@ app.get('/api/force-seed', async (req, res) => {
 app.get('/api/listas-ie', authSupervisor, async (req, res) => {
     try {
         const rows = await db.prepare('SELECT * FROM listas_ie WHERE creador_id = ? ORDER BY nombre').all(req.session.user.id);
-        res.json(rows);
+        
+        // Cargar IEs del sistema para listas predefinidas EIB y JEC
+        const eibIes = await pool.query("SELECT id FROM instituciones_educativas WHERE activa = true AND modelo = 'EIB' ORDER BY codigo");
+        const jecIes = await pool.query("SELECT id FROM instituciones_educativas WHERE activa = true AND modelo = 'JEC' ORDER BY codigo");
+        
+        const presetEib = {
+            id: -1,
+            nombre: 'EIB',
+            ie_ids: JSON.stringify(eibIes.rows.map(r => ({ id: r.id, niveles: null }))),
+            is_system: true
+        };
+        const presetJec = {
+            id: -2,
+            nombre: 'JEC',
+            ie_ids: JSON.stringify(jecIes.rows.map(r => ({ id: r.id, niveles: null }))),
+            is_system: true
+        };
+        
+        res.json([presetEib, presetJec, ...rows]);
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -2124,7 +2165,11 @@ app.post('/api/listas-ie', authSupervisor, async (req, res) => {
 
 app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
     try {
-        await db.prepare('DELETE FROM listas_ie WHERE id = ? AND creador_id = ?').run(req.params.id, req.session.user.id);
+        const id = parseInt(req.params.id);
+        if (id < 0) {
+            return res.status(400).json({ error: 'No se pueden eliminar las listas predefinidas del sistema' });
+        }
+        await db.prepare('DELETE FROM listas_ie WHERE id = ? AND creador_id = ?').run(id, req.session.user.id);
         res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -2132,7 +2177,7 @@ app.delete('/api/listas-ie/:id', authSupervisor, async (req, res) => {
 // ===================== DASHBOARD STATS =====================
 app.get('/api/dashboard/stats', authDirector, async (req, res) => {
     try {
-        const { nivel, zona, tipo } = req.query;
+        const { nivel, zona, tipo, modelo } = req.query;
         // Build extra WHERE conditions for filters
         let extraWhere = '';
         if (nivel) {
@@ -2146,6 +2191,14 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
         if (tipo) {
             const safeTipo = tipo.replace(/['"\\;]/g, '');
             extraWhere += ` AND ie.tipo = '${safeTipo}'`;
+        }
+        if (modelo) {
+            if (modelo === 'REGULAR') {
+                extraWhere += " AND (ie.modelo IS NULL OR ie.modelo = '')";
+            } else {
+                const safeModelo = modelo.replace(/['"\\;]/g, '');
+                extraWhere += ` AND ie.modelo = '${safeModelo}'`;
+            }
         }
 
         // Locales: IEs sin contar PRONOEI (cada código local = 1 IE)
@@ -2785,7 +2838,7 @@ app.post('/api/cap/upload', authDirector, async (req, res) => {
 // ===================== EXPORT EXCEL =====================
 app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
     try {
-        const { nivel, zona, tipo } = req.query;
+        const { nivel, zona, tipo, modelo } = req.query;
         let extraWhere = '';
         if (nivel) {
             const safeNivel = nivel.replace(/[^a-z0-9_]/gi, '');
@@ -2799,8 +2852,16 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
             const safeTipo = tipo.replace(/['"\\;]/g, '');
             extraWhere += ` AND ie.tipo = '${safeTipo}'`;
         }
+        if (modelo) {
+            if (modelo === 'REGULAR') {
+                extraWhere += " AND (ie.modelo IS NULL OR ie.modelo = '')";
+            } else {
+                const safeModelo = modelo.replace(/['"\\;]/g, '');
+                extraWhere += ` AND ie.modelo = '${safeModelo}'`;
+            }
+        }
         const ies = await pool.query(`
-            SELECT ie.codigo, ie.nombre, ie.ruralidad, ie.tipo, ie.provincia, ie.distrito, ie.lugar,
+            SELECT ie.codigo, ie.nombre, ie.ruralidad, ie.tipo, ie.provincia, ie.distrito, ie.lugar, ie.modelo,
                    ie.activa, u.nombre_completo as director, u.email as director_email, u.telefono as director_telefono
             FROM instituciones_educativas ie
             LEFT JOIN usuarios u ON u.ie_codigo = ie.codigo AND u.rol = 'director' AND u.activo = true
@@ -2837,6 +2898,8 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
             { header: 'CÓDIGO(S) MODULAR(ES)',  key: 'cms',       width: 30 },
             { header: 'ZONA',                   key: 'ruralidad', width: 14 },
             { header: 'TIPO',                   key: 'tipo',      width: 24 },
+            { header: 'JEC',                    key: 'jec',       width: 10 },
+            { header: 'EIB',                    key: 'eib',       width: 10 },
             { header: 'PROVINCIA',              key: 'provincia', width: 16 },
             { header: 'DISTRITO',               key: 'distrito',  width: 16 },
             { header: 'LUGAR',                  key: 'lugar',     width: 20 },
@@ -2871,8 +2934,10 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
             const row = ws.getRow(rowNum);
             row.values = [
                 i + 1, ie.codigo, ie.nombre, nivelesStr, cmsStr,
-                ie.ruralidad || '', ie.tipo || '', ie.provincia || '',
-                ie.distrito || '', ie.lugar || '',
+                ie.ruralidad || '', ie.tipo || '', 
+                ie.modelo === 'JEC' ? 'SI' : 'NO',
+                ie.modelo === 'EIB' ? 'SI' : 'NO',
+                ie.provincia || '', ie.distrito || '', ie.lugar || '',
                 ie.director || '', ie.director_email || '', ie.director_telefono || ''
             ];
             row.height = Math.max(16, nivs.length * 16);

@@ -40,6 +40,7 @@ async function runImport() {
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS cm_cuna_jardin VARCHAR(20)");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS es_modalidad_alternativa BOOLEAN DEFAULT false");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS codigo_base VARCHAR(20)");
+        await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS modelo VARCHAR(20)");
         console.log('Columnas verificadas OK.');
         
         // Obtener IDs de niveles educativos
@@ -312,8 +313,15 @@ async function runImport() {
                 primaryDir.nombre, school.codigo, username, defaultPassword,
                 primaryDir.email || null, primaryDir.telefono || null
             ]);
-            dirProcessed++;
         }
+        
+        console.log('Actualizando modelos EIB y JEC...');
+        const eibCodes = ['562175', '668394', '768652', '768671', '806282', '806362', '471340', '471415', '471514', '471632', '471707', '471731', '472354', '472392', '472453'];
+        const jecCodes = ['0537183', '0537282', '0537381', '0548818', '0548917', '0726323'];
+        await pool.query("UPDATE instituciones_educativas SET modelo = NULL");
+        await pool.query("UPDATE instituciones_educativas SET modelo = 'EIB' WHERE codigo = ANY($1)", [eibCodes]);
+        await pool.query("UPDATE instituciones_educativas SET modelo = 'JEC' WHERE cm_secundaria = ANY($1)", [jecCodes]);
+        console.log('Modelos actualizados OK.');
         
         console.log('\n--- Resumen de la Importación ---');
         console.log(`IEs creadas: ${ieInserted}`);
