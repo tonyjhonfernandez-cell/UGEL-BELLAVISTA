@@ -2013,6 +2013,17 @@ app.put('/api/notificaciones/marcar-leidas', authDirector, async (req, res) => {
     }
 });
 
+app.put('/api/notificaciones/:id/leer', authDirector, async (req, res) => {
+    try {
+        await db.prepare(
+            'UPDATE notificaciones SET leida = true WHERE id = ? AND usuario_id = ?'
+        ).run(req.params.id, req.session.user.id);
+        res.json({ ok: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/notificaciones', authSupervisor, async (req, res) => {
     try {
         const { usuario_id, titulo, mensaje, tipo } = req.body;
