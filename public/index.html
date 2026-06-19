@@ -706,6 +706,31 @@
         </div>
       </div>
 
+      <!-- ==================== ADMINISTRADOR: PAPELERA ==================== -->
+      <div class="view-section" id="view-papelera">
+        <div class="page-hd">
+          <h2>Papelera de Reciclaje</h2>
+          <span>Actividades y Capacitaciones eliminadas (se conservan por 30 días)</span>
+        </div>
+        <div class="t-card">
+          <div class="t-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Título</th>
+                  <th>Eliminado Por</th>
+                  <th>Fecha Eliminación</th>
+                  <th>Razón</th>
+                  <th style="width:200px; text-align:center;">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="papelera-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ==================== SUPERVISOR: IEs ==================== -->
       <div class="view-section" id="view-ies">
         <div class="page-hd" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1292,6 +1317,7 @@
             <button class="btn btn-secondary btn-sm" onclick="capVolverBusqueda()"><i class="fas fa-arrow-left"></i> Volver a resultados</button>
             <div style="display:flex;gap:8px;">
               <button class="btn btn-sm" style="background:#10b981;color:#fff;" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+              <button class="btn btn-sm" style="background:#1d4ed8;color:#fff;" onclick="capDescargarExcel()"><i class="fas fa-file-excel"></i> Excel</button>
               <button class="btn btn-sm" style="background:#ef4444;color:#fff;" onclick="capDescargarPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
             </div>
           </div>
@@ -1319,7 +1345,9 @@
 
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="/js/app.js?v=2.93"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="/js/app.js?v=2.102"></script>
 <script src="/js/cal_premium.js?v=2.0"></script>
 </body>
 </html>

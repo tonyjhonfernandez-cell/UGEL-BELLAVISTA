@@ -113,6 +113,18 @@ function showPublicDashboardFromLogin() {
   initDirectorApp();
   initPublicDashboard();
 }
+function formatDateShort(dateStr) {
+  if (!dateStr) return '-';
+  try {
+    var parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    var day = parts[2].split('T')[0];
+    var month = parts[1];
+    var year = parts[0];
+    return parseInt(day) + '/' + parseInt(month) + '/' + year;
+  } catch (e) { return dateStr; }
+}
+
 function formatFechaMock(dateStr) {
   if (!dateStr) return '-';
   try {
@@ -649,6 +661,7 @@ function buildSidebar() {
       html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
       if (currentUser.rol === 'admin') {
         html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
+        html += '<a href="#" data-view="papelera" onclick="cambiarVista(\'papelera\',this)"><i class="fas fa-trash-restore"></i> Papelera</a>';
       }
     }
     
@@ -745,6 +758,7 @@ function loadViewData(vista) {
       if (document.getElementById('cap-alc-todas')) { document.getElementById('cap-alc-todas').checked = true; onChangeAlcanceCap('todas'); }
       break;
     case 'monitoreo-capacitaciones': loadCapacitaciones(); break;
+    case 'papelera': loadPapelera(); break;
   }
 }
 
@@ -2285,7 +2299,7 @@ async function loadMonitoreo() {
       var noCumplidas = grp.ies.filter(function(x){ return x.estado === 'no_cumplida'; }).length;
       var pendientes = total - completadas - inconclusas - noCumplidas;
       var pct = total > 0 ? Math.round(completadas / total * 100) : 0;
-      var dateText = grp.fecha_limite ? new Date(grp.fecha_limite).toLocaleDateString('es-PE') : '-';
+      var dateText = grp.fecha_limite ? formatDateShort(grp.fecha_limite) : '-';
       var pctColor = pct >= 80 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
 
       // Build stacked progress bar segments
@@ -2346,7 +2360,7 @@ function openMonModal(actId) {
     '</div>' +
     '<div style="flex-shrink:0;text-align:right;">' +
       '<div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Fecha Límite</div>' +
-      '<div style="font-weight:700;color:var(--text1);">' + (grp.fecha_limite ? new Date(grp.fecha_limite).toLocaleDateString('es-PE') : '-') + '</div>' +
+      '<div style="font-weight:700;color:var(--text1);">' + (grp.fecha_limite ? formatDateShort(grp.fecha_limite) : '-') + '</div>' +
       '<div style="margin-top:8px;font-size:.7rem;color:var(--text3);">Asignado por: <strong style="color:var(--text2);">' + (grp.asignador_nombre || '-') + '</strong></div>' +
     '</div>' +
   '</div>';
@@ -2567,7 +2581,7 @@ async function verDetalleAsignacion(id) {
       '<div class="col-12"><strong>Actividad:</strong> ' + (a.actividad_titulo || a.titulo || '-') + '</div>' +
       '<div class="col-12"><strong>Descripción:</strong> ' + (a.descripcion || a.actividad_descripcion || '-') + '</div>' +
       '<div class="col-6"><strong>Tipo:</strong> ' + (a.tipo_nombre || a.tipo || '-') + '</div>' +
-      '<div class="col-6"><strong>Fecha:</strong> ' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</div>' +
+      '<div class="col-6"><strong>Fecha:</strong> ' + (a.fecha_limite ? formatDateShort(a.fecha_limite) : '-') + '</div>' +
       '<div class="col-6"><strong>Hora:</strong> ' + (a.hora_limite || '-') + '</div>' +
       '<div class="col-6"><strong>Estado:</strong> <span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></div>' +
       (a.notas_supervisor ? '<div class="col-12"><strong>Notas:</strong> ' + a.notas_supervisor + '</div>' : '') +
@@ -2578,15 +2592,23 @@ async function verDetalleAsignacion(id) {
 
 function eliminarActividad(actividadId) {
   showModal('Confirmar Eliminación',
-    '<p>¿Está seguro de eliminar esta actividad? También se eliminarán todas las asignaciones relacionadas.</p>',
+    '<p>¿Está seguro de eliminar esta actividad? Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-actividad-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarActividad(' + actividadId + ')">Eliminar</button>');
 }
 async function confirmarEliminarActividad(id) {
+  var razon = document.getElementById('eliminar-actividad-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    await api('/api/actividades/' + id, { method: 'DELETE' });
+    await api('/api/actividades/' + id, { method: 'DELETE', body: { razon: razon } });
     showToast('Actividad eliminada', 'success');
     closeModal();
     loadMonitoreo();
+    if (typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadCalendario === 'function') loadCalendario();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
@@ -2664,11 +2686,12 @@ async function editarActividadModal(actividadId) {
     var act = d.actividad || d;
     var linkChecked = act.link_url ? 'checked' : '';
     var linkDisplay = act.link_url ? 'block' : 'none';
+    var fechaFormatted = act.fecha_limite ? act.fecha_limite.split('T')[0] : '';
     showModal('Editar Actividad',
       '<form id="editar-act-form">' +
       '<div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ea-titulo" value="' + (act.titulo || '').replace(/"/g,'&quot;') + '" oninput="this.value=this.value.toUpperCase()" style="text-transform:uppercase;"></div>' +
       '<div class="mb-3"><label class="form-label">Descripción <span style="font-size:0.75rem;color:#6b7280;font-weight:400;">(referencia interna)</span></label><textarea class="form-control" id="ea-descripcion" rows="2">' + (act.descripcion || '') + '</textarea></div>' +
-      '<div class="mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + (act.fecha_limite || '') + '"></div>' +
+      '<div class="mb-3"><label class="form-label">Fecha Límite</label><input type="date" class="form-control" id="ea-fecha" value="' + fechaFormatted + '"></div>' +
       '<div class="mb-3"><label class="form-label">¿Incluye enlace?</label>' +
       '<div class="d-flex gap-3 mb-2"><div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-no" value="no" ' + (act.link_url ? '' : 'checked') + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'none\'"><label class="form-check-label" for="ea-link-no">No</label></div>' +
       '<div class="form-check"><input class="form-check-input" type="radio" name="ea-link-toggle" id="ea-link-si" value="si" ' + linkChecked + ' onchange="document.getElementById(\'ea-link-box\').style.display=\'block\'"><label class="form-check-label" for="ea-link-si">Sí</label></div></div>' +
@@ -2689,6 +2712,8 @@ async function guardarEdicionActividad(id) {
     showToast('Actividad actualizada', 'success');
     closeModal();
     loadMonitoreo();
+    if (typeof loadDashboard === 'function') loadDashboard();
+    if (typeof loadCalendario === 'function') loadCalendario();
   } catch (e) { showToast('Error: ' + e.message, 'error'); }
 }
 
@@ -4590,6 +4615,14 @@ async function capInitView() {
   var isAdmin = currentUser && (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez');
   var uploadSec = document.getElementById('cap-upload-section');
   if (uploadSec) uploadSec.style.display = isAdmin ? 'block' : 'none';
+  
+  if (!allDirectores || allDirectores.length === 0) {
+    try {
+      var d = await api('/api/directores');
+      allDirectores = d.directores || d || [];
+    } catch(e) {}
+  }
+
   // Load data from server if not yet loaded
   if (!capDataGlobal.length) {
     await capCargarDelServidor();
@@ -4687,7 +4720,7 @@ function capBuscar() {
   var tbody = document.getElementById('cap-tbody-resultados');
   if (!tbody) return;
   if (!capDataGlobal.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3);">Carga la DATA NEXUS para empezar a buscar.</td></tr>';
     return;
   }
   var valIE = (document.getElementById('cap-input-ie').value || '').toUpperCase().trim();
@@ -4713,17 +4746,24 @@ function capBuscar() {
       seen.add(key);
       var cm = (f['CODMOD I.E.'] || '').toString().replace(/'/g, '');
       var nv = (f['NIVEL EDUCATIVO'] || '').toString().replace(/'/g, '');
+      var directorMatch = allDirectores.find(function(d) { return d.ie_cod == cm; });
+      var dDni = directorMatch ? (directorMatch.dni || '-') : '-';
+      var dEmail = directorMatch ? (directorMatch.email || '-') : '-';
+      var dCel = directorMatch ? (directorMatch.telefono || '-') : '-';
       html += '<tr>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + f['CODMOD I.E.'] + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;">' + (f['NOMBRE DE LA INSTITUCION EDUCATIVA'] || '') + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' + (f['NIVEL EDUCATIVO'] || '') + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dDni + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dEmail + '</td>' +
+        '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.8rem;">' + dCel + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:.78rem;color:var(--text3);">' + (f['NOMBRE DEL ORGANO INTERMEDIO'] || '') + '</td>' +
         '<td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">' +
           '<button class="btn btn-primary btn-sm" onclick="capGenerarReporte(\'' + cm + '\',\'' + nv + '\')"><i class="fas fa-eye"></i> Ver CAP</button>' +
         '</td></tr>';
     }
   });
-  if (!html) html = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron resultados.</td></tr>';
+  if (!html) html = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3);">No se encontraron resultados.</td></tr>';
   tbody.innerHTML = html;
 }
 
@@ -4744,6 +4784,10 @@ function capGenerarReporte(codMod, nivel) {
     contenedor.innerHTML = '<p style="padding:20px;color:var(--text3);">No hay plazas válidas (se excluyeron PEC, T9 y C9).</p>';
     return;
   }
+
+  window.currentCapReporteData = plazas;
+  window.currentCapReporteIE = plazas[0] ? plazas[0]['NOMBRE DE LA INSTITUCION EDUCATIVA'] : 'IE';
+  window.currentCapReporteNivel = nivel;
 
   var ordenSubtipos = ['DIRECTIVO','JERARQUICO','DOCENTE','AUXILIAR DE EDUCACION',
     'ESPECIALISTAS ADMINISTRATIVOS E INSTITUCIONALES DE LAS UGEL','AUXILIAR','TECNICO'];
@@ -4785,6 +4829,9 @@ function capGenerarReporte(codMod, nivel) {
       '<thead><tr style="background:#f0f0f0;">' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;width:20px;">N°</th>' +
         '<th style="border:1px solid #000;padding:4px;">Apellidos y Nombres</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">DNI</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Correo</th>' +
+        '<th style="border:1px solid #000;padding:4px;text-align:center;">Celular</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Código Plaza</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Cód. Mod.</th>' +
         '<th style="border:1px solid #000;padding:4px;text-align:center;">Situación</th>' +
@@ -4806,7 +4853,9 @@ function capGenerarReporte(codMod, nivel) {
 
       var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
       var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
-      var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['CODIGO MODULAR'] || '';
+      var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['NRO DOCUMENTO'] || '';
+      var correo = fila['CORREO'] || fila['EMAIL'] || fila['CORREO ELECTRONICO'] || '';
+      var celular = fila['CELULAR'] || fila['TELEFONO'] || '';
       var sit = fila['SITUACION LABORAL'] || '';
       var cargo = fila['CARGO'] || fila['TIPO DE TRABAJADOR'] || '';
       var tipo = fila['TIPO DE REGISTRO'] || '';
@@ -4826,8 +4875,11 @@ function capGenerarReporte(codMod, nivel) {
       html += '<tr style="' + bgStyle + '">' +
         '<td style="' + rowStyle + 'text-align:center;font-weight:bold;">' + num + '</td>' +
         '<td style="' + rowStyle + 'font-weight:bold;">' + nombre + '</td>' +
-        '<td style="' + rowStyle + 'text-align:center;">' + codP + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + doc + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + correo + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + celular + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + codP + '</td>' +
+        '<td style="' + rowStyle + 'text-align:center;">' + (fila['CODMOD I.E.'] || '') + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + sit + '</td>' +
         '<td style="' + rowStyle + '">' + cargo + '</td>' +
         '<td style="' + rowStyle + 'text-align:center;">' + tipo + '</td>' +
@@ -4858,6 +4910,102 @@ function capDescargarPDF() {
   } else {
     alert('Librería PDF no disponible. Usa Imprimir y guarda como PDF.');
   }
+}
+
+async function capDescargarExcel() {
+  if (!window.currentCapReporteData || !window.currentCapReporteData.length) {
+    alert('No hay datos para exportar.');
+    return;
+  }
+
+  if (typeof ExcelJS === 'undefined') {
+    alert('La librería ExcelJS no se cargó correctamente. Intenta recargar la página.');
+    return;
+  }
+  
+  var ordenSubtipos = ['DIRECTIVO','JERARQUICO','DOCENTE','AUXILIAR DE EDUCACION',
+    'ESPECIALISTAS ADMINISTRATIVOS E INSTITUCIONALES DE LAS UGEL','AUXILIAR','TECNICO'];
+  
+  var sortedData = window.currentCapReporteData.slice().sort(function(a, b) {
+    var sta = (a['SUB-TIPO DE TRABAJADOR'] || 'OTROS').toString().trim().toUpperCase();
+    var stb = (b['SUB-TIPO DE TRABAJADOR'] || 'OTROS').toString().trim().toUpperCase();
+    var ia = ordenSubtipos.indexOf(sta); var ib = ordenSubtipos.indexOf(stb);
+    if (ia === -1) ia = 999; if (ib === -1) ib = 999;
+    if (ia !== ib) return ia - ib;
+    var cpa = (a['CODIGO DE PLAZA'] || '').toString().trim();
+    var cpb = (b['CODIGO DE PLAZA'] || '').toString().trim();
+    return cpa.localeCompare(cpb);
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('CAP');
+
+  var ieNombre = window.currentCapReporteIE || 'IE';
+  var nivel = window.currentCapReporteNivel || '';
+  
+  ws.mergeCells('A1:N1');
+  var titleCell = ws.getCell('A1');
+  titleCell.value = 'CUADRO DE ASIGNACIÓN DE PERSONAL (CAP) - UGEL BELLAVISTA';
+  titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800000' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  ws.mergeCells('A2:N2');
+  var subTitle = ws.getCell('A2');
+  subTitle.value = 'I.E.: ' + ieNombre + ' | Nivel: ' + nivel;
+  subTitle.font = { name: 'Arial', size: 11, bold: true };
+  subTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  ws.addRow([]);
+
+  const headers = ["N°", "Sub-Tipo", "Apellidos y Nombres", "DNI", "Correo", "Celular", "Código Plaza", "Cód. Mod.", "Situación", "Cargo", "Tipo", "C.R.", "J.L.", "Motivo Vacante"];
+  const headerRow = ws.addRow(headers);
+  headerRow.height = 25;
+  
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+  });
+
+  ws.columns = [
+    { width: 5 }, { width: 22 }, { width: 35 }, { width: 12 }, { width: 25 }, { width: 12 }, 
+    { width: 15 }, { width: 12 }, { width: 15 }, { width: 25 }, { width: 15 }, { width: 10 }, 
+    { width: 8 }, { width: 25 }
+  ];
+
+  sortedData.forEach((fila, idx) => {
+    var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
+    var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
+    var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['NRO DOCUMENTO'] || '';
+    var correo = fila['CORREO'] || fila['EMAIL'] || fila['CORREO ELECTRONICO'] || '';
+    var celular = fila['CELULAR'] || fila['TELEFONO'] || '';
+    var sit = fila['SITUACION LABORAL'] || '';
+    var cargo = fila['CARGO'] || fila['TIPO DE TRABAJADOR'] || '';
+    var tipo = fila['TIPO DE REGISTRO'] || '';
+    var jl = fila['JORNADA LABORAL'] || '';
+    var motivo = fila['MOTIVO DE VACANTE'] || '';
+    var cr = fila['CATEGORIA REMUNERATIVA'] || fila['ESCALA HISTORIAL'] || fila['DESCRIPCION ESCALA'] || '';
+    var codP = (fila['CODIGO DE PLAZA'] || '').toString().trim();
+    var st = fila['SUB-TIPO DE TRABAJADOR'] || 'OTROS';
+
+    const row = ws.addRow([
+      idx + 1, st, nombre, doc, correo, celular, codP, fila['CODMOD I.E.'] || '', sit, cargo, tipo, cr, jl, motivo
+    ]);
+
+    row.eachCell((cell, colNumber) => {
+      cell.font = { name: 'Arial', size: 9 };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+      cell.alignment = { vertical: 'middle', wrapText: true };
+      if ([1,4,6,7,8,12,13].includes(colNumber)) { cell.alignment.horizontal = 'center'; }
+    });
+  });
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var fileName = "CAP_" + ieNombre.replace(/[^a-zA-Z0-9_\-\ ]/g, '') + ".xlsx";
+  saveAs(blob, fileName);
 }
 // ===================== CALENDARIO =====================
 window.calendar = null;
@@ -5373,13 +5521,23 @@ async function submitCrearCapacitacion() {
   }
 }
 
-async function eliminarCapacitacion(id) {
-  if (!confirm('¿Está seguro de que desea eliminar esta capacitación? Se borrarán permanentemente todos los registros de asistencia asociados.')) {
+function eliminarCapacitacion(id) {
+  showModal('Confirmar Eliminación',
+    '<p>¿Está seguro de eliminar esta capacitación? Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-cap-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarCapacitacion(' + id + ')">Eliminar</button>');
+}
+
+async function confirmarEliminarCapacitacion(id) {
+  var razon = document.getElementById('eliminar-cap-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
     return;
   }
   try {
-    await api('/api/capacitaciones/' + id, { method: 'DELETE' });
+    await api('/api/capacitaciones/' + id, { method: 'DELETE', body: { razon: razon } });
     showToast('Capacitación eliminada con éxito', 'success');
+    closeModal();
     loadCapacitaciones();
   } catch (err) {
     showToast('Error al eliminar capacitación: ' + err.message, 'error');
@@ -6089,5 +6247,83 @@ async function guardarAgregarIEs() {
     loadMonitoreo();
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ==================== PAPELERA DE RECICLAJE ====================
+async function loadPapelera() {
+  try {
+    var tbody = document.getElementById('papelera-table');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Cargando papelera...</td></tr>';
+    var res = await api('/api/papelera');
+    renderPapelera(res);
+  } catch (err) {
+    document.getElementById('papelera-table').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger)">Error: ' + err.message + '</td></tr>';
+  }
+}
+
+function renderPapelera(data) {
+  var tbody = document.getElementById('papelera-table');
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">La papelera está vacía</td></tr>';
+    return;
+  }
+  
+  var html = '';
+  var now = new Date();
+  
+  data.forEach(function(item) {
+    var deletedDate = new Date(item.deleted_at);
+    var dateStr = formatDateShort(item.deleted_at);
+    
+    // Calcular días restantes (30 días desde la eliminación)
+    var diffTime = now - deletedDate;
+    var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    var daysLeft = Math.max(0, 30 - diffDays);
+    
+    var tipoBadge = item.tipo === 'actividad' 
+      ? '<span class="badge" style="background:#3b82f6;color:white">Actividad</span>'
+      : '<span class="badge" style="background:#8b5cf6;color:white">Capacitación</span>';
+
+    html += '<tr>';
+    html += '  <td>' + tipoBadge + '</td>';
+    html += '  <td style="font-weight:600;color:var(--text1)">' + item.titulo + '</td>';
+    html += '  <td>' + (item.usuario || 'Desconocido') + '</td>';
+    html += '  <td>' + dateStr + '<br><small style="color:var(--text3)">Quedan ' + daysLeft + ' días</small></td>';
+    html += '  <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + (item.deleted_reason || 'Sin razón') + '">' + (item.deleted_reason || '-') + '</td>';
+    html += '  <td style="text-align:center;">';
+    html += '    <button class="btn btn-sm btn-outline" style="color:var(--success);border-color:var(--success);margin-right:4px;" onclick="restaurarElementoPapelera(\'' + item.tipo + '\', ' + item.id + ')" title="Restaurar"><i class="fas fa-trash-restore"></i></button>';
+    html += '    <button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="eliminarDefinitivoPapelera(\'' + item.tipo + '\', ' + item.id + ')" title="Eliminar Definitivamente"><i class="fas fa-times-circle"></i></button>';
+    html += '  </td>';
+    html += '</tr>';
+  });
+  
+  tbody.innerHTML = html;
+}
+
+async function restaurarElementoPapelera(tipo, id) {
+  try {
+    await api('/api/papelera/restaurar/' + tipo + '/' + id, { method: 'PUT' });
+    showToast(tipo.charAt(0).toUpperCase() + tipo.slice(1) + ' restaurada exitosamente', 'success');
+    loadPapelera();
+  } catch (err) {
+    showToast('Error al restaurar: ' + err.message, 'error');
+  }
+}
+
+function eliminarDefinitivoPapelera(tipo, id) {
+  showModal('Confirmar Eliminación Definitiva',
+    '<p>¿Está seguro de eliminar esta ' + tipo + ' permanentemente? <strong style="color:var(--danger)">Esta acción no se puede deshacer.</strong></p>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarDefinitivoPapelera(\'' + tipo + '\', ' + id + ')">Eliminar Permanentemente</button>');
+}
+
+async function confirmarEliminarDefinitivoPapelera(tipo, id) {
+  try {
+    await api('/api/papelera/eliminar/' + tipo + '/' + id, { method: 'DELETE' });
+    showToast(tipo.charAt(0).toUpperCase() + tipo.slice(1) + ' eliminada permanentemente', 'success');
+    closeModal();
+    loadPapelera();
+  } catch (err) {
+    showToast('Error al eliminar: ' + err.message, 'error');
   }
 }
