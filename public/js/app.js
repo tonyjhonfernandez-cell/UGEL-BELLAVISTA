@@ -614,6 +614,7 @@ function initSupervisorApp() {
   cargarTiposActividad();
   cargarSupervisores();
   loadNotifBadge();
+  loadNotificaciones();
   loadNiveles();
   
   if (currentUser.rol === 'admin') {
@@ -2492,13 +2493,19 @@ async function monModalConfirmarEstado(id, est) {
 
 function monModalEliminar(asignacionId, actividadId) {
   showModal('Eliminar Asignación',
-    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs.</p>',
+    '<p>¿Eliminar la asignación de esta IE? La actividad continuará para las demás IEs. Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="mon-modal-eliminar-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="monModalConfirmarEliminar(' + asignacionId + ',' + actividadId + ')">Eliminar</button>');
 }
 
 async function monModalConfirmarEliminar(asignacionId, actividadId) {
+  var razon = document.getElementById('mon-modal-eliminar-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE' });
+    await api('/api/asignaciones/' + asignacionId, { method: 'DELETE', body: { razon: razon } });
     showToast('Asignación eliminada con éxito', 'success');
     closeModal();
     await loadMonitoreo();
@@ -3012,16 +3019,47 @@ async function loadNotificaciones() {
     var d = await api('/api/notificaciones');
     var rows = d.notificaciones || d || [];
     var html = '';
+    var ddHtml = '';
+    
     if (rows.length > 0) {
       for (var i = 0; i < rows.length; i++) {
         var n = rows[i];
-        html += '<tr><td>' + (n.remitente_nombre || (n.tipo === 'respuesta' ? 'Director' : 'Supervisor') || '-') + '</td><td>' + (n.titulo || '-') + '</td><td>' + (n.mensaje || '-').substring(0, 80) + ((n.mensaje || '').length > 80 ? '...' : '') + '</td><td>' + (n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-') + '</td><td><span class="badge ' + (n.leida ? 'bg-secondary' : 'bg-warning') + '">' + (n.leida ? 'Sí' : 'No') + '</span></td></tr>';
+        var badge = '<span class="badge ' + (n.leida ? 'bg-secondary' : 'bg-warning') + '">' + (n.leida ? 'Sí' : 'No') + '</span>';
+        var actionBtn = n.leida ? '' : '<button class="btn btn-xs btn-outline-primary" style="margin-top:4px;" onclick="marcarLeida(' + n.id + ')"><i class="fas fa-check"></i> Marcar leída</button>';
+        
+        // Table row
+        html += '<tr>' +
+                '<td>' + (n.remitente_nombre || (n.tipo === 'respuesta' ? 'Director' : 'Supervisor') || '-') + '</td>' +
+                '<td>' + (n.titulo || '-') + '</td>' +
+                '<td>' + (n.mensaje || '-').substring(0, 80) + ((n.mensaje || '').length > 80 ? '...' : '') + '</td>' +
+                '<td>' + (n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-') + '</td>' +
+                '<td>' + badge + '<br>' + actionBtn + '</td>' +
+                '</tr>';
+                
+        // Dropdown item (show unread first, up to 10)
+        if (i < 10) {
+          var bg = n.leida ? 'transparent' : '#f0f9ff';
+          var border = n.leida ? 'none' : '3px solid #0ea5e9';
+          ddHtml += '<div style="padding:12px 18px;border-bottom:1px solid #f3f4f6;background:' + bg + ';border-left:' + border + '">';
+          ddHtml += '  <div style="font-weight:600;font-size:0.85rem;color:var(--text1);margin-bottom:2px;">' + (n.titulo || '-') + '</div>';
+          ddHtml += '  <div style="font-size:0.75rem;color:var(--text2);margin-bottom:4px;">' + (n.mensaje || '-') + '</div>';
+          ddHtml += '  <div style="font-size:0.65rem;color:var(--text3);display:flex;justify-content:space-between;align-items:center;">';
+          ddHtml += '    <span>' + (n.created_at ? new Date(n.created_at).toLocaleString('es-PE') : '-') + '</span>';
+          if (!n.leida) {
+            ddHtml += '    <button style="background:none;border:none;color:#0ea5e9;cursor:pointer;font-size:0.7rem;font-weight:500" onclick="marcarLeida(' + n.id + ')">Marcar leída</button>';
+          }
+          ddHtml += '  </div>';
+          ddHtml += '</div>';
+        }
       }
     } else {
       html = '<tr class="empty"><td colspan="5">No hay notificaciones</td></tr>';
+      ddHtml = '<p style="text-align:center;padding:24px;color:var(--text3);font-size:.82rem">No hay notificaciones</p>';
     }
     document.getElementById('notificaciones-table').innerHTML = html;
-  } catch (e) { showToast('Error al cargar', 'error'); }
+    var ddBody = document.getElementById('notif-dropdown-body');
+    if (ddBody) ddBody.innerHTML = ddHtml;
+  } catch (e) { showToast('Error al cargar notificaciones', 'error'); }
 }
 async function loadDirectoresForNotif() {
   try {
@@ -3067,6 +3105,17 @@ async function marcarLeidas() {
     loadNotificaciones();
     showToast('Marcadas como leídas', 'success');
   } catch (e) {}
+}
+
+async function marcarLeida(id) {
+  try {
+    await api('/api/notificaciones/' + id + '/leer', { method: 'PUT' });
+    loadNotifBadge();
+    loadNotificaciones();
+    showToast('Notificación leída', 'success');
+  } catch (e) {
+    showToast('Error al marcar leída', 'error');
+  }
 }
 document.addEventListener('click', function (e) {
   var dd = document.getElementById('notif-dropdown');
