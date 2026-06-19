@@ -661,6 +661,7 @@ function buildSidebar() {
       html += '<a href="#" data-view="ies" onclick="cambiarVista(\'ies\',this)"><i class="fas fa-school"></i> Inst. Educativas</a>';
       if (currentUser.rol === 'admin') {
         html += '<a href="#" data-view="admin-usuarios" onclick="cambiarVista(\'admin-usuarios\',this)"><i class="fas fa-users-cog"></i> Usuarios</a>';
+        html += '<a href="#" data-view="papelera" onclick="cambiarVista(\'papelera\',this)"><i class="fas fa-trash-restore"></i> Papelera</a>';
       }
     }
     
@@ -757,6 +758,7 @@ function loadViewData(vista) {
       if (document.getElementById('cap-alc-todas')) { document.getElementById('cap-alc-todas').checked = true; onChangeAlcanceCap('todas'); }
       break;
     case 'monitoreo-capacitaciones': loadCapacitaciones(); break;
+    case 'papelera': loadPapelera(); break;
   }
 }
 
@@ -2587,12 +2589,18 @@ async function verDetalleAsignacion(id) {
 
 function eliminarActividad(actividadId) {
   showModal('Confirmar Eliminación',
-    '<p>¿Está seguro de eliminar esta actividad? También se eliminarán todas las asignaciones relacionadas.</p>',
+    '<p>¿Está seguro de eliminar esta actividad? Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-actividad-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarActividad(' + actividadId + ')">Eliminar</button>');
 }
 async function confirmarEliminarActividad(id) {
+  var razon = document.getElementById('eliminar-actividad-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    await api('/api/actividades/' + id, { method: 'DELETE' });
+    await api('/api/actividades/' + id, { method: 'DELETE', body: { razon: razon } });
     showToast('Actividad eliminada', 'success');
     closeModal();
     loadMonitoreo();
@@ -5495,13 +5503,23 @@ async function submitCrearCapacitacion() {
   }
 }
 
-async function eliminarCapacitacion(id) {
-  if (!confirm('¿Está seguro de que desea eliminar esta capacitación? Se borrarán permanentemente todos los registros de asistencia asociados.')) {
+function eliminarCapacitacion(id) {
+  showModal('Confirmar Eliminación',
+    '<p>¿Está seguro de eliminar esta capacitación? Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-cap-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarCapacitacion(' + id + ')">Eliminar</button>');
+}
+
+async function confirmarEliminarCapacitacion(id) {
+  var razon = document.getElementById('eliminar-cap-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
     return;
   }
   try {
-    await api('/api/capacitaciones/' + id, { method: 'DELETE' });
+    await api('/api/capacitaciones/' + id, { method: 'DELETE', body: { razon: razon } });
     showToast('Capacitación eliminada con éxito', 'success');
+    closeModal();
     loadCapacitaciones();
   } catch (err) {
     showToast('Error al eliminar capacitación: ' + err.message, 'error');
@@ -6211,5 +6229,83 @@ async function guardarAgregarIEs() {
     loadMonitoreo();
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ==================== PAPELERA DE RECICLAJE ====================
+async function loadPapelera() {
+  try {
+    var tbody = document.getElementById('papelera-table');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;">Cargando papelera...</td></tr>';
+    var res = await api('/api/papelera');
+    renderPapelera(res);
+  } catch (err) {
+    document.getElementById('papelera-table').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger)">Error: ' + err.message + '</td></tr>';
+  }
+}
+
+function renderPapelera(data) {
+  var tbody = document.getElementById('papelera-table');
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3)">La papelera está vacía</td></tr>';
+    return;
+  }
+  
+  var html = '';
+  var now = new Date();
+  
+  data.forEach(function(item) {
+    var deletedDate = new Date(item.deleted_at);
+    var dateStr = formatDateShort(item.deleted_at);
+    
+    // Calcular días restantes (30 días desde la eliminación)
+    var diffTime = now - deletedDate;
+    var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    var daysLeft = Math.max(0, 30 - diffDays);
+    
+    var tipoBadge = item.tipo === 'actividad' 
+      ? '<span class="badge" style="background:#3b82f6;color:white">Actividad</span>'
+      : '<span class="badge" style="background:#8b5cf6;color:white">Capacitación</span>';
+
+    html += '<tr>';
+    html += '  <td>' + tipoBadge + '</td>';
+    html += '  <td style="font-weight:600;color:var(--text1)">' + item.titulo + '</td>';
+    html += '  <td>' + (item.usuario || 'Desconocido') + '</td>';
+    html += '  <td>' + dateStr + '<br><small style="color:var(--text3)">Quedan ' + daysLeft + ' días</small></td>';
+    html += '  <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + (item.deleted_reason || 'Sin razón') + '">' + (item.deleted_reason || '-') + '</td>';
+    html += '  <td style="text-align:center;">';
+    html += '    <button class="btn btn-sm btn-outline" style="color:var(--success);border-color:var(--success);margin-right:4px;" onclick="restaurarElementoPapelera(\'' + item.tipo + '\', ' + item.id + ')" title="Restaurar"><i class="fas fa-trash-restore"></i></button>';
+    html += '    <button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="eliminarDefinitivoPapelera(\'' + item.tipo + '\', ' + item.id + ')" title="Eliminar Definitivamente"><i class="fas fa-times-circle"></i></button>';
+    html += '  </td>';
+    html += '</tr>';
+  });
+  
+  tbody.innerHTML = html;
+}
+
+async function restaurarElementoPapelera(tipo, id) {
+  try {
+    await api('/api/papelera/restaurar/' + tipo + '/' + id, { method: 'PUT' });
+    showToast(tipo.charAt(0).toUpperCase() + tipo.slice(1) + ' restaurada exitosamente', 'success');
+    loadPapelera();
+  } catch (err) {
+    showToast('Error al restaurar: ' + err.message, 'error');
+  }
+}
+
+function eliminarDefinitivoPapelera(tipo, id) {
+  showModal('Confirmar Eliminación Definitiva',
+    '<p>¿Está seguro de eliminar esta ' + tipo + ' permanentemente? <strong style="color:var(--danger)">Esta acción no se puede deshacer.</strong></p>',
+    '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarDefinitivoPapelera(\'' + tipo + '\', ' + id + ')">Eliminar Permanentemente</button>');
+}
+
+async function confirmarEliminarDefinitivoPapelera(tipo, id) {
+  try {
+    await api('/api/papelera/eliminar/' + tipo + '/' + id, { method: 'DELETE' });
+    showToast(tipo.charAt(0).toUpperCase() + tipo.slice(1) + ' eliminada permanentemente', 'success');
+    closeModal();
+    loadPapelera();
+  } catch (err) {
+    showToast('Error al eliminar: ' + err.message, 'error');
   }
 }
