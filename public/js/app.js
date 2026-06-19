@@ -2668,13 +2668,19 @@ function eliminarActividadesSeleccionadas() {
   if (ids.length === 0) return;
   
   showModal('Confirmar Eliminación Múltiple',
-    '<p>¿Está seguro de eliminar las <strong>' + ids.length + '</strong> actividades seleccionadas? También se eliminarán todas las asignaciones relacionadas.</p>',
+    '<p>¿Está seguro de eliminar las <strong>' + ids.length + '</strong> actividades seleccionadas? También se eliminarán todas las asignaciones relacionadas. Por favor, ingrese la razón (obligatorio):</p>' +
+    '<textarea id="eliminar-multiples-razon" class="form-control" rows="3" placeholder="Razón de la eliminación..."></textarea>',
     '<button class="btn btn-secondary" onclick="closeModal()">Cancelar</button><button class="btn btn-danger" onclick="confirmarEliminarMultiplesActividades([' + ids.join(',') + '])">Eliminar</button>');
 }
 
 async function confirmarEliminarMultiplesActividades(ids) {
+  var razon = document.getElementById('eliminar-multiples-razon').value.trim();
+  if (!razon) {
+    showToast('La razón es obligatoria', 'error');
+    return;
+  }
   try {
-    await api('/api/actividades/bulk-delete', { method: 'POST', body: { ids: ids } });
+    await api('/api/actividades/bulk-delete', { method: 'POST', body: { ids: ids, razon: razon } });
     showToast('Actividades eliminadas', 'success');
     closeModal();
     var masterCheckbox = document.getElementById('select-all-mon');

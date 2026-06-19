@@ -1665,9 +1665,10 @@ app.post('/api/actividades/bulk-delete', authSupervisor, async (req, res) => {
         if (!razon || razon.trim().length === 0) return res.status(400).json({ error: 'La razón de eliminación es obligatoria' });
         const isSuperAdminAct = req.session.user.rol === 'admin' || req.session.user.usuario === 'tony.fernandez';
         for (const id of ids) {
-            const actividad = await db.prepare('SELECT asignador_id FROM actividades WHERE id = ?').get(id);
+            const actividad = await db.prepare('SELECT asignador_id, titulo FROM actividades WHERE id = ?').get(id);
             if (actividad && (isSuperAdminAct || req.session.user.id == actividad.asignador_id)) {
                 await db.prepare('UPDATE actividades SET deleted_at = NOW(), deleted_reason = ? WHERE id = ?').run(razon, id);
+                await notifyAdmins(req.session.user.id, 'Actividad eliminada (Papelera)', `El usuario ${req.session.user.nombre_completo} eliminó la actividad "${actividad.titulo}". Razón: ${razon}`);
             }
         }
         res.json({ ok: true });
