@@ -1876,7 +1876,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             `).all(...buildParams());
 
             const nivelIeWhere = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = instituciones_educativas.id AND ne_f.clave = '${nivel}')` : '';
-            const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true AND (es_modalidad_alternativa = false OR es_modalidad_alternativa IS NULL) ${nivelIeWhere}`).get();
+            const total_ies = await db.prepare(`SELECT COUNT(*) as c FROM instituciones_educativas WHERE activa = true ${nivelIeWhere}`).get();
             const total_directores = await db.prepare("SELECT COUNT(*) as c FROM usuarios WHERE rol = 'director' AND activo = true").get();
 
             const directores_por_area = await db.prepare(`
@@ -2310,7 +2310,7 @@ app.get('/api/dashboard/stats', authDirector, async (req, res) => {
 
         // Locales: IEs sin contar PRONOEI (cada código local = 1 IE)
         const total_inst = await pool.query(`
-            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true AND (ie.es_modalidad_alternativa = false OR ie.es_modalidad_alternativa IS NULL)${extraWhere}
+            SELECT COUNT(DISTINCT ie.codigo) as c FROM instituciones_educativas ie WHERE ie.activa = true ${extraWhere}
             AND NOT EXISTS (
                 SELECT 1 FROM ie_niveles iln2 JOIN niveles_educativos ne2 ON iln2.nivel_id = ne2.id
                 WHERE iln2.ie_id = ie.id AND ne2.clave = 'pronoei'
