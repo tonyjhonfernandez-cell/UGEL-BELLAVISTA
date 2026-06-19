@@ -4869,9 +4869,14 @@ function capDescargarPDF() {
   }
 }
 
-function capDescargarExcel() {
+async function capDescargarExcel() {
   if (!window.currentCapReporteData || !window.currentCapReporteData.length) {
     alert('No hay datos para exportar.');
+    return;
+  }
+
+  if (typeof ExcelJS === 'undefined') {
+    alert('La librería ExcelJS no se cargó correctamente. Intenta recargar la página.');
     return;
   }
   
@@ -4889,7 +4894,45 @@ function capDescargarExcel() {
     return cpa.localeCompare(cpb);
   });
 
-  var data = sortedData.map(function(fila, idx) {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('CAP');
+
+  var ieNombre = window.currentCapReporteIE || 'IE';
+  var nivel = window.currentCapReporteNivel || '';
+  
+  ws.mergeCells('A1:N1');
+  var titleCell = ws.getCell('A1');
+  titleCell.value = 'CUADRO DE ASIGNACIÓN DE PERSONAL (CAP) - UGEL BELLAVISTA';
+  titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF800000' } };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  ws.mergeCells('A2:N2');
+  var subTitle = ws.getCell('A2');
+  subTitle.value = 'I.E.: ' + ieNombre + ' | Nivel: ' + nivel;
+  subTitle.font = { name: 'Arial', size: 11, bold: true };
+  subTitle.alignment = { vertical: 'middle', horizontal: 'center' };
+
+  ws.addRow([]);
+
+  const headers = ["N°", "Sub-Tipo", "Apellidos y Nombres", "DNI", "Correo", "Celular", "Código Plaza", "Cód. Mod.", "Situación", "Cargo", "Tipo", "C.R.", "J.L.", "Motivo Vacante"];
+  const headerRow = ws.addRow(headers);
+  headerRow.height = 25;
+  
+  headerRow.eachCell((cell) => {
+    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+  });
+
+  ws.columns = [
+    { width: 5 }, { width: 22 }, { width: 35 }, { width: 12 }, { width: 25 }, { width: 12 }, 
+    { width: 15 }, { width: 12 }, { width: 15 }, { width: 25 }, { width: 15 }, { width: 10 }, 
+    { width: 8 }, { width: 25 }
+  ];
+
+  sortedData.forEach((fila, idx) => {
     var pat = fila['APELLIDO PATERNO'] || ''; var mat = fila['APELLIDO MATERNO'] || ''; var nom = fila['NOMBRES'] || '';
     var nombre = (pat || mat || nom) ? (pat + ' ' + mat + ', ' + nom).trim() : 'VACANTE';
     var doc = fila['DOCUMENTO DE IDENTIDAD'] || fila['NRO DOCUMENTO'] || '';
@@ -4904,50 +4947,22 @@ function capDescargarExcel() {
     var codP = (fila['CODIGO DE PLAZA'] || '').toString().trim();
     var st = fila['SUB-TIPO DE TRABAJADOR'] || 'OTROS';
 
-    return [
+    const row = ws.addRow([
       idx + 1, st, nombre, doc, correo, celular, codP, fila['CODMOD I.E.'] || '', sit, cargo, tipo, cr, jl, motivo
-    ];
+    ]);
+
+    row.eachCell((cell, colNumber) => {
+      cell.font = { name: 'Arial', size: 9 };
+      cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+      cell.alignment = { vertical: 'middle', wrapText: true };
+      if ([1,4,6,7,8,12,13].includes(colNumber)) { cell.alignment.horizontal = 'center'; }
+    });
   });
 
-  var ieNombre = window.currentCapReporteIE || 'IE';
-  var nivelStr = window.currentCapReporteNivel || '';
-
-  var aoa = [];
-  aoa.push(['UGEL BELLAVISTA - REPORTE DE PLAZAS CAP']);
-  aoa.push(['Institución Educativa:', ieNombre, '', 'Nivel:', nivelStr]);
-  aoa.push([]); // blank row
-  aoa.push(["N°", "Sub-Tipo", "Apellidos y Nombres", "DNI", "Correo", "Celular", "Código Plaza", "Cód. Mod.", "Situación", "Cargo", "Tipo", "C.R.", "J.L.", "Motivo Vacante"]);
-
-  aoa = aoa.concat(data);
-
-  var ws = XLSX.utils.aoa_to_sheet(aoa);
-
-  // Ancho de columnas para que se vea profesional
-  ws['!cols'] = [
-    {wch: 5},   // N°
-    {wch: 25},  // Sub-Tipo
-    {wch: 45},  // Apellidos y Nombres
-    {wch: 12},  // DNI
-    {wch: 30},  // Correo
-    {wch: 12},  // Celular
-    {wch: 15},  // Cod Plaza
-    {wch: 10},  // Cod Mod
-    {wch: 18},  // Situacion
-    {wch: 35},  // Cargo
-    {wch: 15},  // Tipo
-    {wch: 15},  // CR
-    {wch: 10},  // JL
-    {wch: 35}   // Motivo Vacante
-  ];
-
-  // Combinar celdas para el título (fila 0, col 0 a 13)
-  if (!ws['!merges']) ws['!merges'] = [];
-  ws['!merges'].push({ s: {r:0, c:0}, e: {r:0, c:13} });
-
-  var wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "CAP");
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   var fileName = "CAP_" + ieNombre.replace(/[^a-zA-Z0-9_\-\ ]/g, '') + ".xlsx";
-  XLSX.writeFile(wb, fileName);
+  saveAs(blob, fileName);
 }
 // ===================== CALENDARIO =====================
 window.calendar = null;
