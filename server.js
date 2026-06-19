@@ -279,6 +279,18 @@ async function applyMigrations() {
         await pool.query('INSERT INTO schema_migrations (version) VALUES (13) ON CONFLICT DO NOTHING');
     }
 
+    // Migración 14: deleted_by en papelera
+    if (!applied.has(14)) {
+        try {
+            await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
+            await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
+            await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_by INTEGER REFERENCES usuarios(id)");
+        } catch(e) {
+            console.error('Error en migración 14:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (14) ON CONFLICT DO NOTHING');
+    }
+
     // Migración 12: Modelo (EIB y JEC)
     if (!applied.has(12)) {
         try {
@@ -1623,7 +1635,7 @@ app.delete('/api/asignaciones/:id', authSupervisor, async (req, res) => {
         if (!isSuperAdminAct && req.session.user.id != asigCheck.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para eliminar esta asignación' });
         }
-        await db.prepare('UPDATE asignaciones SET deleted_at = NOW(), deleted_reason = ? WHERE id = ?').run(razon, req.params.id);
+        await db.prepare('UPDATE asignaciones SET deleted_at = NOW(), deleted_reason = ?, deleted_by = ? WHERE id = ?').run(razon, req.session.user.id, req.params.id);
         
         // Notify admins
         await notifyAdmins(req.session.user.id, 'Asignación eliminada (Papelera)', `El usuario ${req.session.user.nombre_completo} eliminó la asignación de la IE ${asigCheck.ie_nombre} para la actividad "${asigCheck.titulo}". Razón: ${razon}`);
@@ -1646,7 +1658,7 @@ app.delete('/api/actividades/:id', authSupervisor, async (req, res) => {
         if (!isSuperAdminAct && req.session.user.id != actividad.asignador_id) {
             return res.status(403).json({ error: 'No tienes permiso para eliminar esta actividad' });
         }
-        await db.prepare('UPDATE actividades SET deleted_at = NOW(), deleted_reason = ? WHERE id = ?').run(razon, req.params.id);
+        await db.prepare('UPDATE actividades SET deleted_at = NOW(), deleted_reason = ?, deleted_by = ? WHERE id = ?').run(razon, req.session.user.id, req.params.id);
         
         const actTitulo = await db.prepare('SELECT titulo FROM actividades WHERE id = ?').get(req.params.id);
         await notifyAdmins(req.session.user.id, 'Actividad eliminada (Papelera)', `El usuario ${req.session.user.nombre_completo} eliminó la actividad "${actTitulo ? actTitulo.titulo : 'Desconocida'}". Razón: ${razon}`);
@@ -1667,7 +1679,7 @@ app.post('/api/actividades/bulk-delete', authSupervisor, async (req, res) => {
         for (const id of ids) {
             const actividad = await db.prepare('SELECT asignador_id, titulo FROM actividades WHERE id = ?').get(id);
             if (actividad && (isSuperAdminAct || req.session.user.id == actividad.asignador_id)) {
-                await db.prepare('UPDATE actividades SET deleted_at = NOW(), deleted_reason = ? WHERE id = ?').run(razon, id);
+                await db.prepare('UPDATE actividades SET deleted_at = NOW(), deleted_reason = ?, deleted_by = ? WHERE id = ?').run(razon, req.session.user.id, id);
                 await notifyAdmins(req.session.user.id, 'Actividad eliminada (Papelera)', `El usuario ${req.session.user.nombre_completo} eliminó la actividad "${actividad.titulo}". Razón: ${razon}`);
             }
         }
@@ -3480,7 +3492,7 @@ app.delete('/api/capacitaciones/:id', authSupervisor, async (req, res) => {
         if (!razon || razon.trim().length === 0) {
             return res.status(400).json({ error: 'La razón de eliminación es obligatoria' });
         }
-        await pool.query('UPDATE capacitaciones SET deleted_at = NOW(), deleted_reason = $1 WHERE id = $2', [razon, req.params.id]);
+        await pool.query('UPDATE capacitaciones SET deleted_at = NOW(), deleted_reason = $1, deleted_by = $2 WHERE id = $3', [razon, req.session.user.id, req.params.id]);
         
         const capInfo = await pool.query('SELECT titulo FROM capacitaciones WHERE id = $1', [req.params.id]);
         const titulo = capInfo.rows.length > 0 ? capInfo.rows[0].titulo : 'Desconocida';
@@ -3770,27 +3782,30 @@ app.get('/api/papelera', authSupervisor, async (req, res) => {
         
         // Actividades eliminadas
         const actRecords = await db.prepare(`
-            SELECT a.id, a.titulo, a.deleted_at, a.deleted_reason, u.nombre_completo as usuario, 'actividad' as tipo
+            SELECT a.id, a.titulo, a.deleted_at, a.deleted_reason, COALESCE(del.nombre_completo, u.nombre_completo) as usuario, 'actividad' as tipo
             FROM actividades a
             LEFT JOIN usuarios u ON a.asignador_id = u.id
+            LEFT JOIN usuarios del ON a.deleted_by = del.id
             WHERE a.deleted_at IS NOT NULL
         `).all();
 
         // Capacitaciones eliminadas
         const capRecords = await pool.query(`
-            SELECT c.id, c.titulo, c.deleted_at, c.deleted_reason, u.nombre_completo as usuario, 'capacitacion' as tipo
+            SELECT c.id, c.titulo, c.deleted_at, c.deleted_reason, COALESCE(del.nombre_completo, u.nombre_completo) as usuario, 'capacitacion' as tipo
             FROM capacitaciones c
             LEFT JOIN usuarios u ON c.creador_id = u.id
+            LEFT JOIN usuarios del ON c.deleted_by = del.id
             WHERE c.deleted_at IS NOT NULL
         `);
 
         // Asignaciones eliminadas
         const asigRecords = await db.prepare(`
-            SELECT ase.id, a.titulo || ' (' || ie.nombre || ')' as titulo, ase.deleted_at, ase.deleted_reason, u.nombre_completo as usuario, 'asignacion' as tipo
+            SELECT ase.id, a.titulo || ' (' || ie.nombre || ')' as titulo, ase.deleted_at, ase.deleted_reason, COALESCE(del.nombre_completo, u.nombre_completo) as usuario, 'asignacion' as tipo
             FROM asignaciones ase
             JOIN actividades a ON ase.actividad_id = a.id
             JOIN instituciones_educativas ie ON ase.ie_id = ie.id
             LEFT JOIN usuarios u ON a.asignador_id = u.id
+            LEFT JOIN usuarios del ON ase.deleted_by = del.id
             WHERE ase.deleted_at IS NOT NULL
         `).all();
 
@@ -3807,11 +3822,11 @@ app.put('/api/papelera/restaurar/:tipo/:id', authSupervisor, async (req, res) =>
         if (req.session.user.rol !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
         const { tipo, id } = req.params;
         if (tipo === 'actividad') {
-            await db.prepare('UPDATE actividades SET deleted_at = NULL, deleted_reason = NULL WHERE id = ?').run(id);
+            await db.prepare('UPDATE actividades SET deleted_at = NULL, deleted_reason = NULL, deleted_by = NULL WHERE id = ?').run(id);
         } else if (tipo === 'capacitacion') {
-            await pool.query('UPDATE capacitaciones SET deleted_at = NULL, deleted_reason = NULL WHERE id = $1', [id]);
+            await pool.query('UPDATE capacitaciones SET deleted_at = NULL, deleted_reason = NULL, deleted_by = NULL WHERE id = $1', [id]);
         } else if (tipo === 'asignacion') {
-            await db.prepare('UPDATE asignaciones SET deleted_at = NULL, deleted_reason = NULL WHERE id = ?').run(id);
+            await db.prepare('UPDATE asignaciones SET deleted_at = NULL, deleted_reason = NULL, deleted_by = NULL WHERE id = ?').run(id);
         } else {
             return res.status(400).json({ error: 'Tipo inválido' });
         }
