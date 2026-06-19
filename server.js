@@ -267,6 +267,18 @@ async function applyMigrations() {
         }
         await pool.query('INSERT INTO schema_migrations (version) VALUES (11) ON CONFLICT DO NOTHING');
     }
+
+    // Limpieza de papelera cada vez que inicia
+    await cleanupPapelera();
+}
+
+async function cleanupPapelera() {
+    try {
+        await db.prepare("DELETE FROM actividades WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', '-30 days')").run();
+        await pool.query("DELETE FROM capacitaciones WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '30 days'");
+    } catch (e) {
+        console.error('Error limpiando papelera:', e.message);
+    }
 }
 
 async function initDatabase() {
