@@ -440,6 +440,12 @@ async function initDatabase() {
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS es_modalidad_alternativa BOOLEAN DEFAULT false");
         await pool.query("ALTER TABLE instituciones_educativas ADD COLUMN IF NOT EXISTS codigo_base VARCHAR(20)");
         await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS niveles_aplicados TEXT");
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
+        await pool.query("ALTER TABLE actividades ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
+        await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
+        await pool.query("ALTER TABLE capacitaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
+        await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP");
+        await pool.query("ALTER TABLE asignaciones ADD COLUMN IF NOT EXISTS deleted_reason TEXT");
     } catch (e) {}
 
     // New dynamic niveles tables
@@ -1828,7 +1834,6 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = await db.prepare(`
                 SELECT COUNT(*) as c ${baseJoin}
-                INNER JOIN actividades a ON ase.actividad_id = a.id
                 ${buildWhere("AND ase.estado = 'pendiente' AND a.fecha_limite < ?")}
             `).get(...buildParams([hoy]));
 
@@ -1849,7 +1854,6 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 SELECT a.*, ta.nombre as tipo_nombre, ase.estado as asignacion_estado,
                        ie.nombre as ie_nombre, ie.codigo as ie_codigo
                 ${baseJoin}
-                LEFT JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 ${buildWhere()}
                 ORDER BY a.created_at DESC LIMIT 10
@@ -1903,9 +1907,8 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
         } else {
             const userId = req.session.user.id;
             const nivelExistsOnAseId = nivel ? `AND EXISTS (SELECT 1 FROM ie_niveles iln_f JOIN niveles_educativos ne_f ON iln_f.nivel_id = ne_f.id WHERE iln_f.ie_id = ase.ie_id AND ne_f.clave = '${nivel}')` : '';
-            const nivelJoin = '';
             const nivelWhere = nivelExistsOnAseId;
-            const fromDir = `FROM asignaciones ase WHERE ase.director_id = ? ${nivelWhere}`;
+            const fromDir = `FROM asignaciones ase INNER JOIN actividades a ON ase.actividad_id = a.id WHERE ase.director_id = ? AND a.deleted_at IS NULL AND ase.deleted_at IS NULL ${nivelWhere}`;
 
             const total = await db.prepare(`SELECT COUNT(*) as c ${fromDir}`).get(userId);
             const completadas = await db.prepare(`SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'completada'`).get(userId);
@@ -1914,10 +1917,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
 
             const hoy = new Date().toISOString().split('T')[0];
             const vencidas = await db.prepare(`
-                SELECT COUNT(*) as c FROM asignaciones ase
-                INNER JOIN actividades a ON ase.actividad_id = a.id
-                ${nivelJoin}
-                WHERE ase.director_id = ? AND ase.estado = 'pendiente' AND a.fecha_limite < ? ${nivelWhere}
+                SELECT COUNT(*) as c ${fromDir} AND ase.estado = 'pendiente' AND a.fecha_limite < ?
             `).get(userId, hoy);
 
             const recientes = await db.prepare(`
@@ -1928,7 +1928,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 LEFT JOIN tipos_actividad ta ON a.tipo_id = ta.id
                 INNER JOIN asignaciones ase ON a.id = ase.actividad_id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE ase.director_id = ?
+                WHERE ase.director_id = ? AND a.deleted_at IS NULL AND ase.deleted_at IS NULL
                 ORDER BY a.fecha_limite ASC
                 LIMIT 10
             `).all(userId);
@@ -1942,7 +1942,7 @@ app.get('/api/dashboard', authDirector, async (req, res) => {
                 FROM asignaciones ase
                 INNER JOIN actividades a ON ase.actividad_id = a.id
                 LEFT JOIN usuarios asignador ON a.asignador_id = asignador.id
-                WHERE ase.director_id = ?
+                WHERE ase.director_id = ? AND a.deleted_at IS NULL AND ase.deleted_at IS NULL
                 GROUP BY asignador.dependencia
                 ORDER BY asignador.dependencia
             `).all(userId);

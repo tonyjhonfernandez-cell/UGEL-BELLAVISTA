@@ -133,6 +133,15 @@ async function runImport() {
             
             const school = schoolsMap[localCode];
             
+            // Combinar nombres diferentes para el mismo código local
+            const currentName = String(row[4] || '').trim().replace(/\s+/g, ' ');
+            if (currentName && school.nombre !== currentName) {
+                const names = school.nombre.split(' / ').map(n => n.trim());
+                if (!names.includes(currentName)) {
+                    school.nombre = school.nombre + ' / ' + currentName;
+                }
+            }
+            
             // Ruralidad
             let rurality = String(row[2] || '').trim().toUpperCase();
             if (rurality === 'URBANA') rurality = 'URBANO';
