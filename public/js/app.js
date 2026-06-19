@@ -113,6 +113,18 @@ function showPublicDashboardFromLogin() {
   initDirectorApp();
   initPublicDashboard();
 }
+function formatDateShort(dateStr) {
+  if (!dateStr) return '-';
+  try {
+    var parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    var day = parts[2].split('T')[0];
+    var month = parts[1];
+    var year = parts[0];
+    return parseInt(day) + '/' + parseInt(month) + '/' + year;
+  } catch (e) { return dateStr; }
+}
+
 function formatFechaMock(dateStr) {
   if (!dateStr) return '-';
   try {
@@ -2282,7 +2294,7 @@ async function loadMonitoreo() {
       var noCumplidas = grp.ies.filter(function(x){ return x.estado === 'no_cumplida'; }).length;
       var pendientes = total - completadas - inconclusas - noCumplidas;
       var pct = total > 0 ? Math.round(completadas / total * 100) : 0;
-      var dateText = grp.fecha_limite ? new Date(grp.fecha_limite).toLocaleDateString('es-PE') : '-';
+      var dateText = grp.fecha_limite ? formatDateShort(grp.fecha_limite) : '-';
       var pctColor = pct >= 80 ? 'var(--success)' : pct >= 40 ? 'var(--warning)' : 'var(--danger)';
 
       // Build stacked progress bar segments
@@ -2343,7 +2355,7 @@ function openMonModal(actId) {
     '</div>' +
     '<div style="flex-shrink:0;text-align:right;">' +
       '<div style="font-size:.68rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Fecha Límite</div>' +
-      '<div style="font-weight:700;color:var(--text1);">' + (grp.fecha_limite ? new Date(grp.fecha_limite).toLocaleDateString('es-PE') : '-') + '</div>' +
+      '<div style="font-weight:700;color:var(--text1);">' + (grp.fecha_limite ? formatDateShort(grp.fecha_limite) : '-') + '</div>' +
       '<div style="margin-top:8px;font-size:.7rem;color:var(--text3);">Asignado por: <strong style="color:var(--text2);">' + (grp.asignador_nombre || '-') + '</strong></div>' +
     '</div>' +
   '</div>';
@@ -2564,7 +2576,7 @@ async function verDetalleAsignacion(id) {
       '<div class="col-12"><strong>Actividad:</strong> ' + (a.actividad_titulo || a.titulo || '-') + '</div>' +
       '<div class="col-12"><strong>Descripción:</strong> ' + (a.descripcion || a.actividad_descripcion || '-') + '</div>' +
       '<div class="col-6"><strong>Tipo:</strong> ' + (a.tipo_nombre || a.tipo || '-') + '</div>' +
-      '<div class="col-6"><strong>Fecha:</strong> ' + (a.fecha_limite ? new Date(a.fecha_limite).toLocaleDateString('es-PE') : '-') + '</div>' +
+      '<div class="col-6"><strong>Fecha:</strong> ' + (a.fecha_limite ? formatDateShort(a.fecha_limite) : '-') + '</div>' +
       '<div class="col-6"><strong>Hora:</strong> ' + (a.hora_limite || '-') + '</div>' +
       '<div class="col-6"><strong>Estado:</strong> <span class="badge badge-' + a.estado + '">' + a.estado.replace('_', ' ').toUpperCase() + '</span></div>' +
       (a.notas_supervisor ? '<div class="col-12"><strong>Notas:</strong> ' + a.notas_supervisor + '</div>' : '') +
