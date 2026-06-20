@@ -306,6 +306,32 @@ async function applyMigrations() {
         await pool.query('INSERT INTO schema_migrations (version) VALUES (12) ON CONFLICT DO NOTHING');
     }
 
+    // Migración 15: tabla eventos_calendario y columna link
+    if (!applied.has(15)) {
+        try {
+            await pool.query(`
+                CREATE TABLE IF NOT EXISTS eventos_calendario (
+                    id SERIAL PRIMARY KEY,
+                    supervisor_id INTEGER REFERENCES usuarios(id) ON DELETE CASCADE,
+                    titulo TEXT NOT NULL,
+                    descripcion TEXT,
+                    estado VARCHAR(20) DEFAULT 'Pendiente',
+                    fecha DATE NOT NULL,
+                    fecha_fin_actividad DATE,
+                    hora_inicio TIME,
+                    hora_fin TIME,
+                    area TEXT DEFAULT '',
+                    sub_area TEXT DEFAULT '',
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
+            `);
+            await pool.query("ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS link TEXT");
+        } catch(e) {
+            console.error('Error en migración 15:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (15) ON CONFLICT DO NOTHING');
+    }
+
     // Limpieza de papelera cada vez que inicia
     await cleanupPapelera();
 }
@@ -413,15 +439,17 @@ async function initDatabase() {
             estado VARCHAR(20) DEFAULT 'Pendiente',
             fecha DATE NOT NULL,
             fecha_fin_actividad DATE,
-            hora_inicio TIME DEFAULT '',
-            hora_fin TIME DEFAULT '',
+            hora_inicio TIME,
+            hora_fin TIME,
             area TEXT DEFAULT '',
             sub_area TEXT DEFAULT '',
+            link TEXT,
             created_at TIMESTAMP DEFAULT NOW()
         );
         
         -- Añadir columna si la tabla ya existe
         ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS fecha_fin_actividad DATE;
+        ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS link TEXT;
 
         CREATE TABLE IF NOT EXISTS notificaciones (
             id SERIAL PRIMARY KEY,
@@ -3103,7 +3131,7 @@ app.get('/api/export/instituciones', authSupervisor, async (req, res) => {
 
 // ==================== CALENDARIO PERSONAL (SUPERVISORES) ====================
 
-app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
+app.get('/api/calendario/eventos', authDirector, async (req, res) => {
     try {
         const userId = req.session.user.id;
         const userRol = req.session.user.rol;
@@ -3119,7 +3147,7 @@ app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
             SELECT e.id, e.supervisor_id, e.titulo, e.titulo as title, e.fecha, e.fecha_fin_actividad, e.hora_inicio, e.hora_fin,
                    e.fecha || CASE WHEN e.hora_inicio IS NOT NULL THEN 'T' || e.hora_inicio ELSE '' END as start,
                    CASE WHEN e.hora_fin IS NOT NULL THEN e.fecha || 'T' || e.hora_fin ELSE NULL END as end,
-                   e.estado, e.descripcion, e.area, e.sub_area,
+                   e.estado, e.descripcion, e.area, e.sub_area, e.link,
                    u.nombre_completo as creador
             FROM eventos_calendario e
             JOIN usuarios u ON e.supervisor_id = u.id
@@ -3132,14 +3160,14 @@ app.get('/api/calendario/eventos', authSupervisor, async (req, res) => {
     }
 });
 
-app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
+app.post('/api/calendario/eventos', authDirector, async (req, res) => {
     try {
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link } = req.body;
         const supervisor_id = req.session.user.id;
         const result = await db.prepare(`
-            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '');
+            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null);
         res.json({ success: true, id: result.id });
     } catch (err) {
         console.error(err);
@@ -3147,10 +3175,10 @@ app.post('/api/calendario/eventos', authSupervisor, async (req, res) => {
     }
 });
 
-app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
+app.put('/api/calendario/eventos/:id', authDirector, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link } = req.body;
         
         // Verifica que el evento exista
         const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
@@ -3163,9 +3191,9 @@ app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
         if (titulo) {
             await db.prepare(`
                 UPDATE eventos_calendario 
-                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?
+                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?, link=?
                 WHERE id=?
-            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', id);
+            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null, id);
         } else if (estado) {
             // Solo estado
             await db.prepare('UPDATE eventos_calendario SET estado=? WHERE id=?').run(estado, id);
@@ -3177,7 +3205,7 @@ app.put('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
+app.delete('/api/calendario/eventos/:id', authDirector, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
         const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
@@ -3192,7 +3220,7 @@ app.delete('/api/calendario/eventos/:id', authSupervisor, async (req, res) => {
     }
 });
 
-app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
+app.get('/api/export/actividades-areas', authDirector, async (req, res) => {
     try {
         const eventos = await db.prepare(`
             SELECT e.*, u.dependencia as area_usuario, u.nombre_completo as asignador_nombre, u.puesto
@@ -3217,7 +3245,7 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
             const sheet = workbook.addWorksheet(sheetName);
             
             // 1. Título principal
-            sheet.mergeCells('A1:I1');
+            sheet.mergeCells('A1:J1');
             const titleCell = sheet.getCell('A1');
             titleCell.value = 'UGEL Bellavista — ' + area;
             titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FF800000' } }; // Burgundy/Dark Red
@@ -3228,7 +3256,7 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
             sheet.addRow([]);
 
             // 3. Cabeceras
-            const headers = ['Responsable', 'Puesto', 'Actividad', 'Área', 'Sub-área', 'Fecha', 'Desde', 'Hasta', 'Estado'];
+            const headers = ['Responsable', 'Puesto', 'Actividad', 'Área', 'Sub-área', 'Fecha', 'Desde', 'Hasta', 'Estado', 'Enlace/Link'];
             const headerRow = sheet.addRow(headers);
             headerRow.height = 25;
             headerRow.eachCell((cell) => {
@@ -3248,7 +3276,8 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
                 { key: 'fecha', width: 15 },
                 { key: 'desde', width: 10 },
                 { key: 'hasta', width: 10 },
-                { key: 'estado', width: 15 }
+                { key: 'estado', width: 15 },
+                { key: 'link', width: 35 }
             ];
 
             // 4. Filas de datos
@@ -3262,7 +3291,8 @@ app.get('/api/export/actividades-areas', authSupervisor, async (req, res) => {
                     fecha: a.fecha || '',
                     desde: a.hora_inicio || '',
                     hasta: a.hora_fin || '',
-                    estado: a.estado || 'Pendiente'
+                    estado: a.estado || 'Pendiente',
+                    link: a.link || ''
                 });
                 
                 row.eachCell((cell, colNumber) => {

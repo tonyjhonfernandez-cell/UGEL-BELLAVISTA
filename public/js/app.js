@@ -647,9 +647,9 @@ function buildSidebar() {
   if (currentUser.rol === 'director') {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
+    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-check"></i> Mi Agenda</a>';
     
     html += '<div class="label">Cuenta</div>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
     html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
   }
 
@@ -658,6 +658,7 @@ function buildSidebar() {
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
+    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-check"></i> Mi Agenda</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
     html += '<div class="label">Principal</div>';
@@ -677,7 +678,6 @@ function buildSidebar() {
     }
     
     html += '<div class="label">Cuenta</div>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
     if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-cog"></i> Configuraciones</a>';
     } else {
@@ -5136,8 +5136,11 @@ async function loadCalendario() {
       }
 
       var finalTitle = e.title;
+      if (e.link) {
+          finalTitle = '🔗 ' + finalTitle;
+      }
       if (currentUser && currentUser.rol === 'admin' && e.creador) {
-          finalTitle = e.title + ' - ' + e.creador;
+          finalTitle = finalTitle + ' - ' + e.creador;
       }
 
       return {
@@ -5296,6 +5299,7 @@ function abrirModalEvento(evento) {
   var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
   
   var evArea = isEdit ? (evento.area || '') : '';
+  var evLink = isEdit ? (evento.link || '') : '';
 
   var creadorHtml = '';
   if (isEdit && evento.creador) {
@@ -5336,6 +5340,14 @@ function abrirModalEvento(evento) {
       <div class="mb-3">
         <label>Descripción</label>
         <textarea id="evDescripcion" class="form-control" rows="2" ${disabledAttr}>${evDescripcion}</textarea>
+      </div>
+      <div class="mb-3">
+        <label>Enlace / Link <small>(Reunión, capacitación, descarga, etc.)</small></label>
+        <div class="input-group" style="display: flex;">
+          <span class="input-group-text" style="background: #f0f2ff; border: 1px solid #d0d7ff; color: #4a6cf7; padding: 0 12px; display: flex; align-items: center; border-radius: 8px 0 0 8px;"><i class="fas fa-link"></i></span>
+          <input type="text" id="evLink" class="form-control" placeholder="https://ejemplo.com/reunion" value="${evLink}" ${disabledAttr} style="border-radius: 0 ${evLink ? '0' : '8px'} ${evLink ? '0' : '8px'} 0; border: 1px solid #ced4da; flex: 1; padding: 8px 12px;">
+          ${evLink ? `<a href="${evLink}" target="_blank" class="btn btn-outline-primary" style="display: flex; align-items: center; justify-content: center; text-decoration: none; padding: 8px 16px; border-radius: 0 8px 8px 0; border: 1px solid #4a6cf7; color: #4a6cf7; background: white; font-weight: 500;" onmouseover="this.style.background='#4a6cf7'; this.style.color='white';" onmouseout="this.style.background='white'; this.style.color='#4a6cf7';"><i class="fas fa-external-link-alt" style="margin-right: 5px;"></i> Abrir Enlace</a>` : ''}
+        </div>
       </div>
       <div style="display:flex; gap:10px; margin-bottom:15px;">
         <div style="flex:1;">
@@ -5378,7 +5390,8 @@ async function guardarEvento() {
     hora_fin: document.getElementById('evHoraFin').value,
     descripcion: document.getElementById('evDescripcion').value,
     area: document.getElementById('evArea').value,
-    estado: document.getElementById('evEstado').value
+    estado: document.getElementById('evEstado').value,
+    link: document.getElementById('evLink').value.trim()
   };
 
   if (!payload.titulo || !payload.fecha) {
