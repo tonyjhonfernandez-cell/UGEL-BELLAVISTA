@@ -2194,6 +2194,33 @@ app.post('/api/admin/impersonate', authAdmin, async (req, res) => {
     }
 });
 
+app.get('/api/admin/backup', authAdmin, async (req, res) => {
+    try {
+        const tablesRes = await pool.query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name != 'user_sessions'"
+        );
+        const tables = tablesRes.rows.map(r => r.table_name);
+        
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            tables: {}
+        };
+        
+        for (const table of tables) {
+            if (/^[a-zA-Z0-9_]+$/.test(table)) {
+                const rowsRes = await pool.query(`SELECT * FROM "${table}"`);
+                backupData.tables[table] = rowsRes.rows;
+            }
+        }
+        
+        res.setHeader('Content-Type', 'application/json');
+        const filename = `backup_ugel_bellavista_${new Date().toISOString().slice(0,19).replace(/[-:T]/g,"_")}.json`;
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(JSON.stringify(backupData, null, 2));
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.get('/api/seed', async (req, res) => {
     try {

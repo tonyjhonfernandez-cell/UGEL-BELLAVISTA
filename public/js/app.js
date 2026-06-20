@@ -536,6 +536,16 @@ async function saveSystemSettings() {
   }
 }
 
+function descargarBackupDB() {
+  const timestamp = new Date().toISOString().slice(0,19).replace(/[-:T]/g,"_");
+  const a = document.createElement('a');
+  a.href = '/api/admin/backup';
+  a.download = 'backup_ugel_bellavista_' + timestamp + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 async function loadDirectorEvaluationSettings() {
   try {
     const settings = await api('/api/system-settings');
