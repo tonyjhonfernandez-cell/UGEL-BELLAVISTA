@@ -1250,6 +1250,27 @@
             </div>
           </form>
         </div></div>
+
+        <!-- Tarjeta de Copia de Seguridad (Backup) (solo visible para administradores) -->
+        <div class="t-card admin-only" id="system-backup-card" style="margin-top:20px; display:none;">
+          <div style="padding:22px">
+            <div class="perfil-hd" style="border-bottom: 1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+              <div>
+                <h5 style="font-size:.95rem;font-weight:700;margin:0">
+                  <i class="fas fa-database" style="color:var(--primary);margin-right:8px"></i> Copia de Seguridad de la Base de Datos
+                </h5>
+                <p style="font-size:.78rem;color:var(--text3);margin:2px 0 0">
+                  Descarga una copia completa de todas las tablas del sistema en formato JSON para resguardar la información.
+                </p>
+              </div>
+            </div>
+            <div>
+              <button type="button" class="btn btn-outline-success" onclick="descargarBackupDB()" style="display:flex; align-items:center; gap:8px; font-weight:700; border-radius:8px; padding:10px 20px;">
+                <i class="fas fa-download"></i> Descargar Copia de Seguridad (.json)
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- ==================== CAP ==================== -->
