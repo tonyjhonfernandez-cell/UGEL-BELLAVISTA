@@ -2060,7 +2060,10 @@ app.post('/api/responder', authDirector, async (req, res) => {
 app.get('/api/perfil', authDirector, async (req, res) => {
     try {
         const user = await db.prepare(`
-            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod
+            SELECT u.*, ie.nombre as ie_nombre, ie.codigo as ie_cod,
+                   ie.tipo as ie_tipo, ie.ruralidad as ie_ruralidad,
+                   ie.provincia as ie_provincia, ie.distrito as ie_distrito,
+                   ie.lugar as ie_lugar, ie.modelo as ie_modelo
             FROM usuarios u
             LEFT JOIN instituciones_educativas ie ON u.ie_codigo = ie.codigo
             WHERE u.id = ?

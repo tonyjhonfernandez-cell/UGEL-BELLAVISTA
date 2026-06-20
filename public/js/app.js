@@ -3152,11 +3152,26 @@ async function loadPerfil() {
 
     if (p.rol === 'supervisor' || p.rol === 'admin') {
       document.getElementById('perfil-ie-container').style.display = 'none';
+      if (document.getElementById('perfil-ie-tipo-container')) document.getElementById('perfil-ie-tipo-container').style.display = 'none';
+      if (document.getElementById('perfil-ie-ruralidad-container')) document.getElementById('perfil-ie-ruralidad-container').style.display = 'none';
+      if (document.getElementById('perfil-ie-ubicacion-container')) document.getElementById('perfil-ie-ubicacion-container').style.display = 'none';
       document.getElementById('perfil-dependencia-container').style.display = 'block';
       document.getElementById('perfil-puesto-container').style.display = 'block';
       if (p.rol === 'admin') { loadSystemSettings(); }
     } else {
       document.getElementById('perfil-ie-container').style.display = 'block';
+      if (document.getElementById('perfil-ie-tipo-container')) {
+        document.getElementById('perfil-ie-tipo-container').style.display = 'block';
+        document.getElementById('perfil-ie-tipo').value = p.ie_tipo || 'NO ESPECIFICADO';
+      }
+      if (document.getElementById('perfil-ie-ruralidad-container')) {
+        document.getElementById('perfil-ie-ruralidad-container').style.display = 'block';
+        document.getElementById('perfil-ie-ruralidad').value = p.ie_ruralidad || 'NO ESPECIFICADO';
+      }
+      if (document.getElementById('perfil-ie-ubicacion-container')) {
+        document.getElementById('perfil-ie-ubicacion-container').style.display = 'block';
+        document.getElementById('perfil-ie-ubicacion').value = (p.ie_distrito ? `${p.ie_distrito} / ${p.ie_provincia} (${p.ie_lugar || ''})` : 'NO ESPECIFICADO');
+      }
       document.getElementById('perfil-dependencia-container').style.display = 'none';
       document.getElementById('perfil-puesto-container').style.display = 'none';
     }
@@ -4471,7 +4486,16 @@ async function loadDashboardIEStats() {
   // Render Tipo horizontal bar chart
   var tipoLabels = Object.keys(stats.por_tipo || {});
   var tipoData = Object.values(stats.por_tipo || {});
-  var tipoColors = { 'POLIDOCENTE COMPLETO': '#6366f1', 'MULTIGRADO': '#f59e0b', 'UNIDOCENTE': '#ef4444', 'NO APLICA': '#94a3b8' };
+  var tipoColors = {
+    'POLIDOCENTE COMPLETO': '#6366f1',
+    'MULTIGRADO': '#f59e0b',
+    'UNIDOCENTE': '#ef4444',
+    'PRONOEI': '#10b981',
+    'EBA': '#8b5cf6',
+    'CETPRO': '#ec4899',
+    'EBE': '#06b6d4',
+    'NO APLICA': '#94a3b8'
+  };
   var tipoBgs = tipoLabels.map(function(l){ return tipoColors[l] || '#94a3b8'; });
   if (window.chartTipo) { try { window.chartTipo.destroy(); } catch(e){} }
   var ctxTipo = document.getElementById('chart-tipo-dash');
