@@ -332,6 +332,16 @@ async function applyMigrations() {
         await pool.query('INSERT INTO schema_migrations (version) VALUES (15) ON CONFLICT DO NOTHING');
     }
 
+    // Migración 16: columna categoria en eventos_calendario
+    if (!applied.has(16)) {
+        try {
+            await pool.query("ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'Trabajo'");
+        } catch(e) {
+            console.error('Error en migración 16:', e.message);
+        }
+        await pool.query('INSERT INTO schema_migrations (version) VALUES (16) ON CONFLICT DO NOTHING');
+    }
+
     // Limpieza de papelera cada vez que inicia
     await cleanupPapelera();
 }
@@ -444,12 +454,14 @@ async function initDatabase() {
             area TEXT DEFAULT '',
             sub_area TEXT DEFAULT '',
             link TEXT,
+            categoria TEXT DEFAULT 'Trabajo',
             created_at TIMESTAMP DEFAULT NOW()
         );
         
         -- Añadir columna si la tabla ya existe
         ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS fecha_fin_actividad DATE;
         ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS link TEXT;
+        ALTER TABLE eventos_calendario ADD COLUMN IF NOT EXISTS categoria TEXT DEFAULT 'Trabajo';
 
         CREATE TABLE IF NOT EXISTS notificaciones (
             id SERIAL PRIMARY KEY,
@@ -3147,7 +3159,7 @@ app.get('/api/calendario/eventos', authDirector, async (req, res) => {
             SELECT e.id, e.supervisor_id, e.titulo, e.titulo as title, e.fecha, e.fecha_fin_actividad, e.hora_inicio, e.hora_fin,
                    e.fecha || CASE WHEN e.hora_inicio IS NOT NULL THEN 'T' || e.hora_inicio ELSE '' END as start,
                    CASE WHEN e.hora_fin IS NOT NULL THEN e.fecha || 'T' || e.hora_fin ELSE NULL END as end,
-                   e.estado, e.descripcion, e.area, e.sub_area, e.link,
+                   e.estado, e.descripcion, e.area, e.sub_area, e.link, e.categoria,
                    u.nombre_completo as creador
             FROM eventos_calendario e
             JOIN usuarios u ON e.supervisor_id = u.id
@@ -3162,12 +3174,12 @@ app.get('/api/calendario/eventos', authDirector, async (req, res) => {
 
 app.post('/api/calendario/eventos', authDirector, async (req, res) => {
     try {
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link, categoria } = req.body;
         const supervisor_id = req.session.user.id;
         const result = await db.prepare(`
-            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null);
+            INSERT INTO eventos_calendario (supervisor_id, titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link, categoria)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+        `).get(supervisor_id, titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null, categoria || 'Trabajo');
         res.json({ success: true, id: result.id });
     } catch (err) {
         console.error(err);
@@ -3178,7 +3190,7 @@ app.post('/api/calendario/eventos', authDirector, async (req, res) => {
 app.put('/api/calendario/eventos/:id', authDirector, async (req, res) => {
     try {
         const id = parseInt(req.params.id);
-        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link } = req.body;
+        const { titulo, descripcion, estado, fecha, fecha_fin_actividad, hora_inicio, hora_fin, area, sub_area, link, categoria } = req.body;
         
         // Verifica que el evento exista
         const ev = await db.prepare('SELECT id, supervisor_id FROM eventos_calendario WHERE id = ?').get(id);
@@ -3191,9 +3203,9 @@ app.put('/api/calendario/eventos/:id', authDirector, async (req, res) => {
         if (titulo) {
             await db.prepare(`
                 UPDATE eventos_calendario 
-                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?, link=?
+                SET titulo=?, descripcion=?, estado=?, fecha=?, fecha_fin_actividad=?, hora_inicio=?, hora_fin=?, area=?, sub_area=?, link=?, categoria=?
                 WHERE id=?
-            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null, id);
+            `).run(titulo, descripcion || '', estado || 'Pendiente', fecha, fecha_fin_actividad || null, hora_inicio || null, hora_fin || null, area || '', sub_area || '', link || null, categoria || 'Trabajo', id);
         } else if (estado) {
             // Solo estado
             await db.prepare('UPDATE eventos_calendario SET estado=? WHERE id=?').run(estado, id);

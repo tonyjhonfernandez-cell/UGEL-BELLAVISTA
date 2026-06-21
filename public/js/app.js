@@ -647,9 +647,9 @@ function buildSidebar() {
   if (currentUser.rol === 'director') {
     html += '<div class="label">Principal</div>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-check"></i> Mi Agenda</a>';
     
     html += '<div class="label">Cuenta</div>';
+    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
     html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-user-circle"></i> Mi Perfil</a>';
   }
 
@@ -658,7 +658,6 @@ function buildSidebar() {
     html += '<div class="label">Gestión</div>';
     html += '<a href="#" data-view="avance-mensual" onclick="cambiarVista(\'avance-mensual\',this)"><i class="fas fa-chart-line"></i> Dashboard</a>';
     html += '<a href="#" data-view="cap" onclick="cambiarVista(\'cap\',this)"><i class="fas fa-id-card-alt"></i> CAP</a>';
-    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-check"></i> Mi Agenda</a>';
 
     // 2. Principal (Asignar actividades, Monitoreo de Actividades, Capacitaciones, Monitoreo de Capacitaciones)
     html += '<div class="label">Principal</div>';
@@ -678,6 +677,7 @@ function buildSidebar() {
     }
     
     html += '<div class="label">Cuenta</div>';
+    html += '<a href="#" data-view="calendario" onclick="cambiarVista(\'calendario\',this)"><i class="fas fa-calendar-alt"></i> Mi Calendario</a>';
     if (currentUser.rol === 'admin' || currentUser.usuario === 'tony.fernandez') {
       html += '<a href="#" data-view="perfil" onclick="cambiarVista(\'perfil\',this)"><i class="fas fa-cog"></i> Configuraciones</a>';
     } else {
@@ -5103,22 +5103,32 @@ async function capDescargarExcel() {
 window.calendar = null;
 
 window.todosLosEventosCalendario = [];
+window.rawEventosCalendario = [];
+var _miniCalDate = new Date();
 
 async function loadCalendario() {
   var container = document.getElementById('calendar-container');
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:40px"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
   try {
-    var eventos = await api('/api/calendario/eventos');
-    var events = eventos.map(function(e) {
-      var color = '#6b21a8';
-      var textC = '#ffffff';
-      if (e.estado === 'Cumplida') {
-          color = '#10b981';
-      } else if (e.estado === 'En Proceso') {
-          color = '#f59e0b';
-          textC = '#000000';
-      }
+    // 1. Fetch raw events
+    window.rawEventosCalendario = await api('/api/calendario/eventos');
+
+    // 2. Render mini-calendar and upcoming list
+    renderMiniCal();
+    updateAgendaUpcomingList();
+
+    // 3. Map events for FullCalendar
+    var events = window.rawEventosCalendario.map(function(e) {
+      var cat = e.categoria || 'Trabajo';
+      // Mapear colores de categoría estilo Premium HSL
+      var colors = { bg: '#3b82f6', text: '#ffffff' }; // Trabajo: Azul
+      if (cat === 'Reuniones') colors = { bg: '#10b981', text: '#ffffff' }; // Reuniones: Verde
+      else if (cat === 'Estudio') colors = { bg: '#8b5cf6', text: '#ffffff' }; // Estudio: Violeta
+      else if (cat === 'Personal') colors = { bg: '#ef4444', text: '#ffffff' }; // Personal: Rojo
+      else if (cat === 'Salud') colors = { bg: '#ec4899', text: '#ffffff' }; // Salud: Rosado
+      else if (cat === 'Trámites') colors = { bg: '#06b6d4', text: '#ffffff' }; // Trámites: Celeste
+      else if (cat === 'Ideas / Proyectos') colors = { bg: '#eab308', text: '#1e293b' }; // Ideas: Amarillo
 
       let finalEnd = e.end || undefined;
       if (e.fecha_fin_actividad) {
@@ -5149,9 +5159,9 @@ async function loadCalendario() {
         start: e.start,
         end: finalEnd,
         allDay: !e.start.includes('T') || e.start.endsWith('00:00:00'),
-        backgroundColor: color,
-        borderColor: color,
-        textColor: textC,
+        backgroundColor: colors.bg,
+        borderColor: colors.bg,
+        textColor: colors.text,
         extendedProps: e
       };
     });
@@ -5181,25 +5191,25 @@ async function loadCalendario() {
       events: events,
       locale: 'es',
       eventClick: function(info) {
-        abrirModalEvento(info.event.extendedProps);
+        verDetalleEventoLocal(info.event.extendedProps.id);
       },
       datesSet: function(info) {
         if (document.getElementById('calMainTitle')) {
           const title = info.view.title;
-          document.getElementById('calMainTitle').textContent = title.charAt(0).toUpperCase() + title.slice(1);
+          document.getElementById('calMainTitle').innerHTML = title.charAt(0).toUpperCase() + title.slice(1) + ' <i class="fas fa-chevron-down" style="font-size:10px; margin-left:4px; color:#64748b;"></i>';
         }
-        if (typeof _miniCalDate !== 'undefined') {
-            _miniCalDate = info.view.currentStart;
-        }
-        if(typeof renderMiniCal === 'function') renderMiniCal();
+        _miniCalDate = info.view.currentStart;
+        renderMiniCal();
       }
     });
     calendar.render();
     
-    // Update KPIs and Legend
-    actualizarKpisCal(events);
-    renderLeyendaCal(events);
-    if(typeof renderMiniCal === 'function') renderMiniCal();
+    // Ocultar detalle al cargar de nuevo
+    var card = document.getElementById('agenda-details-card');
+    if (card) card.style.display = 'none';
+
+    // Aplicar filtros iniciales
+    filtrarCalendarioLocal();
 
   } catch (e) {
     container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">Error al cargar calendario: ' + e.message + '</div>';
@@ -5208,13 +5218,24 @@ async function loadCalendario() {
 
 function filtrarCalendarioLocal() {
     if (!calendar) return;
-    const texto = (document.getElementById('calBuscarTexto').value || '').toLowerCase();
-    const estado = document.getElementById('calFiltroEstado').value;
+    const texto = (document.getElementById('calBuscarTexto') ? document.getElementById('calBuscarTexto').value : '') || '';
+    const textoLower = texto.toLowerCase();
+    const estado = document.getElementById('calFiltroEstado') ? document.getElementById('calFiltroEstado').value : '';
+    
+    // Obtener categorías activas de los interruptores
+    const activeCats = Array.from(document.querySelectorAll('.cat-toggle:checked')).map(cb => cb.value);
     
     const filtrados = window.todosLosEventosCalendario.filter(ev => {
-        const textMatch = ev.title.toLowerCase().includes(texto) || (ev.extendedProps.area || '').toLowerCase().includes(texto);
+        const cat = ev.extendedProps.categoria || 'Trabajo';
+        const catMatch = activeCats.includes(cat);
+
+        const textMatch = !texto || ev.title.toLowerCase().includes(textoLower) || 
+                          (ev.extendedProps.area || '').toLowerCase().includes(textoLower) ||
+                          (ev.extendedProps.descripcion || '').toLowerCase().includes(textoLower);
+                          
         const estMatch = !estado || ev.extendedProps.estado === estado;
-        return textMatch && estMatch;
+        
+        return catMatch && textMatch && estMatch;
     });
     
     calendar.getEvents().forEach(e => e.remove());
@@ -5222,6 +5243,261 @@ function filtrarCalendarioLocal() {
     
     actualizarKpisCal(filtrados);
     renderLeyendaCal(filtrados);
+}
+
+// ===================== MINI CALENDARIO INTERACTIVO =====================
+function renderMiniCal() {
+  var titleEl = document.getElementById('miniCalTitle');
+  var daysEl = document.getElementById('miniCalDays');
+  if (!titleEl || !daysEl) return;
+
+  var currentYear = _miniCalDate.getFullYear();
+  var currentMonth = _miniCalDate.getMonth();
+
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  titleEl.textContent = monthNames[currentMonth] + " " + currentYear;
+
+  var firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+  var startOffset = firstDayIndex === 0 ? 6 : firstDayIndex - 1; // Ajustar a Lunes inicio
+
+  var daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  var prevDaysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+  var html = '';
+
+  // Días del mes anterior
+  for (var i = startOffset - 1; i >= 0; i--) {
+      var dNum = prevDaysInMonth - i;
+      html += `<div style="color:#cbd5e1; padding:6px 0; text-align:center; font-weight:500;">${dNum}</div>`;
+  }
+
+  // Días del mes actual
+  for (var d = 1; d <= daysInMonth; d++) {
+      var dayDate = new Date(currentYear, currentMonth, d);
+      var dayDateStr = dayDate.toISOString().substring(0,10);
+
+      var isToday = new Date().toDateString() === dayDate.toDateString();
+      
+      // Consultar si este día tiene actividades
+      var hasEvents = (window.rawEventosCalendario || []).some(ev => {
+          var evDate = ev.fecha;
+          if (typeof evDate === 'string') evDate = evDate.substring(0,10);
+          return evDate === dayDateStr;
+      });
+
+      var dayStyle = "cursor:pointer; padding:6px 0; border-radius:50%; width:26px; height:26px; display:inline-flex; align-items:center; justify-content:center; margin:2px auto; font-weight:700; transition:all 0.2s; position:relative;";
+      if (isToday) {
+          dayStyle += "background:#3b82f6; color:white; box-shadow:0 4px 10px rgba(59,130,246,0.25);";
+      } else {
+          dayStyle += "color:#475569;";
+      }
+
+      var dotHtml = '';
+      if (hasEvents) {
+          var dotColor = isToday ? 'white' : '#3b82f6';
+          dotHtml = `<span style="position:absolute; bottom:2px; width:4px; height:4px; background:${dotColor}; border-radius:50%;"></span>`;
+      }
+
+      html += `<div onclick="goCalToDate('${dayDateStr}')" style="display:flex; justify-content:center; align-items:center;"><span style="${dayStyle}" onmouseover="if(!${isToday})this.style.background='#f1f5f9'" onmouseout="if(!${isToday})this.style.background='none'">${d}${dotHtml}</span></div>`;
+  }
+
+  daysEl.innerHTML = html;
+}
+
+function miniCalPrev() {
+  _miniCalDate.setMonth(_miniCalDate.getMonth() - 1);
+  renderMiniCal();
+}
+
+function miniCalNext() {
+  _miniCalDate.setMonth(_miniCalDate.getMonth() + 1);
+  renderMiniCal();
+}
+
+function goCalToDate(dateStr) {
+  if (calendar) {
+      calendar.gotoDate(dateStr);
+  }
+}
+
+// ===================== PRÓXIMAS ACTIVIDADES =====================
+function updateAgendaUpcomingList() {
+  var listEl = document.getElementById('agenda-upcoming-list');
+  if (!listEl) return;
+
+  var events = window.rawEventosCalendario || [];
+  
+  // Filtrar eventos de hoy en adelante
+  var todayStr = new Date().toISOString().substring(0,10);
+  var sorted = [...events].filter(e => {
+      var evDate = typeof e.fecha === 'string' ? e.fecha.substring(0,10) : new Date(e.fecha).toISOString().substring(0,10);
+      return evDate >= todayStr;
+  }).sort((a, b) => {
+      var dateA = new Date(a.fecha + (a.hora_inicio ? 'T' + a.hora_inicio : ''));
+      var dateB = new Date(b.fecha + (b.hora_inicio ? 'T' + b.hora_inicio : ''));
+      return dateA - dateB;
+  });
+
+  var nextThree = sorted.slice(0, 3);
+
+  if (nextThree.length === 0) {
+      listEl.innerHTML = '<div style="font-size:11px; color:#94a3b8; text-align:center; padding:10px;">No hay actividades programadas</div>';
+      return;
+  }
+
+  const catColors = {
+    'Trabajo': '#3b82f6',
+    'Reuniones': '#10b981',
+    'Estudio': '#8b5cf6',
+    'Personal': '#ef4444',
+    'Salud': '#ec4899',
+    'Trámites': '#06b6d4',
+    'Ideas / Proyectos': '#eab308'
+  };
+
+  const monthShort = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+  listEl.innerHTML = nextThree.map(e => {
+      var cat = e.categoria || 'Trabajo';
+      var color = catColors[cat] || '#3b82f6';
+      
+      var evDate = typeof e.fecha === 'string' ? e.fecha.substring(0,10) : new Date(e.fecha).toISOString().substring(0,10);
+      var parts = evDate.split('-');
+      var dateStr = parseInt(parts[2]) + ' ' + monthShort[parseInt(parts[1]) - 1];
+      var timeStr = e.hora_inicio ? formatTime12(e.hora_inicio) : 'Todo el día';
+
+      return `
+        <div onclick="verDetalleEventoLocal(${e.id})" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:8px; border-radius:10px; transition:all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='none'">
+            <span style="width:10px; height:10px; border-radius:50%; background:${color}; flex-shrink:0;"></span>
+            <div style="flex:1; min-width:0;">
+                <div style="font-weight:700; font-size:12px; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${e.titulo}</div>
+                <div style="font-size:10px; color:#64748b; margin-top:2px;">${dateStr} • ${timeStr}</div>
+            </div>
+        </div>
+      `;
+  }).join('');
+}
+
+function formatTime12(timeStr) {
+    if (!timeStr) return '';
+    var parts = timeStr.split(':');
+    var h = parseInt(parts[0]);
+    var m = parts[1];
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    return h + ':' + m + ' ' + ampm;
+}
+
+// ===================== DETALLE DE EVENTO (BARRA INFERIOR) =====================
+function verDetalleEventoLocal(id) {
+  var ev = (window.rawEventosCalendario || []).find(e => e.id === id);
+  if (!ev) return;
+
+  var card = document.getElementById('agenda-details-card');
+  if (!card) return;
+
+  document.getElementById('det-titulo').textContent = ev.titulo;
+
+  // Formatear Fecha
+  var evDate = typeof ev.fecha === 'string' ? ev.fecha.substring(0,10) : new Date(ev.fecha).toISOString().substring(0,10);
+  var parts = evDate.split('-');
+  var dt = new Date(parts[0], parts[1] - 1, parts[2]);
+  var options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  var dateStr = dt.toLocaleDateString('es-ES', options);
+  document.getElementById('det-fecha').textContent = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+  // Formatear Horas
+  var hoursStr = 'Todo el día';
+  if (ev.hora_inicio) {
+      hoursStr = formatTime12(ev.hora_inicio);
+      if (ev.hora_fin) {
+          hoursStr += ' - ' + formatTime12(ev.hora_fin);
+      }
+  }
+  document.getElementById('det-horas').textContent = hoursStr;
+
+  document.getElementById('det-descripcion').textContent = ev.descripcion || 'Sin descripción asignada.';
+
+  var badge = document.getElementById('det-categoria-badge');
+  badge.textContent = ev.categoria || 'Trabajo';
+  
+  const catColors = {
+    'Trabajo': { bg: '#e0f2fe', text: '#0369a1', icon: 'fas fa-briefcase', color: '#3b82f6' },
+    'Reuniones': { bg: '#dcfce7', text: '#15803d', icon: 'fas fa-users', color: '#10b981' },
+    'Estudio': { bg: '#f3e8ff', text: '#6b21a8', icon: 'fas fa-book', color: '#8b5cf6' },
+    'Personal': { bg: '#fee2e2', text: '#b91c1c', icon: 'fas fa-user', color: '#ef4444' },
+    'Salud': { bg: '#fce7f3', text: '#9d174d', icon: 'fas fa-heartbeat', color: '#ec4899' },
+    'Trámites': { bg: '#ecfeff', text: '#0e7490', icon: 'fas fa-folder', color: '#06b6d4' },
+    'Ideas / Proyectos': { bg: '#fef9c3', text: '#854d0e', icon: 'fas fa-lightbulb', color: '#eab308' }
+  };
+
+  var meta = catColors[ev.categoria || 'Trabajo'] || catColors['Trabajo'];
+  badge.style.background = meta.bg;
+  badge.style.color = meta.text;
+
+  var iconBg = document.getElementById('det-icon-bg');
+  iconBg.style.background = meta.color;
+  iconBg.innerHTML = `<i class="${meta.icon}"></i>`;
+
+  var linkContainer = document.getElementById('det-link-container');
+  if (ev.link) {
+      document.getElementById('det-link-text').value = ev.link;
+      document.getElementById('det-link-btn').href = ev.link;
+      linkContainer.style.display = 'block';
+  } else {
+      linkContainer.style.display = 'none';
+  }
+
+  // Acciones enlazadas
+  document.getElementById('det-btn-editar').onclick = function() { abrirModalEvento(ev); };
+  document.getElementById('det-btn-eliminar').onclick = function() { 
+      document.getElementById('evId').value = ev.id;
+      eliminarEvento();
+  };
+  document.getElementById('det-btn-duplicar').onclick = function() {
+      duplicarEventoLocal(ev);
+  };
+
+  card.style.display = 'block';
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function duplicarEventoLocal(ev) {
+  if (!confirm('¿Desea duplicar este evento para el día siguiente?')) return;
+  try {
+      var evDate = typeof ev.fecha === 'string' ? ev.fecha.substring(0,10) : new Date(ev.fecha).toISOString().substring(0,10);
+      var parts = evDate.split('-');
+      var dt = new Date(parts[0], parts[1] - 1, parts[2]);
+      dt.setDate(dt.getDate() + 1);
+      var newFecha = dt.toISOString().substring(0,10);
+      
+      var payload = {
+          titulo: ev.titulo + ' (Copia)',
+          descripcion: ev.descripcion,
+          estado: ev.estado,
+          fecha: newFecha,
+          fecha_fin_actividad: ev.fecha_fin_actividad,
+          hora_inicio: ev.hora_inicio,
+          hora_fin: ev.hora_fin,
+          area: ev.area,
+          sub_area: ev.sub_area,
+          link: ev.link,
+          categoria: ev.categoria
+      };
+      
+      await api('/api/calendario/eventos', { method: 'POST', body: payload });
+      showToast('Evento duplicado correctamente', 'success');
+      loadCalendario();
+  } catch(e) {
+      showToast('Error al duplicar evento: ' + e.message, 'error');
+  }
+}
+
+function verTodasLasActividades(e) {
+  e.preventDefault();
+  setCalView('listMonth', document.getElementById('vbtnList'));
 }
 
 function actualizarKpisCal(eventos) {
@@ -5299,7 +5575,9 @@ function abrirModalEvento(evento) {
   var evHoraFin = isEdit ? (evento.hora_fin || '') : '';
   
   var evArea = isEdit ? (evento.area || '') : '';
+  var evSubArea = isEdit ? (evento.sub_area || '') : '';
   var evLink = isEdit ? (evento.link || '') : '';
+  var evCategoria = isEdit ? (evento.categoria || 'Trabajo') : 'Trabajo';
 
   var creadorHtml = '';
   if (isEdit && evento.creador) {
@@ -5351,8 +5629,16 @@ function abrirModalEvento(evento) {
       </div>
       <div style="display:flex; gap:10px; margin-bottom:15px;">
         <div style="flex:1;">
-          <label>Área</label>
-          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}" ${disabledAttr}>
+          <label>Categoría</label>
+          <select id="evCategoria" class="form-select" ${disabledAttr}>
+            <option value="Trabajo" ${evCategoria==='Trabajo'?'selected':''}>💼 Trabajo</option>
+            <option value="Reuniones" ${evCategoria==='Reuniones'?'selected':''}>👥 Reuniones</option>
+            <option value="Estudio" ${evCategoria==='Estudio'?'selected':''}>📚 Estudio</option>
+            <option value="Personal" ${evCategoria==='Personal'?'selected':''}>👤 Personal</option>
+            <option value="Salud" ${evCategoria==='Salud'?'selected':''}>❤️ Salud</option>
+            <option value="Trámites" ${evCategoria==='Trámites'?'selected':''}>📁 Trámites</option>
+            <option value="Ideas / Proyectos" ${evCategoria==='Ideas / Proyectos'?'selected':''}>💡 Ideas / Proyectos</option>
+          </select>
         </div>
         <div style="flex:1;">
           <label>Estado</label>
@@ -5361,6 +5647,16 @@ function abrirModalEvento(evento) {
             <option value="En Proceso" ${evEstado==='En Proceso'?'selected':''}>En Proceso</option>
             <option value="Cumplida" ${evEstado==='Cumplida'?'selected':''}>Cumplida</option>
           </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; margin-bottom:15px;">
+        <div style="flex:1;">
+          <label>Área</label>
+          <input type="text" id="evArea" class="form-control" placeholder="Ej. AGP" value="${evArea}" ${disabledAttr}>
+        </div>
+        <div style="flex:1;">
+          <label>Sub-área</label>
+          <input type="text" id="evSubArea" class="form-control" placeholder="Ej. Contabilidad" value="${evSubArea}" ${disabledAttr}>
         </div>
       </div>
     </div>
@@ -5390,8 +5686,10 @@ async function guardarEvento() {
     hora_fin: document.getElementById('evHoraFin').value,
     descripcion: document.getElementById('evDescripcion').value,
     area: document.getElementById('evArea').value,
+    sub_area: document.getElementById('evSubArea') ? document.getElementById('evSubArea').value : '',
     estado: document.getElementById('evEstado').value,
-    link: document.getElementById('evLink').value.trim()
+    link: document.getElementById('evLink').value.trim(),
+    categoria: document.getElementById('evCategoria').value
   };
 
   if (!payload.titulo || !payload.fecha) {

@@ -810,98 +810,229 @@
       <!-- ==================== CALENDARIO ==================== -->
       <div class="view-section" id="view-calendario">
         
-        <div class="page-hd" style="margin-bottom: 10px;"><h2>Mi Agenda</h2><span>Visualización y gestión de actividades</span></div>
-        
-        <!-- Botones Horizontales Premium -->
-        <div style="display:flex; gap:15px; flex-wrap: wrap; margin-bottom: 24px;">
-           <button onclick="abrirModalEvento()" style="background: linear-gradient(135deg, #6b21a8 0%, #9333ea 100%); color: white; border: none; padding: 12px 24px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; box-shadow: 0 4px 15px rgba(107, 33, 168, 0.3); cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(107, 33, 168, 0.4)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(107, 33, 168, 0.3)';"><i class="fas fa-plus-circle"></i> Registrar Nueva Actividad</button>
-           
-           <button onclick="descargarExcelAreas()" style="background: white; color: #6b21a8; border: 2px solid #6b21a8; padding: 12px 24px; font-size: 0.95rem; font-weight: 600; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='#faf5ff'; this.style.transform='translateY(-2px)';" onmouseout="this.style.background='white'; this.style.transform='none';"><i class="fas fa-file-excel"></i> Descargar Excel por Áreas</button>
-        </div>
+        <div class="cal-premium-wrapper" style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: stretch; margin-top: 10px;">
+            
+            <!-- PANEL IZQUIERDO DE LA AGENDA (SIDEBAR) -->
+            <div class="cal-left-panel" style="display: flex; flex-direction: column; gap: 15px;">
+                
+                <!-- Encabezado "MI AGENDA" -->
+                <div class="agenda-header-card" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: white; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 8px 24px rgba(37,99,235,0.15);">
+                    <div style="background: rgba(255,255,255,0.2); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; font-size: 16px; letter-spacing: 0.8px; font-family: 'Outfit', sans-serif;">MI AGENDA</div>
+                        <div style="font-size: 10px; opacity: 0.9; font-weight: 500;">Control de Actividades Personales</div>
+                    </div>
+                </div>
 
-        <div class="cal-premium-wrapper">
-            <!-- PANEL IZQUIERDO -->
-            <div class="cal-left-panel">
-                <!-- Mini Calendario con glassmorphism -->
-                <div class="cal-glass-card">
-                    <div class="mini-cal-header">
-                        <div class="mini-cal-title" id="miniCalTitle">Cargando...</div>
-                        <div class="mini-cal-nav">
-                            <button class="mini-cal-btn" onclick="miniCalPrev()" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
-                            <button class="mini-cal-btn" onclick="miniCalNext()" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
+                <!-- Mini Calendario -->
+                <div class="agenda-card" style="background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid #f1f5f9;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <button onclick="miniCalPrev()" style="border:none; background:none; color:#64748b; cursor:pointer; font-size:12px; padding:4px; display:flex; align-items:center; justify-content:center; transition: all 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#64748b'"><i class="fas fa-chevron-left"></i></button>
+                            <span id="miniCalTitle" style="font-weight: 700; font-size: 13px; color: #1e293b; min-width: 90px; text-align: center; font-family: 'Outfit', sans-serif;">Mayo 2024</span>
+                            <button onclick="miniCalNext()" style="border:none; background:none; color:#64748b; cursor:pointer; font-size:12px; padding:4px; display:flex; align-items:center; justify-content:center; transition: all 0.2s;" onmouseover="this.style.color='#3b82f6'" onmouseout="this.style.color='#64748b'"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <button onclick="calGoToday()" style="border:none; background:none; color:#3b82f6; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; transition: all 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='none'" title="Ir a hoy"><i class="far fa-calendar-alt"></i></button>
+                    </div>
+                    <div class="mini-cal-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 10px; font-weight: 700; color: #94a3b8;">
+                        <div>LU</div><div>MA</div><div>MI</div><div>JU</div><div>VI</div><div>SA</div><div>DO</div>
+                    </div>
+                    <div id="miniCalDays" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 11px; margin-top: 6px;">
+                        <!-- Rellenado por JS -->
+                    </div>
+                </div>
+
+                <!-- Categorías -->
+                <div class="agenda-card" style="background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid #f1f5f9;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                        <span style="font-weight:800; font-size:11px; color:#64748b; letter-spacing:0.8px; text-transform:uppercase; font-family: 'Outfit', sans-serif;">Categorías</span>
+                        <button onclick="abrirModalEvento()" style="background:none; border:none; color:#3b82f6; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center;" title="Añadir Evento"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="agenda-categories-list" style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(59,130,246,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#3b82f6;"><i class="fas fa-briefcase" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Trabajo</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Trabajo" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(16,185,129,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#10b981;"><i class="fas fa-users" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Reuniones</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Reuniones" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(139,92,246,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#8b5cf6;"><i class="fas fa-book" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Estudio</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Estudio" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(239,68,68,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ef4444;"><i class="fas fa-user" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Personal</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Personal" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(236,72,153,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#ec4899;"><i class="fas fa-heartbeat" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Salud</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Salud" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(6,182,212,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#06b6d4;"><i class="fas fa-folder" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Trámites</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Trámites" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12px; color:#475569;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="background:rgba(234,179,8,0.15); width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; color:#eab308;"><i class="fas fa-lightbulb" style="font-size:11px;"></i></span>
+                                <span style="font-weight:600;">Ideas / Proyectos</span>
+                            </div>
+                            <div class="form-check form-switch" style="padding-left:0; margin-bottom:0; min-height:0; display:flex; align-items:center;">
+                                <input class="form-check-input cat-toggle" type="checkbox" value="Ideas / Proyectos" checked style="cursor:pointer; width:28px; height:15px; margin-left:0;" onchange="filtrarCalendarioLocal()">
+                            </div>
                         </div>
                     </div>
-                    <div class="mini-cal-grid">
-                        <div class="mini-cal-days-header">
-                            <div class="mini-cal-day-name">D</div><div class="mini-cal-day-name">L</div><div class="mini-cal-day-name">M</div><div class="mini-cal-day-name">X</div><div class="mini-cal-day-name">J</div><div class="mini-cal-day-name">V</div><div class="mini-cal-day-name">S</div>
-                        </div>
-                        <div class="mini-cal-days" id="miniCalDays"></div>
+                </div>
+
+                <!-- Próximas Actividades -->
+                <div class="agenda-card" style="background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid #f1f5f9;">
+                    <div style="font-weight:800; font-size:11px; color:#64748b; letter-spacing:0.8px; text-transform:uppercase; margin-bottom:12px; font-family: 'Outfit', sans-serif;">Próximas Actividades</div>
+                    <div id="agenda-upcoming-list" style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="font-size:12px; color:#94a3b8; text-align:center; padding:10px;">No hay actividades programadas</div>
                     </div>
                 </div>
 
-                <!-- KPI Cards -->
-                <div class="cal-kpi-grid" id="calKpiGrid">
-                    <div class="cal-kpi-card">
-                        <div class="cal-kpi-icon azul"><i class="fas fa-calendar-check"></i></div>
-                        <div class="cal-kpi-num" id="kpiTotal">0</div>
-                        <div class="cal-kpi-label">Total en el mes</div>
-                    </div>
-                    <div class="cal-kpi-card">
-                        <div class="cal-kpi-icon dorado"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="cal-kpi-num" id="kpiPendiente">0</div>
-                        <div class="cal-kpi-label">Pendientes</div>
-                    </div>
-                    <div class="cal-kpi-card">
-                        <div class="cal-kpi-icon verde"><i class="fas fa-check-circle"></i></div>
-                        <div class="cal-kpi-num" id="kpiCumplio">0</div>
-                        <div class="cal-kpi-label">Cumplidas</div>
-                    </div>
-                    <div class="cal-kpi-card">
-                        <div class="cal-kpi-icon rojo"><i class="fas fa-times-circle"></i></div>
-                        <div class="cal-kpi-num" id="kpiNoCumplio">0</div>
-                        <div class="cal-kpi-label">En Proceso</div>
-                    </div>
+                <!-- Frase de Organización -->
+                <div class="agenda-quote-card" style="background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%); color: white; border-radius: 16px; padding: 20px; text-align: center; position: relative; overflow: hidden; box-shadow: 0 10px 25px rgba(59,130,246,0.18);">
+                    <div style="font-size:24px; margin-bottom:8px; opacity:0.95;"><i class="fas fa-rocket"></i></div>
+                    <p style="margin:0; font-size:11px; font-weight:600; font-style:italic; line-height:1.5; position:relative; z-index:1; font-family: 'Outfit', sans-serif;">"La organización es la clave para convertir metas en logros."</p>
+                    <div style="position:absolute; bottom:-20px; right:-20px; width:80px; height:80px; background:rgba(255,255,255,0.06); border-radius:50%;"></div>
                 </div>
 
-                <!-- Leyenda por área -->
-                <div class="cal-areas-card">
-                    <div class="cal-areas-title"><i class="fas fa-layer-group" style="margin-right:6px;color:#7A1E2C;"></i>Áreas</div>
-                    <div id="calLegend"></div>
-                </div>
             </div>
 
-            <!-- PANEL PRINCIPAL del CALENDARIO -->
-            <div class="cal-main-panel">
-                <div class="cal-main-toolbar">
-                    <div style="display:flex;align-items:center;gap:16px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <button class="mini-cal-btn" onclick="calNavPrev()" style="background:#f0f2ff;color:#7A1E2C;"><i class="fas fa-chevron-left"></i></button>
-                            <button class="mini-cal-btn" onclick="calNavNext()" style="background:#f0f2ff;color:#7A1E2C;"><i class="fas fa-chevron-right"></i></button>
+            <!-- PANEL PRINCIPAL DEL CALENDARIO (DERECHO) -->
+            <div class="cal-main-panel" style="display: flex; flex-direction: column; min-height: 0;">
+                
+                <!-- Barra de herramientas (Toolbar superior) -->
+                <div class="cal-main-toolbar" style="background: white; border-radius: 16px; padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; margin-bottom: 15px; flex-wrap: wrap; gap: 12px;">
+                    <div style="display:flex; align-items:center; gap:16px;">
+                        <h2 style="margin:0; font-size:18px; font-weight:800; color:#1e293b; font-family: 'Outfit', sans-serif;">Vista Semanal</h2>
+                        <div style="display:flex; align-items:center; gap:4px; background:#f1f5f9; border-radius:10px; padding:4px;">
+                            <button onclick="calNavPrev()" style="border:none; background:none; color:#475569; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='white'" onmouseout="this.style.background='none'"><i class="fas fa-chevron-left"></i></button>
+                            <span id="calMainTitle" style="font-size:13px; font-weight:700; color:#1e293b; padding:0 10px; font-family: 'Outfit', sans-serif;">13 – 19 Mayo 2024</span>
+                            <button onclick="calNavNext()" style="border:none; background:none; color:#475569; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='white'" onmouseout="this.style.background='none'"><i class="fas fa-chevron-right"></i></button>
                         </div>
-                        <div class="cal-main-title" id="calMainTitle">Cargando...</div>
-                        <button onclick="calGoToday()" style="background:#f0f2ff;color:#7A1E2C;border:none;border-radius:10px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='#7A1E2C';this.style.color='white'" onmouseout="this.style.background='#f0f2ff';this.style.color='#7A1E2C'">Hoy</button>
                     </div>
-                    <div class="cal-toolbar-actions">
-                        <div class="cal-search-wrap">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="calBuscarTexto" class="cal-search-input" placeholder="Buscar actividad..." oninput="filtrarCalendarioLocal()">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
+                        <button onclick="abrirModalEvento()" style="background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color:white; border:none; border-radius:10px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 4px 12px rgba(79,70,229,0.15); transition: all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'"><i class="fas fa-plus"></i> Nueva Actividad</button>
+                        <button onclick="descargarExcelAreas()" style="background:white; color:#475569; border:1px solid #e2e8f0; border-radius:10px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'"><i class="fas fa-filter"></i> Filtros</button>
+                        <button onclick="calGoToday()" style="background:white; color:#475569; border:1px solid #e2e8f0; border-radius:10px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">Hoy</button>
+                        <button onclick="abrirConfiguracionCalendario()" style="background:white; color:#475569; border:1px solid #e2e8f0; border-radius:10px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'"><i class="fas fa-cog"></i></button>
+                    </div>
+                </div>
+
+                <!-- Contenedor de la grilla de FullCalendar -->
+                <div style="background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); border: 1px solid #f1f5f9; flex: 1; min-height: 480px; display: flex; flex-direction: column;">
+                    <div id="calendar-container" style="flex:1;"></div>
+                </div>
+
+                <!-- Detalle del Evento Seleccionado (Fila inferior) -->
+                <div id="agenda-details-card" style="display:none; background:white; border-radius:20px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.03); border:1px solid #f1f5f9; margin-top:15px; transition: all 0.3s ease;">
+                    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:20px;">
+                        <!-- Detalle Básico -->
+                        <div style="display:flex; gap:16px; flex:1; min-width:260px;">
+                            <div id="det-icon-bg" style="width:50px; height:50px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:24px; color:white; flex-shrink:0; background:#10b981; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                                <i class="fas fa-video"></i>
+                            </div>
+                            <div>
+                                <h3 id="det-titulo" style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:#1e293b; font-family: 'Outfit', sans-serif;">Reunión de equipo</h3>
+                                <div style="display:flex; flex-direction:column; gap:4px; font-size:12px; color:#64748b;">
+                                    <div style="display:flex; align-items:center; gap:6px;"><i class="far fa-calendar-alt" style="color:#3b82f6;"></i> <span id="det-fecha">Miércoles, 15 de Mayo 2024</span></div>
+                                    <div style="display:flex; align-items:center; gap:6px;"><i class="far fa-clock" style="color:#ef4444;"></i> <span id="det-horas">9:00 AM - 10:00 AM (1 hora)</span></div>
+                                    <div style="display:flex; align-items:center; gap:6px;"><i class="fas fa-tag" style="color:#8b5cf6;"></i> <span id="det-categoria-badge" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:100px; font-size:10px; font-weight:700; text-transform:uppercase;">Reuniones</span></div>
+                                </div>
+                            </div>
                         </div>
-                        <select id="calFiltroEstado" class="cal-filter-select" onchange="filtrarCalendarioLocal()">
-                            <option value="">Todos los estados</option>
-                            <option value="Pendiente">⏳ Pendiente</option>
-                            <option value="En Proceso">⚠️ En Proceso</option>
-                            <option value="Cumplida">✅ Cumplida</option>
-                        </select>
-                        <div class="cal-view-btns">
-                            <button class="cal-view-btn" id="vbtnMonth" onclick="setCalView('dayGridMonth', this)">Mes</button>
-                            <button class="cal-view-btn active" id="vbtnWeek" onclick="setCalView('timeGridWeek', this)">Semana</button>
-                            <button class="cal-view-btn" id="vbtnList" onclick="setCalView('listMonth', this)">Lista</button>
+                        <!-- Descripción y Link -->
+                        <div style="flex:1.5; min-width:300px; display:flex; flex-direction:column; gap:10px; border-left:1px solid #f1f5f9; border-right:1px solid #f1f5f9; padding:0 20px;">
+                            <div>
+                                <span style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-family: 'Outfit', sans-serif;">Descripción</span>
+                                <p id="det-descripcion" style="margin:4px 0 0 0; font-size:12px; color:#475569; line-height:1.5;">Seguimiento del estado del proyecto y asignación de tareas pendientes.</p>
+                            </div>
+                            <div id="det-link-container" style="display:none;">
+                                <span style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-family: 'Outfit', sans-serif;">Enlace / Link</span>
+                                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                                    <input type="text" id="det-link-text" readonly style="flex:1; border:1px solid #e2e8f0; background:#f8fafc; border-radius:8px; padding:6px 12px; font-size:11px; color:#475569;" value="">
+                                    <a href="#" id="det-link-btn" target="_blank" style="background:#3b82f6; color:white; width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; text-decoration:none; box-shadow:0 4px 10px rgba(59,130,246,0.2);" title="Abrir enlace"><i class="fas fa-external-link-alt"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Recordatorio, Repetir y Acciones -->
+                        <div style="flex:1; min-width:220px; display:flex; flex-direction:column; gap:12px;">
+                            <div style="display:flex; gap:10px;">
+                                <div style="flex:1;">
+                                    <span style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; font-family: 'Outfit', sans-serif;">Recordatorio</span>
+                                    <select id="det-recordatorio" class="form-select form-select-sm" style="font-size:11px; border-radius:8px; border-color:#e2e8f0;">
+                                        <option value="none">Sin recordatorio</option>
+                                        <option value="15" selected>15 minutos antes</option>
+                                        <option value="30">30 minutos antes</option>
+                                        <option value="60">1 hora antes</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1;">
+                                    <span style="font-size:10px; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; font-family: 'Outfit', sans-serif;">Repetir</span>
+                                    <select id="det-repetir" class="form-select form-select-sm" style="font-size:11px; border-radius:8px; border-color:#e2e8f0;">
+                                        <option value="none" selected>No repetir</option>
+                                        <option value="daily">Diario</option>
+                                        <option value="weekly">Semanal</option>
+                                        <option value="monthly">Mensual</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:6px; margin-top:auto;">
+                                <button id="det-btn-editar" class="btn btn-sm" style="flex:1; background:#4f46e5; color:white; border-radius:8px; font-size:11px; font-weight:700; padding:8px; border:none; transition: all 0.2s;" onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='#4f46e5'"><i class="far fa-edit"></i> Editar</button>
+                                <button id="det-btn-eliminar" class="btn btn-sm" style="flex:1; background:#ef4444; color:white; border-radius:8px; font-size:11px; font-weight:700; padding:8px; border:none; transition: all 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'"><i class="far fa-trash-alt"></i> Eliminar</button>
+                                <button id="det-btn-duplicar" class="btn btn-sm" style="flex:1; background:white; color:#475569; border:1px solid #cbd5e1; border-radius:8px; font-size:11px; font-weight:700; padding:8px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'"><i class="far fa-copy"></i> Duplicar</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div id="calendar-container"></div>
+
+                <!-- Banner de consejos en el pie -->
+                <div class="agenda-tip-banner" style="background:#fffbeb; border:1px solid #fef3c7; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:10px; margin-top:12px; font-size:12px; color:#b45309;">
+                    <i class="fas fa-lightbulb" style="color:#d97706; font-size:16px;"></i>
+                    <span><strong>Consejo:</strong> Usa categorías y colores para visualizar mejor tu tiempo y prioridades.</span>
+                </div>
+
             </div>
+
         </div>
+
+      </div>
 
       </div>
 
